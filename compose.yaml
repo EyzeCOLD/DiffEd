@@ -1,0 +1,41 @@
+services:
+  nginx:
+    init: true
+    image: nginx:1.29.5-alpine
+    depends_on:
+      - backend
+    ports:
+      - 80:80
+    volumes:
+      - ./backend/nginx/dev.nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - proxyToServer
+    restart: unless-stopped
+
+  backend:
+    init: true
+    depends_on:
+      - frontend
+    build:
+      context: ./
+      dockerfile: ./backend/Dockerfile
+    volumes:
+      - webfiles:/frontend
+    networks:
+      - proxyToServer
+    restart: unless-stopped
+
+  frontend:
+    init: true
+    build:
+      context: ./
+      dockerfile: ./frontend/Dockerfile
+    volumes:
+      - webfiles:/frontend
+
+volumes:
+  webfiles:
+
+networks:
+  proxyToServer:
+    name: custom_proxyToServer

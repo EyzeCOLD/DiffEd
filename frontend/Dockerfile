@@ -1,0 +1,23 @@
+# Multi-stage build, for a smaller final image
+FROM node:25-alpine AS setup
+
+# INSTALL
+COPY /shared/package*.json /shared/
+WORKDIR /shared
+RUN npm install
+
+COPY /frontend/package*.json /frontend/
+WORKDIR /frontend
+RUN npm install
+
+# BUILD
+COPY /shared /shared/
+COPY /frontend /frontend/
+
+WORKDIR /frontend
+RUN npm run build
+
+# CLEAN
+FROM node:25-alpine
+
+COPY --from=setup /frontend/dist /frontend/dist/
