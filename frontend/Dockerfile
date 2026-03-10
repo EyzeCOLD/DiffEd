@@ -21,3 +21,7 @@ RUN npm run build
 FROM node:25-alpine
 
 COPY --from=setup /frontend/dist /frontend/dist/
+RUN npm install -g serve
+
+EXPOSE 3000
+CMD ["serve", "-s", "/frontend/dist", "-l", "3000"]

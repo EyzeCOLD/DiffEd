@@ -28,6 +28,6 @@ WORKDIR /backend
 RUN npm install --omit=dev
 
 # HOST
-CMD ["npm", "run", "server"]
+# CMD ["npm", "run", "server"]
 
 EXPOSE 3000

@@ -3,27 +3,21 @@ services:
     init: true
     image: nginx:1.29.5-alpine
     depends_on:
-      - backend
+      - frontend
     ports:
       - 80:80
     volumes:
-      - ./backend/nginx/dev.nginx.conf:/etc/nginx/nginx.conf
-    networks:
-      - proxyToServer
+      - ./nginx/dev.nginx.conf:/etc/nginx/nginx.conf
     restart: unless-stopped
 
-  backend:
-    init: true
-    depends_on:
-      - frontend
-    build:
-      context: ./
-      dockerfile: ./backend/Dockerfile
-    volumes:
-      - webfiles:/frontend
-    networks:
-      - proxyToServer
-    restart: unless-stopped
+#  backend:
+#    init: true
+#    build:
+#      context: ./
+#      dockerfile: ./backend/Dockerfile
+#    volumes:
+#      - webfiles:/frontend
+#    restart: unless-stopped
 
   frontend:
     init: true
@@ -35,7 +29,3 @@ services:
 
 volumes:
   webfiles:
-
-networks:
-  proxyToServer:
-    name: custom_proxyToServer
