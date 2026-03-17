@@ -1,0 +1,6 @@
+services:
+  prettier:
+    image: "node:25-alpine"
+    volumes:
+      - ./:/subdir
+    command: sh -c "cd subdir && npm install && npm run prettier && npm run eslint"

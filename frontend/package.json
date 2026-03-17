@@ -1,11 +1,12 @@
 {
-	"name": "vite-project",
+	"name": "frontend",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"dev": "vite --host",
+		"dev": "vite",
 		"build": "tsc -b && vite build",
+		"buildDev": "vite build --watch",
 		"lint": "eslint .",
 		"preview": "vite preview"
 	},

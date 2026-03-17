@@ -1,31 +1,52 @@
 services:
   nginx:
-    init: true
-    image: nginx:1.29.5-alpine
     depends_on:
-      - frontend
+      - backend
+    image: nginx:1.29.6-alpine
     ports:
-      - 8080:8080
+      - 80:80
     volumes:
-      - ./nginx/dev.nginx.conf:/etc/nginx/nginx.conf
+      - ./backend/nginx/dev.nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - proxyToServer
     restart: unless-stopped
 
-  #  backend:
-  #    init: true
-  #    build:
-  #      context: ./
-  #      dockerfile: ./backend/Dockerfile
-  #    volumes:
-  #      - webfiles:/frontend
-  #    restart: unless-stopped
+  postgres:
+    image: postgres:18.3
+    env_file:
+      - ./backend/.env # create before deployment
+    networks:
+      - serverToDb
+    restart: unless-stopped
 
-  frontend:
-    init: true
+  backend:
+    depends_on:
+      - postgres
+      - frontend
     build:
       context: ./
-      dockerfile: ./frontend/Dockerfile
+      dockerfile: ./backend/dockerfile
+    volumes:
+      - webfiles:/frontend
+    networks:
+      - proxyToServer
+      - serverToDb
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./
+      dockerfile: ./frontend/dockerfile
     volumes:
       - webfiles:/frontend
 
 volumes:
   webfiles:
+
+networks:
+  proxyToServer:
+    name: custom_proxyToServer
+  serverToDb:
+    name: custom_serverToDb

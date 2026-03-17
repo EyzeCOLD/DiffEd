@@ -1,0 +1,19 @@
+FROM node:25-alpine
+
+# INSTALL
+WORKDIR /shared
+COPY /shared/package*.json /shared/
+RUN npm install
+
+WORKDIR /frontend
+COPY /frontend/package*.json /frontend/
+RUN npm install
+
+# BUILD
+COPY /shared /shared/
+COPY /frontend /frontend/
+
+# HOST
+ENV CHOKIDAR_USEPOLLING=TRUE
+# ^ env fixes dockerized file-watching on windows, should be safe to remove on linux for reduced CPU usage. info: https://vitejs.dev/config/server-options.html#server-watch, https://github.com/microsoft/WSL/issues/4739 (didn't declare as vite.config.ts property as this apparently no longer functions)
+CMD ["npm", "run", "buildDev"]

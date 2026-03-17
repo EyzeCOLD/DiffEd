@@ -1,21 +1,28 @@
 {
-	"name": "backend",
-	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
+	"type": "module",
 	"scripts": {
+		"jest": "npx jest",
 		"build": "tsc",
-		"server": "node dist/backend/src/main.js",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"buildDev": "tsc --watch",
+		"server": "node dist/backend/src/server.js",
+		"serverDev": "nodemon dist/backend/src/server.js",
+		"buildDevAndServerDev": "npm run build && npm run serverDev & npm run buildDev # initial build because buildDev sometimes fails to build before serverDev starts, which then throws"
 	},
-	"author": "",
-	"license": "ISC",
 	"dependencies": {
-		"express": "^5.2.1"
+		"express": "5.2.1",
+		"helmet": "8.1.0",
+		"pg": "8.20.0",
+		"pg-promise": "12.6.2",
+		"zod": "4.3.6"
 	},
 	"devDependencies": {
-		"@types/express": "^5.0.6",
-		"@types/node": "^25.3.5",
-		"typescript": "^5.9.3"
+		"@types/express": "5.0.6",
+		"@types/jest": "30.0.0",
+		"@types/node": "25.5.0",
+		"@types/pg": "8.18.0",
+		"jest": "30.3.0",
+		"nodemon": "3.1.14",
+		"ts-jest": "29.4.6",
+		"typescript": "5.9.3"
 	}
 }
