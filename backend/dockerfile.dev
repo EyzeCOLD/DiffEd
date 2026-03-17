@@ -1,0 +1,18 @@
+FROM node:25-alpine
+
+# INSTALL
+WORKDIR /shared
+COPY /shared/package*.json /shared/
+RUN npm install
+
+WORKDIR /backend
+COPY /backend/package*.json /backend/
+RUN npm install
+
+# BUILD
+COPY /shared /shared/
+COPY /backend /backend/
+
+# HOST
+EXPOSE 3000
+CMD ["npm", "run", "buildDevAndServerDev"]

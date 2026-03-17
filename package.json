@@ -1,0 +1,39 @@
+{
+	"name": "transcendence",
+	"version": "0.0.0",
+	"scripts": {
+		"up": "docker compose up --build",
+		"start": "docker compose start",
+		"dev": "docker compose -f compose.yaml -f compose.devOverride.yaml up --build --force-recreate",
+		"test": "docker compose -f compose.jest.yaml up --build --force-recreate",
+		"SA": "docker compose -f compose.staticAnalysis.yaml up --build --force-recreate",
+		"stop": "docker compose stop",
+		"logs": "docker compose logs",
+		"ps": "docker compose ps -a",
+		"clean": "docker compose down --rmi all",
+		"fclean": "npm run clean && docker compose down -v",
+		"prune": "docker builder prune -af && docker image prune -af && docker volume prune -af",
+		"re": "npm run fclean && npm run up",
+		"installAll": "npm install && cd shared && npm install && cd ../backend && npm install && cd ../frontend && npm install && cd ../testing && npm install",
+		"prettier": "npx prettier --write .",
+		"eslint": "npx eslint ."
+	},
+	"type": "module",
+	"private": true,
+	"devDependencies": {
+		"@eslint/eslintrc": "^3.3.5",
+		"@types/jest": "30.0.0",
+		"@types/node": "25.5.0",
+		"@typescript-eslint/eslint-plugin": "8.57.0",
+		"@typescript-eslint/parser": "8.57.0",
+		"eslint": "^9.39.1",
+		"eslint-plugin-react": "7.37.5",
+		"eslint-plugin-react-hooks": "7.0.1",
+		"eslint-plugin-react-refresh": "0.5.2",
+		"jest": "30.3.0",
+		"jest-environment-jsdom": "30.3.0",
+		"prettier": "^3.8.1",
+		"ts-jest": "29.4.6",
+		"typescript": "5.9.3"
+	}
+}

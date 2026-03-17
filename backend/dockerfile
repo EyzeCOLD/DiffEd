@@ -1,0 +1,32 @@
+FROM node:25-alpine AS setup
+
+# INSTALL
+COPY /shared/package*.json /shared/
+WORKDIR /shared
+RUN npm install
+
+COPY /backend/package*.json /backend/
+WORKDIR /backend
+RUN npm install
+
+# BUILD
+COPY /shared /shared/
+COPY /backend /backend/
+
+WORKDIR /backend
+RUN npm run build
+
+# CLEAN (using debian for later administrating with bash)
+FROM node:25-bookworm-slim
+
+COPY --from=setup /backend/package*.json /backend/
+COPY --from=setup /backend/dist /backend/dist/
+WORKDIR /backend
+RUN npm install --omit=dev
+
+COPY /backend/sql/ /backend/sql/
+COPY /backend/.env /backend/.env
+
+# HOST
+EXPOSE 3000
+CMD ["npm", "run", "server"]

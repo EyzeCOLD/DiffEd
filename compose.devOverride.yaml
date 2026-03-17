@@ -1,0 +1,19 @@
+services:
+  backend:
+    image: backend_dev
+    container_name: backend_dev
+    build:
+      dockerfile: ./backend/dockerfile.dev
+    volumes:
+      - ./shared:/shared
+      - ./backend/src:/backend/src
+      - ./backend/sql:/backend/sql
+
+  frontend:
+    image: frontend_dev
+    container_name: frontend_dev
+    build:
+      dockerfile: ./frontend/dockerfile.dev
+    volumes:
+      - ./shared:/shared
+      - ./frontend/src:/frontend/src
