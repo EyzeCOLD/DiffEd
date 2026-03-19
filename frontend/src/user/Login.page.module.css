@@ -1,0 +1,9 @@
+.page {
+	min-height: 100vh;
+	padding-block: 1em;
+}
+
+.link {
+    color: #0000ff;
+    text-decoration: underline;
+}
