@@ -27,7 +27,7 @@ for (let attempt = 1; attempt <= maxConnectionAttempts; attempt++) {
 	}
 }
 
-for (const fileName of ["placeholder.sql"]) {
+for (const fileName of ["files.sql"]) {
 	const fileContent = readFileSync("/backend/sql/" + fileName, "utf-8");
 	await postgres.query(fileContent).catch((error) => timestampedLog(error));
 }
