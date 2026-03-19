@@ -3,3 +3,4 @@ CREATE TABLE IF NOT EXISTS "files" (
 	name varchar(100),
 	data text
 );
+
