@@ -14,5 +14,5 @@ Endpoints.getFileById(app, postgres);
 Endpoints.UserFiles(app, postgres);
 
 app.listen(3000, () => {
-	timestampedLog("Server online at http://localhost:80");
+	timestampedLog("Server online at http://localhost:8080");
 });
