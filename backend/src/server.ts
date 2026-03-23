@@ -1,16 +1,25 @@
+import path from "node:path";
 import express from "express";
 import helmetSecurity from "helmet";
-// import {postgres} from "./postgres.js";
-import {getPlaceholder} from "./endpoints/getPlaceholder.js";
+import {postgres} from "./postgres.js";
 import {timestampedLog} from "./logging.js";
+import Endpoints from "./endpoints/files.js";
 
 const app = express();
 app.use(express.static("../frontend/dist"));
 app.use(express.json());
 app.use(helmetSecurity());
 
-getPlaceholder(app /*, postgres*/);
+Endpoints.getFiles(app, postgres);
+Endpoints.getFileById(app, postgres);
+Endpoints.UserFiles(app, postgres);
+Endpoints.editFile(app, postgres);
+
+// Catch-all to serve the frontend, needed for subroutes.
+app.get("/*splat", function (request, response) {
+	response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));
+});
 
 app.listen(3000, () => {
-	timestampedLog("Server online at http://localhost:80");
+	timestampedLog("Server online at http://localhost:8080");
 });
