@@ -7,14 +7,13 @@ import Login from "./user/Login.page.tsx";
 
 import EditorPage from "./codeEditor/editor.page.tsx";
 
-// add <Login />
-
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
 		<BrowserRouter>
 			<Routes>
 				<Route path="/" element={<App />} />
 				<Route path="/edit/:fileId" element={<EditorPage />} />
+                <Route path="/login" element={Login />} />
 			</Routes>
 		</BrowserRouter>
 	</StrictMode>,

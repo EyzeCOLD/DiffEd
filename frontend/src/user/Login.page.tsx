@@ -2,13 +2,14 @@
 
 import styles from "./Login.page.module.css";
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const Login = () => {
 
     const [userName, setUserName] = useState([]);
     const [userPassword, setUserPassword] = useState([]);
 
-    const test = () => {
+    const submit = (event) => {
         event.preventDefault();
         if (!userName) {
             window.alert('Name field empty!')
@@ -18,16 +19,19 @@ const Login = () => {
             window.alert('Name field empty!')
         }
 
-        const user = new Object {
-            username,
-            userPassword,
+        try {
+            const response = axios.post('/api/login', {
+                username,
+                userPassword,
+            });
+            // Store token
+            localStorage.setItem('token', response.data.token);
+            //redirect to protectec route
+            history.push('/app/frontpage');
+        } catch (error) {
+            window.alert('Login failed');
         }
-
-        const login = user => {
-            const request = axios.get('/api/login');
-            return request.then(response = response.data)
-        }
-    }
+    };
 
     const handleNameChange = (event) => {
         setUserName(event.target.value)
@@ -38,10 +42,11 @@ const Login = () => {
     }
 
     //should we use maxlength for the input fields?
+    // When the button is pressed it should send the input credentials to /login
     return (
         <div className={styles.page}>
             <div>Welcome to the login page!<br />Please insert details</div>
-            <form onSubmit={test}>
+            <form onSubmit={submit}>
                 <div> <input placeholder="username or email" value={userName} onChange={handleNameChange} /> </div>
                 <div> <input placeholder="password" value={userPassword} onChange={handlePasswordChange} /> </div>
                 <div> <button type="submit">login</button> </div>
