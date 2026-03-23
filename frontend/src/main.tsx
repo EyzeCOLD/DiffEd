@@ -3,12 +3,14 @@ import {createRoot} from "react-dom/client";
 import {BrowserRouter, Routes, Route} from "react-router";
 import "./index.css";
 import App from "./App.tsx";
+import EditorPage from "./codeEditor/editor.page.tsx";
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
 		<BrowserRouter>
 			<Routes>
 				<Route path="/" element={<App />} />
+				<Route path="/edit/:fileId" element={<EditorPage />} />
 			</Routes>
 		</BrowserRouter>
 	</StrictMode>,
