@@ -7,7 +7,9 @@ export default function App() {
 	return (
 		<div className={styles.page}>
 			Transcendence: It's a thing we're making™
-			<Link to="/edit">Code editor page</Link>
+			<div>
+				<Link to="/edit/200">Code editor page</Link>
+			</div>
 		</div>
 	);
 }
