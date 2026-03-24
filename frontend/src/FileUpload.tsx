@@ -15,7 +15,7 @@ const FileUploader = () => {
 
 			const formData = new FormData();
 			[...files].forEach(function (file: File) {
-				formData.append("files", file);
+				formData.append("file", file);
 			});
 
 			try {

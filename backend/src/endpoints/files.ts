@@ -2,6 +2,11 @@ import {type Express} from "express";
 import {type Pool} from "pg";
 import {timestampedLog} from "#/src/logging.js";
 import {UserFileSchema} from "#/src/validation/schemas.js";
+
+import multer from "multer";
+const storage = multer.memoryStorage();
+const upload = multer({storage: storage});
+
 import z from "zod";
 
 const getFiles = (app: Express, db: Pool) => {
@@ -92,28 +97,12 @@ const uploadFile = (app: Express, db: Pool) => {
 };
 
 const uploadMultipleFiles = (app: Express, db: Pool) => {
-	app.post("/api/upload", async (req, res) => {
-		if (req.busboy) {
-			req.busboy.on("file", (name, file, info) => {
-				const {filename, encoding, mimeType} = info;
-				console.log(`File [${name}]: filename: %j, encoding: %j, mimeType: %j`, filename, encoding, mimeType);
+	app.post("/api/upload", upload.array("file", 2000), async (req, res) => {
+		console.log(req.body);
+		console.log(req.files);
+		const buffer: Buffer = req.files[0].buffer;
+		console.log(buffer.toString());
 
-				file
-					// is this actually of type string?
-					.on("data", (data: string) => {
-						console.log(`File [${name}] got ${data.length} bytes`);
-						console.log(`got ${data}`);
-					})
-					.on("close", () => {
-						console.log(`File [${name}] done`);
-					})
-					.on("error", (error: Error) => {
-						console.log(error);
-					});
-			});
-			req.pie;
-			req.pipe(req.busboy);
-		}
 		// the front end could possibly check if a filename is valid (no repeats for a user/project)
 		timestampedLog("Multifile upload test ");
 		res.status(200).send();

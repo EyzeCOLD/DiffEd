@@ -4,13 +4,12 @@ import helmetSecurity from "helmet";
 import {postgres} from "./postgres.js";
 import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
-import busboy from "connect-busboy";
 
 const app = express();
 app.use(express.static("../frontend/dist"));
 app.use(express.json());
 app.use(helmetSecurity());
-app.use(busboy());
+
 Endpoints.getFiles(app, postgres);
 Endpoints.getFileById(app, postgres);
 Endpoints.uploadFile(app, postgres);
