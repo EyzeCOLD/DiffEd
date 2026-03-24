@@ -1,5 +1,10 @@
 {
 	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"#/*": ["./*"],
+			"#shared/*": ["../shared/*"]
+		},
 		"target": "esnext",
 		"module": "nodenext",
 		"moduleResolution": "nodenext",

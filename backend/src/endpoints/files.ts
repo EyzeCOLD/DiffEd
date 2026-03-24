@@ -1,7 +1,7 @@
 import {type Express} from "express";
 import {type Pool} from "pg";
-import {timestampedLog} from "../logging.js";
-import {UserFileSchema} from "../validation/schemas.js";
+import {timestampedLog} from "#/src/logging.js";
+import {UserFileSchema} from "#/src/validation/schemas.js";
 import z from "zod";
 
 const getFiles = (app: Express, db: Pool) => {
