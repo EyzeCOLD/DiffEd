@@ -100,8 +100,14 @@ const uploadMultipleFiles = (app: Express, db: Pool) => {
 	app.post("/api/upload", upload.array("file", 2000), async (req, res) => {
 		console.log(req.body);
 		console.log(req.files);
-		const buffer: Buffer = req.files[0].buffer;
-		console.log(buffer.toString());
+		if (!req.files) {
+			console.log("How did we get here? Where are the files");
+			return res.status(400).send();
+		}
+		for (let i = 0; i < req.files.length; i++) {
+			const buffer: Buffer = req.files[i].buffer;
+			console.log(buffer.toString());
+		}
 
 		// the front end could possibly check if a filename is valid (no repeats for a user/project)
 		timestampedLog("Multifile upload test ");
