@@ -11,6 +11,7 @@ const getFiles = (app: Express, db: Pool) => {
 
 		try {
 			// todo validate user who wants files and send only the ones they have access to
+			timestampedLog("Sent SELECT query to DB: all files");
 			const result = await db.query(`SELECT * FROM files`);
 
 			res.status(200).send(result.rows);
@@ -42,6 +43,8 @@ const getFileById = (app: Express, db: Pool) => {
 
 		try {
 			const id: number = fileId.data;
+			timestampedLog(`Sent SELECT query to DB: id:[${id}]`);
+
 			const result = await db.query("SELECT * FROM files WHERE id = $1", [id]);
 			// console.log("result\n", result, "\n-------");
 			if (result.rowCount != 1) {
@@ -58,13 +61,17 @@ const getFileById = (app: Express, db: Pool) => {
 	});
 };
 
-const UserFiles = (app: Express, db: Pool) => {
+// should maybe be called uploaFiles if we do that functionality
+const uploadFile = (app: Express, db: Pool) => {
 	app.post("/api/files", async (req, res) => {
-		// console.log(`req ${req} res ${res}`);
-		// console.log("req:", req, "res:", res);
+		// the front end could possibly check if a filename is valid (no repeats for a user/project)
+
 		const parsedBody = UserFileSchema.safeParse(req.body);
 		if (parsedBody.success) {
 			try {
+				// temporary duplicate check here. this should probably be done in the frontend
+
+				timestampedLog(`Sent INSERT query to DB: id:[${parsedBody.data.id}] name: '${parsedBody.data.name}'`);
 				const result = await db.query("INSERT INTO files (id, name, content) VALUES ($1, $2, $3)", [
 					parsedBody.data.id,
 					parsedBody.data.name,
@@ -84,6 +91,35 @@ const UserFiles = (app: Express, db: Pool) => {
 	});
 };
 
+const uploadMultipleFiles = (app: Express, db: Pool) => {
+	app.post("/api/upload", async (req, res) => {
+		if (req.busboy) {
+			req.busboy.on("file", (name, file, info) => {
+				const {filename, encoding, mimeType} = info;
+				console.log(`File [${name}]: filename: %j, encoding: %j, mimeType: %j`, filename, encoding, mimeType);
+
+				file
+					// is this actually of type string?
+					.on("data", (data: string) => {
+						console.log(`File [${name}] got ${data.length} bytes`);
+						console.log(`got ${data}`);
+					})
+					.on("close", () => {
+						console.log(`File [${name}] done`);
+					})
+					.on("error", (error: Error) => {
+						console.log(error);
+					});
+			});
+			req.pie;
+			req.pipe(req.busboy);
+		}
+		// the front end could possibly check if a filename is valid (no repeats for a user/project)
+		timestampedLog("Multifile upload test ");
+		res.status(200).send();
+	});
+};
+
 const editFile = (app: Express, db: Pool) => {
 	app.put("/api/files/:fileId", async (req, res) => {
 		// console.log(`req ${req} res ${res}`);
@@ -98,6 +134,7 @@ const editFile = (app: Express, db: Pool) => {
 		const parsedBody = UserFileSchema.safeParse(req.body);
 		if (parsedBody.success) {
 			try {
+				timestampedLog(`Sent UPDATE query to DB: id:[${fileId.data}] name: '${parsedBody.data.name}'`);
 				const result = await db.query("UPDATE files SET name = $1, content = $2 WHERE id = $3", [
 					parsedBody.data.name,
 					parsedBody.data.content,
@@ -115,4 +152,4 @@ const editFile = (app: Express, db: Pool) => {
 	});
 };
 
-export default {getFiles, getFileById, UserFiles, editFile};
+export default {getFiles, getFileById, uploadFile, uploadMultipleFiles, editFile};
