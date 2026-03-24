@@ -1,5 +1,8 @@
 {
 	"type": "module",
+	"imports": {
+		"#/*": "./dist/backend/*"
+	},
 	"scripts": {
 		"jest": "npx jest",
 		"build": "tsc",
