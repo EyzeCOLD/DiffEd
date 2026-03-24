@@ -1,6 +1,6 @@
 import CodeEditor from "./CodeEditor";
 import {useParams} from "react-router";
-import type {UserFile} from "../../../shared/src/types";
+import type {UserFile} from "#shared/src/types";
 import {useEffect, useState} from "react";
 
 export default function EditorPage() {
