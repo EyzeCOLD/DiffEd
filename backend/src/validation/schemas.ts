@@ -5,7 +5,7 @@ export const placeholderSchema = z.string() satisfies ZodType<Placeholder>;
 
 // id here for testing
 export const UserFileSchema = z.object({
-	id: z.number(),
+	id: z.uuidv4(),
 	name: z.string(),
 	content: z.string(),
 }) satisfies ZodType<UserFile>;
