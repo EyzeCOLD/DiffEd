@@ -12,8 +12,9 @@ app.use(helmetSecurity());
 
 Endpoints.getFiles(app, postgres);
 Endpoints.getFileById(app, postgres);
-Endpoints.UserFiles(app, postgres);
+Endpoints.uploadFile(app, postgres);
 Endpoints.editFile(app, postgres);
+Endpoints.uploadMultipleFiles(app, postgres);
 
 // Catch-all to serve the frontend, needed for subroutes.
 app.get("/*splat", function (request, response) {

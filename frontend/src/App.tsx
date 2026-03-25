@@ -10,6 +10,9 @@ export default function App() {
 			<div>
 				<Link to="/edit/200">Code editor page</Link>
 			</div>
+			<div>
+				<Link to="/upload">Upload files</Link>
+			</div>
 		</div>
 	);
 }

@@ -2,7 +2,7 @@ export type Placeholder = string;
 
 // id here for testing
 export interface UserFile {
-	id: number;
+	id: string;
 	name: string;
 	content: string;
 }
