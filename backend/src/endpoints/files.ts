@@ -133,16 +133,18 @@ const uploadMultipleFiles = (app: Express, db: Pool) => {
 
 const editFile = (app: Express, db: Pool) => {
 	app.put("/api/files/:fileId", async (req, res) => {
-		// @TODO figure out where we should read the fileid from, url or body
 		const fileId = z.uuidv4().safeParse(req.params.fileId);
 		if (!fileId.success) {
 			return res.status(400).send("Invalid file ID");
 		}
-
 		const parsedBody = UserFileSchema.safeParse(req.body);
 		if (!parsedBody.success) {
 			console.log("bad PUT request", parsedBody.error);
 			return res.status(400).send();
+		}
+		if (parsedBody.data.id != fileId.data) {
+			console.log("bad PUT request Error: File id mismatch");
+			return res.status(400).send("File id mismatch");
 		}
 
 		try {
