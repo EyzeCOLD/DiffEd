@@ -1,7 +1,7 @@
 import styles from "./Login.page.module.css";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-const CreateUser = () => {
+const Signup = () => {
 
     const [userName, setUserName] = useState([]);
     const [userEmail, setUsetEmail] = useState([]);
@@ -16,7 +16,7 @@ const CreateUser = () => {
         }
         
         if (userPassword != userPassword2) {
-            window.alert("The passwords don't match");
+            window.alert("The passwords don't match!");
             return;
         }
 
@@ -26,7 +26,7 @@ const CreateUser = () => {
             userPassword,
         }
 
-        fetch('/api/users', {
+        fetch('/api/signup', {
             method: 'POST',
             body: JSON.stringify(newUser),
             headers: { "Content-Type": "application/json" },
@@ -42,19 +42,17 @@ const CreateUser = () => {
         });
     };
 
-    // NOTE:
-
     // Store token
-    localStorage.setItem('token', response.data.token);
+    //localStorage.setItem('token', response.data.token);
     //redirect to protectec route
-    history.push('/app/frontpage');
+    //history.push('/app/frontpage');
 
-    //should we use maxlength for the input fields?
-    // When the button is pressed it should send the input credentials to /login
+    // TODO: should we use maxlength for the input fields?
+    // TODO: The link to sign in page must be fixed
     return (
         <div className={styles.page}>
             <div>
-                Welcome to the user creation page!<br />Please insert details
+                Welcome to the signup page!<br />Please insert details
             </div>
             <form onSubmit={submit}>
                 <div>
@@ -85,7 +83,7 @@ const CreateUser = () => {
                     <button type="submit">login</button>
                 </div>
                 <div>
-                    Already have an account? Got to sign in page
+                    Already have an account? Go to sign in page
                     <a className={styles.link} href="http://localhost:8080">
                         here
                     </a>
@@ -94,22 +92,5 @@ const CreateUser = () => {
         </div>
     )
 }
-//FRONTEND
-//	const handleAdd = (e) => {
-		//e.preventDefault();
-		//if (!inputValue.trim()) return;
-		//const newTodo = { text: inputValue, completed: false };
-		//fetch('/todos', {
-			//method: 'POST',
-			//headers: { 'Content-Type': 'application/json' },
-			//body: JSON.stringify(newTodo),
-		//})
-			//.then(refreshList)
-			//.catch((err) => console.error('Error adding todo:', err));
-		//setInputValue('');
-	//};
-	//const handleDelete = (id) => {
-		//fetch(`todos/${id}`, { method: 'DELETE' })
-			//.then(refreshList)
-			//.catch((err) => console.error('Error deleting todo:', err));
-	//};
+
+export default { Signup };

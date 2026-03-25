@@ -1,5 +1,5 @@
 import styles from "./Login.page.module.css";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const Login = () => {
 
@@ -21,9 +21,9 @@ const Login = () => {
                     headers: { "Content-Type": "application/json" },
                 } satisfies RequestInit).then(() => console.log("
             // Store token
-            localStorage.setItem('token', response.data.token);
+            //localStorage.setItem('token', response.data.token);
             //redirect to protectec route
-            history.push('/app/frontpage');
+            //history.push('/app/frontpage');
         } catch (error) {
             window.alert('Login failed');
         }
