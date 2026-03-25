@@ -13,7 +13,7 @@ const getFiles = (app: Express, db: Pool) => {
 		// console.log(`getFiles req ${req} res ${res}`);
 
 		try {
-			// todo validate user who wants files and send only the ones they have access to
+			// @TODO validate user who wants files and send only the ones they have access to
 			timestampedLog("Sent SELECT query to DB: all files");
 			const result = await db.query(`SELECT * FROM files`);
 			// console.log(result.rows);
