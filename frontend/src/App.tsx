@@ -9,6 +9,8 @@ export default function App() {
 			Transcendence: It's a thing we're making™
 			<div>
 				<Link to="/edit/200">Code editor page</Link>
+				<br />
+				<Link to="/filebrowser">File Browser</Link>
 			</div>
 			<div>
 				<Link to="/upload">Upload files</Link>

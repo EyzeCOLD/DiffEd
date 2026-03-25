@@ -5,6 +5,7 @@ import "./index.css";
 import App from "./App.tsx";
 import EditorPage from "./codeEditor/editor.page.tsx";
 import FileUploader from "./FileUpload.tsx";
+import FileBrowserPage from "./dashboard/FileBrowser.page.tsx";
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
@@ -13,6 +14,7 @@ createRoot(document.getElementById("root")!).render(
 				<Route path="/" element={<App />} />
 				<Route path="/edit/:fileId" element={<EditorPage />} />
 				<Route path="/upload" element={<FileUploader />} />
+				<Route path="/filebrowser" element={<FileBrowserPage />} />
 			</Routes>
 		</BrowserRouter>
 	</StrictMode>,
