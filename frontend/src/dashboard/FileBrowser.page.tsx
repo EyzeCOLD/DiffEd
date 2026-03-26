@@ -19,7 +19,7 @@ function FileBrowserPage() {
 
 	return (
 		<>
-			<FileList fileList={fileList} />
+			<FileList fileList={fileList} refreshFileList={refreshFileList} />
 			<NewFile />
 			<FileUploader refreshFileList={refreshFileList} />
 		</>
