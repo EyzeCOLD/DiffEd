@@ -13,8 +13,9 @@ app.use(helmetSecurity());
 
 Endpoints.getFiles(app, postgres);
 Endpoints.getFileById(app, postgres);
-Endpoints.UserFiles(app, postgres);
+Endpoints.uploadFile(app, postgres);
 Endpoints.editFile(app, postgres);
+Endpoints.uploadMultipleFiles(app, postgres);
 
 UserEndpoints.signupUser(app, postgres);
 UserEndpoints.loginUser(app, postgres);
