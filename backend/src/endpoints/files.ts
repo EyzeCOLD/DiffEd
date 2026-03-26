@@ -112,8 +112,8 @@ const uploadMultipleFiles = (app: Express, db: Pool) => {
 			thingies.push(uuid);
 			thingies.push(file.originalname);
 			thingies.push(file.buffer.toString());
-			const index: number = i * 3 + 1;
-			query_string += ` ($${index}, $${index + 1}, $${index + 2}), `;
+			const index: number = i * 3; // i * number of fields, fields are one indexed so +1,+2,+3
+			query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}), `;
 		});
 		query_string = query_string.substring(0, query_string.length - 2);
 		query_string += " RETURNING id;";
@@ -163,4 +163,24 @@ const editFile = (app: Express, db: Pool) => {
 	});
 };
 
-export default {getFiles, getFileById, uploadFile, uploadMultipleFiles, editFile};
+const deleteFile = (app: Express, db: Pool) => {
+	app.delete("/api/files/:fileId", async (req, res) => {
+		const fileId = z.uuidv4().safeParse(req.params.fileId);
+		if (!fileId.success) {
+			return res.status(400).send("Invalid file ID");
+		}
+
+		try {
+			timestampedLog(`Sent DELETE query to DB: id:[${fileId.data}]`);
+			const result = await db.query("DELETE FROM files WHERE id = $1", [fileId.data]);
+
+			console.log(`result of DELETE query to DB: id:[${fileId.data}], deleted rows count:`, result.command);
+			return res.status(200).send(result.command);
+		} catch (error) {
+			console.log("Query failed:", error);
+			return res.status(500).send();
+		}
+	});
+};
+
+export default {getFiles, getFileById, uploadFile, uploadMultipleFiles, editFile, deleteFile};

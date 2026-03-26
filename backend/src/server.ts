@@ -15,6 +15,7 @@ Endpoints.getFileById(app, postgres);
 Endpoints.uploadFile(app, postgres);
 Endpoints.editFile(app, postgres);
 Endpoints.uploadMultipleFiles(app, postgres);
+Endpoints.deleteFile(app, postgres);
 
 // Catch-all to serve the frontend, needed for subroutes.
 app.get("/*splat", function (request, response) {
