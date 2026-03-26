@@ -1,14 +1,15 @@
 import { type Express } from "express";
-import { randomBytes, pbkdf2, timingSafeEqual } from "crypto";
 import { type Pool } from "pg";
+import { randomBytes, pbkdf2, timingSafeEqual } from "crypto";
 import { timestampedLog } from "../logging.js";
 
-const insertUser = (app: Express, db: Pool) => {
-    app.post('api/signup', async (req, res) => {
+const signupUser = (app: Express, db: Pool) => {
+    app.post("/api/signup", async (req, res) => {
 		timestampedLog("Received request to " + req.baseUrl);
 		// console.log(`getFiles req ${req} res ${res}`);
 
         try {
+            //NOTE: should we only have one secret salt shared amongst user?
             const salt = randomBytes(16);
             const newUsername = req.body.username;
             const newUserEmail = req.body.email;
@@ -20,7 +21,7 @@ const insertUser = (app: Express, db: Pool) => {
                 'INSERT INTO users (username, email, hashed_password, salt) VALUES ($1, $2, $3, $4)',
                 [newUsername, newUserEmail, hashedPassword, salt]
             )
-            //the row below should be changed. Not sending any information
+            //the row below should be changed. Not sending any information from db
             res.status(201).send(result.rows[0]);
         } catch (err) {
             console.log('Error creating a user', err);
@@ -30,7 +31,7 @@ const insertUser = (app: Express, db: Pool) => {
 };
 
 const loginUser = (app: Express, db: Pool) => {
-    app.get('api/login', async (req, res) => {
+    app.get("/api/login", async (req, res) => {
         timestampedLog("Received request to " + req.baseUrl);
         // console.log(`getFiles req ${req} res ${res}`);
         try {
@@ -63,7 +64,7 @@ const loginUser = (app: Express, db: Pool) => {
     });     
 };
 
-export default { insertUser , loginUser };
+export default { signupUser , loginUser };
 //const queryUser = (app: Express, db: Pool) => {
     //app.get("/api/users/:userId", async (req,res) => {
         //timestampedLog("Received request to " + req.baseUrl);

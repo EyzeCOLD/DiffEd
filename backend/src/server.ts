@@ -16,7 +16,7 @@ Endpoints.getFileById(app, postgres);
 Endpoints.UserFiles(app, postgres);
 Endpoints.editFile(app, postgres);
 
-UserEndpoints.insertUser(app, postgres);
+UserEndpoints.signupUser(app, postgres);
 UserEndpoints.loginUser(app, postgres);
 
 // Catch-all to serve the frontend, needed for subroutes.

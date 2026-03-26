@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS "users" (
 );
 
 -- below is prototype information
-INSERT INTO users (id, username, email, hashedPassword) VALUES
-    (1, 'jpiensal', 'jpiensal@student.hive.fi', 'mystrongpassword')
-    (2, 'juaho', 'juaho@student.hive.fi', 'strongpass')
-    (3, 'ekeinan', 'ekeinan@student.hive.fi', 'strongestpass')
-    ;
-
+--INSERT INTO users (id, username, email, hashedPassword) VALUES
+    --(1, 'jpiensal', 'jpiensal@student.hive.fi', 'mystrongpassword')
+    --(2, 'juaho', 'juaho@student.hive.fi', 'strongpass')
+    --(3, 'ekeinan', 'ekeinan@student.hive.fi', 'strongestpass')
+    --;
+--

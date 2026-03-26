@@ -1,7 +1,7 @@
 import styles from "./Login.page.module.css";
 import { useState } from 'react';
 
-const Signup = () => {
+export default function SignupPage() {
 
     const [userName, setUserName] = useState([]);
     const [userEmail, setUsetEmail] = useState([]);
@@ -92,5 +92,3 @@ const Signup = () => {
         </div>
     )
 }
-
-export default { Signup };

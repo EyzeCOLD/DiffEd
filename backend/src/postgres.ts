@@ -32,7 +32,7 @@ async function createTables() {
         const fileContent = readFileSync("/backend/sql/files.sql", "utf-8");
         await postgres.query(fileContent);
         const userContent = readFileSync("/backend/sql/users.sql", "utf-8");
-        await postgres.query(fileContent)
+        await postgres.query(userContent)
     } catch(error) {
         timestampedLog("Failed to create tables");
     }
