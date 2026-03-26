@@ -38,6 +38,10 @@ a {
 	text-decoration: none;
 }
 
+button {
+	background-color: #000000;
+}
+
 button:focus {
 	outline: unset;
 }

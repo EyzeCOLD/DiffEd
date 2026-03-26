@@ -11,7 +11,7 @@ export default function App() {
 				<Link to="/edit/200">Code editor page</Link>
 			</div>
 			<div>
-				<Link to="/upload">Upload files</Link>
+				<Link to="/filebrowser">File Browser</Link>
 			</div>
 		</div>
 	);
