@@ -103,25 +103,24 @@ const uploadMultipleFiles = (app: Express, db: Pool) => {
 			console.log("How did we get here? Where is the array?");
 			return res.status(400).send();
 		}
-
 		// @NOTE this is a mess
 		let query_string: string = "INSERT INTO files (id, name, content) VALUES ";
-		const thingies: string[] = [];
+		const argumentArray: string[] = [];
 		req.files.forEach((file, i) => {
 			const uuid = crypto.randomUUID();
-			thingies.push(uuid);
-			thingies.push(file.originalname);
-			thingies.push(file.buffer.toString());
+			argumentArray.push(uuid);
+			argumentArray.push(file.originalname);
+			argumentArray.push(file.buffer.toString());
 			const index: number = i * 3; // i * number of fields, fields are one indexed so +1,+2,+3
 			query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}), `;
 		});
 		query_string = query_string.substring(0, query_string.length - 2);
 		query_string += " RETURNING id;";
-		console.log(thingies);
+		console.log(argumentArray);
 		console.log(query_string);
 
 		try {
-			const result = await db.query(query_string, thingies);
+			const result = await db.query(query_string, argumentArray);
 			console.log("result rows", result.rows);
 			return res.status(201).send(result.rows);
 		} catch (error) {
