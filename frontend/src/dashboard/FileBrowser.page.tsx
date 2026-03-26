@@ -15,11 +15,27 @@ function FileBrowserPage() {
 			});
 	}
 
+	async function handleDelete(id: string) {
+		try {
+			const result = await fetch(`/api/files/${id}`, {
+				method: "DELETE",
+			});
+			if (!result.ok) {
+				console.error("something wrong :(");
+			}
+			const data = await result.json();
+			console.log(data);
+			refreshFileList();
+		} catch (error) {
+			console.error(error);
+		}
+	}
+
 	useEffect(refreshFileList, []);
 
 	return (
 		<>
-			<FileList fileList={fileList} />
+			<FileList fileList={fileList} handleDelete={handleDelete} />
 			<NewFile />
 			<FileUploader refreshFileList={refreshFileList} />
 		</>

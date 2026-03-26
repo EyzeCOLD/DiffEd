@@ -154,6 +154,9 @@ const editFile = (app: Express, db: Pool) => {
 				parsedBody.data.content,
 				fileId.data,
 			]);
+			if (!result.rowCount || result.rowCount < 1) {
+				return res.status(403).send();
+			}
 			console.log(`result of UPDATE query to DB: id:[${fileId.data}] name: '${parsedBody.data.name}'`, result.rows);
 			return res.status(200).send(result.rows[0]);
 		} catch (error) {
@@ -173,9 +176,11 @@ const deleteFile = (app: Express, db: Pool) => {
 		try {
 			timestampedLog(`Sent DELETE query to DB: id:[${fileId.data}]`);
 			const result = await db.query("DELETE FROM files WHERE id = $1", [fileId.data]);
-
-			console.log(`result of DELETE query to DB: id:[${fileId.data}], deleted rows count:`, result.command);
-			return res.status(200).send(result.command);
+			console.log(`result of DELETE query to DB: id:[${fileId.data}], deleted rows count:`, result.rowCount);
+			if (!result.rowCount || result.rowCount < 1) {
+				return res.status(403).send();
+			}
+			return res.status(200).send();
 		} catch (error) {
 			console.log("Query failed:", error);
 			return res.status(500).send();
