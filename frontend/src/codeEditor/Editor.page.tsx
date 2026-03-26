@@ -2,45 +2,34 @@ import CodeEditor from "./CodeEditor";
 import {useParams} from "react-router";
 import type {UserFile} from "#shared/src/types";
 import {useEffect, useState} from "react";
-import {useNavigate} from "react-router";
+import {useEffect, useRef, useState} from "react";
+import {CollabConnection, getFileName, pullFileName, pushFileName} from "./collabClient";
+import styles from "./editor.page.module.css";
+
+const NAME_SYNC_RETRY_MS = 1000;
 
 export default function EditorPage() {
 	const [fileData, setFileData] = useState<UserFile | null>(null);
 	const params = useParams();
-	const navigate = useNavigate();
-
-	useEffect(() => {
-		if (!fileData) return;
-		fetch(`/api/files/${params.fileId}`, {
-			method: "PUT",
-			body: JSON.stringify(fileData),
-			headers: [["Content-Type", "application/json"] as [string, string]],
-		} satisfies RequestInit)
-			.then((response) => {
-				if (!response.ok) {
-					throw `${params.fileId}`;
-				}
-				console.log("File updated");
-			})
-			.catch((error) => {
-				console.error("Error updating file:", error);
-				// kick user out on error eg. file stops existing
-				navigate("/filebrowser");
-			});
-	}, [fileData?.name, fileData?.content]);
-
 	if (!params.fileId) {
 		return <div>File ID is missing</div>;
+
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const fileId = Number(params.fileId);
+	const nameConnectionRef = useRef<CollabConnection | null>(null);
+	const nameVersionRef = useRef(0);
+
+	function setFileName(name: string) {
+		setFileData((previous) => (previous ? {...previous, name} : previous));
 	}
 
-	if (!fileData) {
+	useEffect(() => {
 		fetch(`/api/files/${params.fileId}`)
 			.then((response) => {
 				if (!response.ok) throw `${params.fileId}`;
 				return response.json();
 			})
 			.then((data) => {
-				console.log("File data:", data);
 				setFileData(data);
 			})
 			.catch((error) => {
@@ -48,6 +37,75 @@ export default function EditorPage() {
 				// kick user out on error eg. file stops existing
 				navigate("/filebrowser");
 			});
+	}, [params.fileId]);
+
+	useEffect(() => {
+		if (!Number.isInteger(fileId) || fileId < 0) {
+			return;
+		}
+
+		const connection = new CollabConnection(fileId);
+		nameConnectionRef.current = connection;
+		let isNameSyncStopped = false;
+		let initializedNameSyncing = false;
+
+		const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+		const startNameSync = async () => {
+			while (!isNameSyncStopped) {
+				try {
+					if (!initializedNameSyncing) {
+						const initial = await getFileName(connection);
+						if (isNameSyncStopped) {
+							return;
+						}
+						if ("error" in initial) {
+							setErrorMessage(`Failed to get initial file name: ${initial.error}`);
+							await delay(NAME_SYNC_RETRY_MS);
+							continue;
+						}
+
+						nameVersionRef.current = initial.version;
+						setFileName(initial.name);
+						initializedNameSyncing = true;
+					}
+
+					const update = await pullFileName(connection, nameVersionRef.current);
+					if (isNameSyncStopped) {
+						return;
+					}
+					if ("error" in update) {
+						setErrorMessage(`Failed to pull file name updates: ${update.error}`);
+						await delay(NAME_SYNC_RETRY_MS);
+						continue;
+					}
+
+					nameVersionRef.current = update.version;
+					setFileName(update.name);
+					setErrorMessage(null);
+				} catch (error) {
+					if (isNameSyncStopped) {
+						return;
+					}
+					console.error("Name sync error:", error);
+					await delay(NAME_SYNC_RETRY_MS);
+				}
+			}
+		};
+
+		void startNameSync();
+
+		return () => {
+			isNameSyncStopped = true;
+			connection.disconnect();
+			if (nameConnectionRef.current === connection) {
+				nameConnectionRef.current = null;
+			}
+		};
+	}, [fileId]);
+
+	if (!params.fileId) {
+		return <div>File ID is missing</div>;
 	}
 
 	return fileData ? (
@@ -58,10 +116,28 @@ export default function EditorPage() {
 					aria-label="File name"
 					type="text"
 					value={fileData.name}
-					onChange={(e) => setFileData({...fileData, name: e.target.value})}
+					onChange={async (e) => {
+						const nextName = e.target.value;
+						setFileName(nextName);
+
+						const connection = nameConnectionRef.current;
+						if (!connection) return;
+
+						try {
+							const updated = await pushFileName(connection, nameVersionRef.current, nextName);
+							if ("error" in updated) {
+								setErrorMessage(`Failed to update file name: ${updated.error}`);
+								return;
+							}
+							nameVersionRef.current = updated.version;
+						} catch (error) {
+							console.error("Failed to push file name:", error);
+						}
+					}}
 				/>
 			</label>
-			<CodeEditor value={fileData.content} onChange={(value) => setFileData({...fileData, content: value})} />
+			{errorMessage && <div className={styles.errorMessage}>{errorMessage}</div>}
+			<CodeEditor fileId={fileId} onChange={(value) => setFileData({...fileData, content: value})} />
 		</>
 	) : (
 		<div>Loading...</div>

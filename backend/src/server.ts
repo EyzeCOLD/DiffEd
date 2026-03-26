@@ -11,7 +11,7 @@ import {collabSocket} from "./endpoints/collabSocket.js";
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {cors: {origin: "*"}});
-collabSocket(io);
+collabSocket(io, postgres);
 
 app.use(express.static("../frontend/dist"));
 app.use(express.json());
