@@ -22,10 +22,10 @@ function FileBrowserPage() {
 			});
 			if (!result.ok) {
 				console.error("something wrong :(");
+				return;
 			}
-			const data = await result.json();
-			console.log(data);
 			refreshFileList();
+			console.log("Delete succesful");
 		} catch (error) {
 			console.error(error);
 		}
