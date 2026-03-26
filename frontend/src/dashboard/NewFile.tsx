@@ -11,12 +11,16 @@ function NewFile() {
 			method: "POST",
 			body: JSON.stringify({name: newFilename}),
 			headers: [["Content-Type", "application/json"] as [string, string]],
-		} satisfies RequestInit).then((res) => {
-			if (res.ok) {
-				console.log(res);
-				navigate("/edit/200");
-			}
-		});
+		} satisfies RequestInit)
+			.then((response) => {
+				if (!response.ok) {
+					console.error("File creation failed!");
+					return;
+				}
+				console.log("New file created!");
+				return response.json();
+			})
+			.then((f) => navigate(`/edit/${f.id}`));
 	}
 
 	return (

@@ -1,22 +1,27 @@
 import FileList from "./FileList";
 import NewFile from "./NewFile";
+import FileUploader from "./FileUpload";
 import type {UserFile} from "#shared/src/types";
 import {useState, useEffect} from "react";
 
 function FileBrowserPage() {
-	const [files, setFiles] = useState<UserFile[] | null>(null);
-	useEffect(() => {
+	const [fileList, setFileList] = useState<UserFile[] | null>(null);
+
+	function refreshFileList() {
 		fetch("/api/files")
 			.then((res) => res.json())
 			.then((res) => {
-				setFiles(res);
+				setFileList(res);
 			});
-	}, []);
+	}
+
+	useEffect(refreshFileList, []);
 
 	return (
 		<>
-			<FileList files={files} />
+			<FileList fileList={fileList} />
 			<NewFile />
+			<FileUploader refreshFileList={refreshFileList} />
 		</>
 	);
 }

@@ -1,20 +1,21 @@
-import React, {useState} from "react";
+import {useState, useRef} from "react";
 
-const FileUploader = () => {
-	const [files, setFiles] = useState<FileList | null>(null);
+const FileUploader = ({refreshFileList}: {refreshFileList: () => void}) => {
+	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files) {
-			setFiles(e.target.files);
+			setFileUploads(e.target.files);
 		}
 	};
 
 	const handleUpload = async () => {
-		if (files) {
+		if (fileUploads) {
 			console.log("Uploading file...");
 
 			const formData = new FormData();
-			[...files].forEach(function (file: File) {
+			[...fileUploads].forEach(function (file: File) {
 				formData.append("file", file);
 			});
 
@@ -25,7 +26,9 @@ const FileUploader = () => {
 				});
 
 				const data = await result.json();
-
+				refreshFileList();
+				setFileUploads(null);
+				if (fileInputRef.current) fileInputRef.current.value = "";
 				console.log(data);
 			} catch (error) {
 				console.error(error);
@@ -36,10 +39,10 @@ const FileUploader = () => {
 	return (
 		<>
 			<div className="input-group">
-				<input id="file" type="file" multiple onChange={handleFileChange} />
+				<input ref={fileInputRef} id="file" type="file" multiple onChange={handleFileChange} />
 			</div>
-			{files &&
-				[...files].map((file, index) => (
+			{fileUploads &&
+				[...fileUploads].map((file, index) => (
 					<section key={file.name}>
 						File {index + 1}:
 						<ul>
@@ -50,11 +53,7 @@ const FileUploader = () => {
 					</section>
 				))}
 
-			{files && (
-				<button onClick={handleUpload} className="submit">
-					Upload a file
-				</button>
-			)}
+			{fileUploads && <button onClick={handleUpload}>Upload a file</button>}
 		</>
 	);
 };
