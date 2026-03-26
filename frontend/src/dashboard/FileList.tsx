@@ -4,13 +4,29 @@ import type {JSX} from "react";
 
 function FileList({
 	fileList,
-	handleDelete,
+	refreshFileList,
 }: {
 	fileList: UserFile[] | null;
-	handleDelete: (id: string) => void;
+	refreshFileList: () => void;
 }): JSX.Element {
 	if (!fileList) {
 		return <p>Loading really slow...</p>;
+	}
+
+	async function handleDelete(id: string) {
+		try {
+			const result = await fetch(`/api/files/${id}`, {
+				method: "DELETE",
+			});
+			if (!result.ok) {
+				console.error("something wrong :(");
+				return;
+			}
+			refreshFileList();
+			console.log("Delete succesful");
+		} catch (error) {
+			console.error(error);
+		}
 	}
 
 	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: UserFile) => {
