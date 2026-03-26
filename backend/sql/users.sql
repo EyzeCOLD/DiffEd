@@ -6,11 +6,3 @@ CREATE TABLE IF NOT EXISTS "users" (
     salt varchar(16) NOT NULL,
     change_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
--- below is prototype information
---INSERT INTO users (id, username, email, hashedPassword) VALUES
-    --(1, 'jpiensal', 'jpiensal@student.hive.fi', 'mystrongpassword')
-    --(2, 'juaho', 'juaho@student.hive.fi', 'strongpass')
-    --(3, 'ekeinan', 'ekeinan@student.hive.fi', 'strongestpass')
-    --;
---

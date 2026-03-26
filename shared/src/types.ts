@@ -6,3 +6,9 @@ export interface UserFile {
 	name: string;
 	content: string;
 }
+
+export interface SigningUser {
+   username: string;
+   email: string;
+   password: string;
+}

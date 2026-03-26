@@ -1,40 +1,44 @@
 import styles from "./Login.page.module.css";
-import { useState } from 'react';
+import { useState, MouseEvent } from 'react';
 
 const Login = () => {
 
-    const [userCredentials, setUserCredentials] = useState([]);
-    const [userPassword, setUserPassword] = useState([]);
+    const [userCredentials, setUserCredentials] = useState('');
+    const [userPassword, setUserPassword] = useState('');
 
-    const submit = (event) => {
+    const submit = (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         if (!userCredentials || !userPassword) {
             window.alert("Please fill all the fields!")
             return;
         }
-        
-        try {
-            const handleLogin = () => {
-                fetch(`/users/${UserCredentials}`, {
-                    method: 'GET',
-                    body: JSON.stringify(userPassword),
-                    headers: { "Content-Type": "application/json" },
-                } satisfies RequestInit).then(() => console.log("
-            // Store token
-            //localStorage.setItem('token', response.data.token);
-            //redirect to protectec route
-            //history.push('/app/frontpage');
-        } catch (error) {
-            window.alert('Login failed');
-        }
+
+        fetch(`/users/${userCredentials}`, {
+            method: 'GET',
+            body: JSON.stringify(userPassword),
+            headers: { "Content-Type": "application/json" },
+        } satisfies RequestInit)
+        .then((response) => {
+            if (!response.ok) throw new Error("Wrong username or password");
+            console.log("login successful");
+            //TODO(Jyri): Redirect the user to main page
+        })
+        // Store token
+        //localStorage.setItem('token', response.data.token);
+        //redirect to protectec route
+        //history.push('/app/frontpage');
+        .catch((error) => {
+            window.alert('Login failed' + error.message);
+        });
     };
 
+    //use navigate react router 
     //should we use maxlength for the input fields?
     // When the button is pressed it should send the input credentials to /login
     return (
         <div className={styles.page}>
             <div>
-                Welcome to the login page <br />Please insert details
+                Welcome to the login page
             </div>
             <form onSubmit={submit}>
                 <div>
@@ -59,7 +63,7 @@ const Login = () => {
                 </div>
                 <div>
                     Don't have an account? Create one
-                    <a className={styles.link} href="http://localhost:8080">
+                    <a className={styles.link} href="http://localhost:8080/signup">
                         here
                     </a>
                 </div>

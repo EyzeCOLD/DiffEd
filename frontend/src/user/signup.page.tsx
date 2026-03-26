@@ -1,29 +1,30 @@
 import styles from "./Login.page.module.css";
-import { useState } from 'react';
+import { useState, MouseEvent } from 'react';
+import type {SigningUser} from "#shared/src/types";
 
 export default function SignupPage() {
 
-    const [userName, setUserName] = useState([]);
-    const [userEmail, setUsetEmail] = useState([]);
-    const [userPassword, setUserPassword] = useState([]);
-    const [userPassword2, setUserPassword2] = useState([]);
+    const [username, setUserName] = useState('');
+    const [email, setUserEmail] = useState('');
+    const [password, setUserPassword] = useState('');
+    const [password2, setUserPassword2] = useState('');
 
-    const submit = (event) => {
+    const submit = (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
-        if (!userName || !userEmail || !userPassword) {
+        if (!username || !email || !password) {
             window.alert("Please fill all the fields!");
             return;
         }
         
-        if (userPassword != userPassword2) {
+        if (password != password2) {
             window.alert("The passwords don't match!");
             return;
         }
 
-        const newUser = {
-            userName,
-            userEmail,
-            userPassword,
+        const newUser: SigningUser = {
+            username: username,
+            email: email,
+            password: password,
         }
 
         fetch('/api/signup', {
@@ -52,39 +53,39 @@ export default function SignupPage() {
     return (
         <div className={styles.page}>
             <div>
-                Welcome to the signup page!<br />Please insert details
+                Welcome to the signup page
             </div>
             <form onSubmit={submit}>
                 <div>
                     <input
                         placeholder="username"
-                        value={userName}
+                        value={username}
                         onChange={(e) => setUserName(e.target.value)} />
                 </div>
                 <div>
                     <input
                         placeholder="email"
-                        value={userEmail}
+                        value={email}
                         onChange={(e) => setUserEmail(e.target.value)} />
                 </div>
                 <div>
                     <input
                         placeholder="password"
-                        value={userPassword}
+                        value={password}
                         onChange={(e) => setUserPassword(e.target.value)} />
                 </div>
                 <div>
                     <input
                         placeholder="repeat password"
-                        value={userPassword2}
+                        value={password2}
                         onChange={(e) => setUserPassword2(e.target.value)} />
                 </div>
                 <div>
                     <button type="submit">login</button>
                 </div>
                 <div>
-                    Already have an account? Go to sign in page
-                    <a className={styles.link} href="http://localhost:8080">
+                    Already have an account? Go to login page
+                    <a className={styles.link} href="http://localhost:8080/login">
                         here
                     </a>
                 </div>

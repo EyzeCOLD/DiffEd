@@ -27,24 +27,9 @@ for (let attempt = 1; attempt <= maxConnectionAttempts; attempt++) {
 	}
 }
 
-async function createTables() {
-    try {
-        const fileContent = readFileSync("/backend/sql/files.sql", "utf-8");
-        await postgres.query(fileContent);
-        const userContent = readFileSync("/backend/sql/users.sql", "utf-8");
-        await postgres.query(userContent)
-    } catch(error) {
-        timestampedLog("Failed to create tables");
-    }
+for (const fileName of ["files.sql", "users.sql"]) {
+    const fileContent = readFileSync("/backend/sql/" + fileName, "utf-8");
+    await postgres.query(fileContent).catch((error) => timestampedLog(error));
 }
-//for (const fileName of ["files.sql"]) {
-	//const fileContent = readFileSync("/backend/sql/" + fileName, "utf-8");
-	//await postgres.query(fileContent).catch((error) => timestampedLog(error));
-//}
-//
-//for (const fileName of ["users.sql"]) {
-	//const fileContent = readFileSync("/backend/sql/" + fileName, "utf-8");
-	//await postgres.query(fileContent).catch((error) => timestampedLog(error));
-//}
 
 export {postgres};
