@@ -8,24 +8,24 @@ import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import {collabSocket} from "./endpoints/collabSocket.js";
 
-const app = express();
-const server = createServer(app);
-const io = new Server(server, {cors: {origin: "*"}});
-collabSocket(io, postgres);
+const api = express();
+const server = createServer(api);
+const sockets = new Server(server, {cors: {origin: "*"}});
+collabSocket(sockets, postgres);
 
-app.use(express.static("../frontend/dist"));
-app.use(express.json());
-app.use(helmetSecurity());
+api.use(express.static("../frontend/dist"));
+api.use(express.json());
+api.use(helmetSecurity());
 
-Endpoints.getFiles(app, postgres);
-Endpoints.getFileById(app, postgres);
-Endpoints.uploadFile(app, postgres);
-Endpoints.editFile(app, postgres);
-Endpoints.uploadMultipleFiles(app, postgres);
-Endpoints.deleteFile(app, postgres);
+Endpoints.getFiles(api, postgres);
+Endpoints.getFileById(api, postgres);
+Endpoints.uploadFile(api, postgres);
+Endpoints.editFile(api, postgres);
+Endpoints.uploadMultipleFiles(api, postgres);
+Endpoints.deleteFile(api, postgres);
 
 // Catch-all to serve the frontend, needed for subroutes.
-app.get("/*splat", function (request, response) {
+api.get("/*splat", function (request, response) {
 	response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));
 });
 

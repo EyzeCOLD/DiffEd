@@ -43,7 +43,7 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 	}
 }
 
-function collabSocket(io: Server, db: Pool) {
+function collabSocket(sockets: Server, db: Pool) {
 	const sessions = new Map<string, CollabSession>();
 
 	const getSession = async (fileId: string): Promise<CollabSession | undefined> => {
@@ -130,7 +130,7 @@ function collabSocket(io: Server, db: Pool) {
 		}, DATABASE_SAVE_DEBOUNCE_TIME);
 	};
 
-	io.on("connection", (socket) => {
+	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
 
 		socket.on("collabRequest", async (data: CollabRequest) => {
