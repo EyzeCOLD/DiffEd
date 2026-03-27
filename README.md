@@ -23,6 +23,8 @@ It's a thing we're making.
 
 ## Resources
 
+- Collaborative editing example: https://codemirror.net/examples/collab/
+
 ## Team Information
 
 ## Project Management
