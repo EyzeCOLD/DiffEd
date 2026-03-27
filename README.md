@@ -27,6 +27,8 @@ It's a thing we're making.
 
 ## Team Information
 
+> Copy from Wiki, update if needed
+
 ## Project Management
 
 ## Technical Stack
@@ -36,5 +38,7 @@ It's a thing we're making.
 ## Feature List
 
 ## Modules
+
+> Copy from Wiki, update if needed
 
 ## Individual Contributions
