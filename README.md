@@ -4,6 +4,19 @@ _This project has been created as part of the 42 curriculum by ekeinan, juaho, j
 
 It's a thing we're making.
 
+## Table of Contents
+
+- [Description](#description)
+- [Instructions](#instructions)
+- [Resources](#resources)
+- [Team Information](#team-information)
+- [Project Management](#project-management)
+- [Technical Stack](#technical-stack)
+- [Database Schema](#database-schema)
+- [Feature List](#feature-list)
+- [Modules](#modules)
+- [Individual Contributions](#individual-contributions)
+
 ## Description
 
 ## Instructions
