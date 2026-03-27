@@ -33,6 +33,33 @@ It's a thing we're making.
 
 ## Technical Stack
 
+- Frontend:
+  - TypeScript <sub>(Type-Safe JavaScript)</sub>
+  - React <sub>(Component framework)</sub>
+  - React Router <sub>(SPA routing library)</sub>
+  - Socket.IO <sub>(Socket management library)</sub>
+  - CodeMirror <sub>(Code editor with update-emitting capabilities)</sub>
+
+- Backend:
+  - TypeScript <sub>(Type-Safe JavaScript)</sub>
+  - Node.js <sub>(JavaScript runtime)</sub>
+  - Express <sub>(Web application framework)</sub>
+  - Multer <sub>(Multipart form-data middleware)</sub>
+  - Zod <sub>(Schema-based input validation library)</sub>
+  - Socket.IO <sub>(Socket management library)</sub>
+
+- Database:
+  - PostgreSQL <sub>(Relational database)</sub>
+
+- Orchestration & Deployment:
+  - Docker <sub>(Container runtime)</sub>
+  - Docker Compose <sub>(Multi-container orchestration manager)</sub>
+  - Nginx <sub>(Reverse proxy and load balancer)</sub>
+
+- Development tooling:
+  - ESLint <sub>(TypeScript linter)</sub>
+  - Prettier <sub>(Code formatter)</sub>
+
 ## Database Schema
 
 ## Feature List
