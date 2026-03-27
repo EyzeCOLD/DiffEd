@@ -46,23 +46,26 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 function collabSocket(io: Server, db: Pool) {
 	const sessions = new Map<string, CollabSession>();
 
-	const getSession = async (fileId: string): Promise<CollabSession> => {
-		const existing = sessions.get(fileId);
-		if (existing) {
-			return existing;
+	const getSession = async (fileId: string): Promise<CollabSession | undefined> => {
+		const session = sessions.get(fileId);
+		if (session) {
+			return session;
 		}
 
-		let doc = Text.of([""]);
-		let fileName = "new.md";
+		let doc = Text.empty;
+		let fileName = "";
 		try {
 			const result = await db.query<Pick<UserFile, "name" | "content">>(
 				"SELECT name, content FROM files WHERE id = $1",
 				[fileId],
 			);
+			if (!result.rowCount) {
+				sessions.delete(fileId);
+				return undefined;
+			}
 			if (result.rowCount === 1) {
-				const content = String(result.rows[0].content ?? "");
+				doc = Text.of((result.rows[0].content ?? "").split("\n"));
 				fileName = String(result.rows[0].name ?? fileName);
-				doc = Text.of(content.split("\n"));
 			}
 		} catch (error) {
 			timestampedLog(`Error loading collab document ${fileId}: ${String(error)}`);
@@ -105,7 +108,7 @@ function collabSocket(io: Server, db: Pool) {
 			]);
 			if (updateResult.rowCount === 0) {
 				timestampedLog(`No file found to update for collab document ${fileId}`);
-				throw new Error("File not found for collab document save");
+				sessions.delete(fileId);
 			}
 		} catch (error) {
 			session.hasUnsavedChanges = true;
@@ -113,7 +116,7 @@ function collabSocket(io: Server, db: Pool) {
 		}
 
 		if (session.hasUnsavedChanges && !session.dbSaveDebounceTimer) {
-			session.dbSaveDebounceTimer = setTimeout(() => void flushSession(fileId), DATABASE_SAVE_DEBOUNCE_TIME);
+			session.dbSaveDebounceTimer = setTimeout(() => flushSession(fileId), DATABASE_SAVE_DEBOUNCE_TIME);
 		}
 	};
 
@@ -144,9 +147,18 @@ function collabSocket(io: Server, db: Pool) {
 				}
 
 				const session = await getSession(fileId);
+				if (!session) {
+					sendResponse({error: "File does not exist"} satisfies ErrorResponse);
+					return;
+				}
 
 				switch (type) {
 					case "pullUpdates": {
+						console.log(`Client ${socket.id} requested updates for file ${fileId} since version ${data.version}`);
+						if (session.doc.length < 0) {
+							sendResponse({error: "Document is in invalid state"} satisfies ErrorResponse);
+							return;
+						}
 						if (data.version < session.updates.length) {
 							sendResponse(serializeUpdates(session.updates.slice(data.version)));
 						} else if (data.version === session.updates.length) {
