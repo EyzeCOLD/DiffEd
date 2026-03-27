@@ -1,7 +1,6 @@
 import CodeEditor from "./CodeEditor";
-import {useParams} from "react-router";
+import {useNavigate, useParams} from "react-router";
 import type {UserFile} from "#shared/src/types";
-import {useEffect, useState} from "react";
 import {useEffect, useRef, useState} from "react";
 import {CollabConnection, getFileName, pullFileName, pushFileName} from "./collabClient";
 import styles from "./editor.page.module.css";
@@ -10,12 +9,10 @@ const NAME_SYNC_RETRY_MS = 1000;
 
 export default function EditorPage() {
 	const [fileData, setFileData] = useState<UserFile | null>(null);
-	const params = useParams();
-	if (!params.fileId) {
-		return <div>File ID is missing</div>;
-
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const fileId = Number(params.fileId);
+	const navigate = useNavigate();
+	const params = useParams();
+	const fileId = params.fileId;
 	const nameConnectionRef = useRef<CollabConnection | null>(null);
 	const nameVersionRef = useRef(0);
 
@@ -40,7 +37,7 @@ export default function EditorPage() {
 	}, [params.fileId]);
 
 	useEffect(() => {
-		if (!Number.isInteger(fileId) || fileId < 0) {
+		if (!fileId) {
 			return;
 		}
 
@@ -108,7 +105,7 @@ export default function EditorPage() {
 		return <div>File ID is missing</div>;
 	}
 
-	return fileData ? (
+	return fileData && fileId ? (
 		<>
 			<label>
 				{"File Name: "}

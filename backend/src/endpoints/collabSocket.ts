@@ -44,9 +44,9 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 }
 
 function collabSocket(io: Server, db: Pool) {
-	const sessions = new Map<number, CollabSession>();
+	const sessions = new Map<string, CollabSession>();
 
-	const getSession = async (fileId: number): Promise<CollabSession> => {
+	const getSession = async (fileId: string): Promise<CollabSession> => {
 		const existing = sessions.get(fileId);
 		if (existing) {
 			return existing;
@@ -83,7 +83,7 @@ function collabSocket(io: Server, db: Pool) {
 		return created;
 	};
 
-	const flushSession = async (fileId: number) => {
+	const flushSession = async (fileId: string) => {
 		const session = sessions.get(fileId);
 		if (!session) {
 			return;
@@ -117,7 +117,7 @@ function collabSocket(io: Server, db: Pool) {
 		}
 	};
 
-	const schedulePersist = (fileId: number, session: CollabSession) => {
+	const schedulePersist = (fileId: string, session: CollabSession) => {
 		session.hasUnsavedChanges = true;
 		if (session.dbSaveDebounceTimer) {
 			clearTimeout(session.dbSaveDebounceTimer);
@@ -138,8 +138,8 @@ function collabSocket(io: Server, db: Pool) {
 			};
 
 			try {
-				if (!Number.isInteger(fileId) || fileId < 0) {
-					sendResponse({error: "Invalid fileId"} satisfies ErrorResponse);
+				if (!fileId || fileId.length === 0) {
+					sendResponse({error: "Empty file ID"} satisfies ErrorResponse);
 					return;
 				}
 

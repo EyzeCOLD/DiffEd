@@ -44,7 +44,7 @@ export type CollabRequestPayload =
 
 export type CollabRequest = CollabRequestPayload & {
 	id: number;
-	fileId: number;
+	fileId: string;
 };
 
 export type DocumentResponse =

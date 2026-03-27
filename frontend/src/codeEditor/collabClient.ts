@@ -30,11 +30,11 @@ type PendingRequest = {
 /** Wrapper for socket.io connection to communicate with our collab server */
 export class CollabConnection {
 	private socket: Socket;
-	private fileId: number;
+	private fileId: string;
 	private requestId = 0;
 	private pendingRequests: Map<number, PendingRequest>;
 
-	constructor(fileId: number) {
+	constructor(fileId: string) {
 		this.fileId = fileId;
 
 		this.socket = io(COLLAB_URL, {

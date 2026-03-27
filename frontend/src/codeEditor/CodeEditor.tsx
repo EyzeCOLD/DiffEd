@@ -12,7 +12,7 @@ const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
 
 interface CodeEditorProps {
-	fileId: number;
+	fileId: string;
 	onChange?: (value: string) => void;
 }
 
