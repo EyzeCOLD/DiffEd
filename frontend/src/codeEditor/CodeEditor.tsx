@@ -4,7 +4,7 @@ import {EditorState, Transaction} from "@codemirror/state";
 import {EditorView, ViewUpdate, ViewPlugin, type PluginValue} from "@codemirror/view";
 import {collab, getSyncedVersion, sendableUpdates, receiveUpdates} from "@codemirror/collab";
 import {basicSetup} from "codemirror";
-import {markdown} from "@codemirror/lang-markdown";
+import langServer from "./langExtensions";
 import {CollabConnection, pushUpdates, pullUpdates, getInitialDocument} from "./collabClient";
 import styles from "./CodeEditor.module.css";
 
@@ -97,7 +97,7 @@ export default function CodeEditor({fileId, onChange}: CodeEditorProps): JSX.Ele
 				const {doc, version} = await getInitialDocument(connectionRef.current);
 				const state = EditorState.create({
 					doc: doc.toString(),
-					extensions: [basicSetup, markdown(), ...peerExtension(version, connectionRef.current)],
+					extensions: [basicSetup, langServer.markdown(), ...peerExtension(version, connectionRef.current)],
 				});
 
 				const editorView = new EditorView({
