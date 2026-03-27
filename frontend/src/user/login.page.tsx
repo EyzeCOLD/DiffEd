@@ -1,7 +1,8 @@
 import styles from "./Login.page.module.css";
 import { useState, MouseEvent } from 'react';
+//import type {LoginUser} from "#shared/src/types";
 
-const Login = () => {
+export default function LoginPage() {
 
     const [userCredentials, setUserCredentials] = useState('');
     const [userPassword, setUserPassword] = useState('');
@@ -13,9 +14,13 @@ const Login = () => {
             return;
         }
 
-        fetch(`/users/${userCredentials}`, {
-            method: 'GET',
-            body: JSON.stringify(userPassword),
+        const user = {
+            user: userCredentials,
+            password: userPassword,
+        }
+        fetch('/api/login', {
+            method: 'POST',
+            body: JSON.stringify(user),
             headers: { "Content-Type": "application/json" },
         } satisfies RequestInit)
         .then((response) => {
@@ -23,13 +28,13 @@ const Login = () => {
             console.log("login successful");
             //TODO(Jyri): Redirect the user to main page
         })
+        .catch((error) => {
+            window.alert('Login failed: ' + error.message);
+        });
         // Store token
         //localStorage.setItem('token', response.data.token);
         //redirect to protectec route
         //history.push('/app/frontpage');
-        .catch((error) => {
-            window.alert('Login failed' + error.message);
-        });
     };
 
     //use navigate react router 
@@ -72,4 +77,3 @@ const Login = () => {
     )
 }
 
-export default Login

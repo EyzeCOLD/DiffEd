@@ -1,67 +1,68 @@
 import { type Express } from "express";
 import { type Pool } from "pg";
 import { timestampedLog } from "../logging.js";
-//
-//
-//Resolve the stuff below and decide which to use
-//import { randomBytes, pbkdf2, timingSafeEqual } from "crypto";
-import * as crypto from "crypto";
+import bcrypt from "bcrypt";
 
 const signupUser = (app: Express, db: Pool) => {
     app.post("/api/signup", async (req, res) => {
-		timestampedLog("Received request to " + req.baseUrl);
+        const saltRounds = 10;
 
         try {
-            const salt = crypto.randomBytes(16);
             const newUsername = req.body.username;
             const newUserEmail = req.body.email;
-            let newHashedPassword;
-            crypto.pbkdf2(req.body.password, salt, 50000, 64, 'sha512', (err, hashedPassword) => {
+            bcrypt.genSalt(saltRounds, (err, salt) => {
                 if (err) throw err;
-                newHashedPassword = hashedPassword;
+                bcrypt.hash(req.body.password, salt, (err, hash) => {
+                    if (err) throw err;
+                    db.query(
+                        'INSERT INTO users (username, email, hashed_password, salt) VALUES ($1, $2, $3, $4)',
+                        [newUsername, newUserEmail, hash, salt]
+                    )
+                });
             });
-            const result = await db.query(
-                'INSERT INTO users (username, email, hashed_password, salt) VALUES ($1, $2, $3, $4)',
-                [newUsername, newUserEmail, newHashedPassword, salt]
-            )
-            //the row below should be changed. Not sending any information from db
             res.status(201).send();
         } catch (err) {
-            console.log('Error creating a user', err);
+            console.error('Error creating a user', err);
             res.status(500).send();
         }
     }); 
 };
 
 const loginUser = (app: Express, db: Pool) => {
-    app.get("/api/login", async (req, res) => {
-        timestampedLog("Received request to " + req.baseUrl);
+    app.post("/api/login", async (req, res) => {
 
         try {
             let result = await db.query(
-                'SELECT * FROM users WHERE username = ?', [req.body.userCredentials] 
+                'SELECT * FROM users WHERE username = $1', [req.body.user] 
             );
             if (result.rows.length === 0) {
                 result = await db.query(
-                    'SELECT * FROM users WHERE email = ?', [req.body.userCredentials]
+                    'SELECT * FROM users WHERE email = $1', [req.body.user]
                 );
                 if (result.rows.length === 0) {
-                    throw new Error('No such user');
+                    return res.status(401).send('No such user');
                 }
             }
+            
             const user = result.rows[0];
+            console.log(user);
 
-            crypto.pbkdf2(req.body.password, user.salt, 50000, 64, 'sha512', (err, inputPassword) => {
+            bcrypt.hash(req.body.password, user.salt, (err, hash) => {
                 if (err) throw err;
-                if (crypto.timingSafeEqual(user.hashed_password, inputPassword)) {
-                    timestampedLog("Authentication success!");
-                } else {
-                    throw new Error("Incorrect username or password");
-                }
+                bcrypt.compare(hash, user.password, (err, result) => {
+                    if (err) throw err;
+                    if (result === true) {
+                        console.log("Authentication success!");
+                    } else {
+                        throw new Error("Incorrect username or password");
+                    }
+                });
             });
             res.status(200).send();
+            //Fix it so error should only be thrown if something fails functionally
+            //If wrong username or password -> send bad password/username response
         } catch (err) {
-            console.log(`Error: ${err}`);
+            console.error(`Error: ${err}`);
             res.status(401).json({ error: 'Authentication failed' });
         }
     });     
