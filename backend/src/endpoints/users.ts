@@ -5,24 +5,22 @@ import bcrypt from "bcrypt";
 
 const signupUser = (app: Express, db: Pool) => {
     app.post("/api/signup", async (req, res) => {
-        const saltRounds = 10;
+        const saltRounds = 12;
 
         try {
             const newUsername = req.body.username;
             const newUserEmail = req.body.email;
-            bcrypt.genSalt(saltRounds, (err, salt) => {
+            bcrypt.hash(req.body.password, saltRounds, (err, hash) => {
                 if (err) throw err;
-                bcrypt.hash(req.body.password, salt, (err, hash) => {
-                    if (err) throw err;
-                    db.query(
-                        'INSERT INTO users (username, email, hashed_password, salt) VALUES ($1, $2, $3, $4)',
-                        [newUsername, newUserEmail, hash, salt]
-                    )
-                });
+                db.query(
+                    'INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3)',
+                    [newUsername, newUserEmail, hash]
+                )
+                console.log('Successfully created user');
+                res.status(201).send();
             });
-            res.status(201).send();
         } catch (err) {
-            console.error('Error creating a user', err);
+            console.error('Error creating user', err);
             res.status(500).send();
         }
     }); 
@@ -40,30 +38,29 @@ const loginUser = (app: Express, db: Pool) => {
                     'SELECT * FROM users WHERE email = $1', [req.body.user]
                 );
                 if (result.rows.length === 0) {
-                    return res.status(401).send('No such user');
+                    console.log('No such user');
+                    return res.status(401).send('Incorrect username or password');
                 }
             }
             
             const user = result.rows[0];
             console.log(user);
 
-            bcrypt.hash(req.body.password, user.salt, (err, hash) => {
+            bcrypt.compare(req.body.password, user.hashed_password, (err, result) => {
                 if (err) throw err;
-                bcrypt.compare(hash, user.password, (err, result) => {
-                    if (err) throw err;
-                    if (result === true) {
-                        console.log("Authentication success!");
-                    } else {
-                        throw new Error("Incorrect username or password");
-                    }
-                });
+                console.log(result);
+                if (result) {
+                    console.log("Authentication success!");
+                    return res.status(202).send('Login successful');
+                } else {
+                    console.log('Invalid password for existing user');
+                    return res.status(401).send('Incorrect username or password');
+                }
             });
-            res.status(200).send();
-            //Fix it so error should only be thrown if something fails functionally
-            //If wrong username or password -> send bad password/username response
+
         } catch (err) {
-            console.error(`Error: ${err}`);
-            res.status(401).json({ error: 'Authentication failed' });
+            console.error('Error authenticating user: ', err);
+            res.status(500).send();
         }
     });     
 };

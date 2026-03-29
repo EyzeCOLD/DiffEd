@@ -3,6 +3,5 @@ CREATE TABLE IF NOT EXISTS "users" (
     username        varchar(20) UNIQUE NOT NULL,
     email           varchar(120) UNIQUE NOT NULL,
     hashed_password varchar(64) NOT NULL,
-    salt            varchar(64) NOT NULL,
     change_date     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
