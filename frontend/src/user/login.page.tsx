@@ -27,19 +27,14 @@ export default function LoginPage() {
             if (!response.ok) throw new Error("Wrong username or password");
             console.log("login successful");
             //TODO(Jyri): Redirect the user to main page
+            //use navigate react router 
         })
         .catch((error) => {
             window.alert('Login failed: ' + error.message);
         });
-        // Store token
-        //localStorage.setItem('token', response.data.token);
-        //redirect to protectec route
-        //history.push('/app/frontpage');
     };
 
-    //use navigate react router 
     //should we use maxlength for the input fields?
-    // When the button is pressed it should send the input credentials to /login
     return (
         <div className={styles.page}>
             <div>
