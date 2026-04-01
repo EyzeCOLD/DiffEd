@@ -23,6 +23,7 @@ It's a thing we're making.
 
 ## Resources
 
+- Web accessibility compliance: https://www.w3.org/WAI/WCAG22/quickref/?versions=2.1&levels=aaa
 - Collaborative editing example: https://codemirror.net/examples/collab/
 
 ## Team Information
@@ -38,7 +39,7 @@ It's a thing we're making.
   - React <sub>(Component framework)</sub>
   - React Router <sub>(SPA routing library)</sub>
   - Socket.IO <sub>(Socket management library)</sub>
-  - CodeMirror <sub>(Code editor with update-emitting capabilities)</sub>
+  - CodeMirror <sub>(Code editor component)</sub>
 
 - Backend:
   - TypeScript <sub>(Type-Safe JavaScript)</sub>
