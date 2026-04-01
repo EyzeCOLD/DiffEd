@@ -1,8 +1,10 @@
 import { type Express } from "express";
 import { type Pool } from "pg";
 import { timestampedLog } from "../logging.js";
-import bcrypt from "bcrypt";
+import argon2 from "argon2";
 import rateLimit from 'express-rate-limit';
+import {UserSignupSchema} from "../validation/schemas.js";
+import { z } from "zod";
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 min (how long to remember requests for)
@@ -13,11 +15,13 @@ const limiter = rateLimit({
 const signupUser = (app: Express, db: Pool) => {
     app.post("/api/signup", async (req, res) => {
 
-        const saltRounds = 12;
         const { username, email, password } = req.body;
 
         try {
-            const hash = await bcrypt.hash(password, saltRounds);
+            UserSignupSchema.parse({ username, email, password });
+            const hash = await argon2.hash(password, {
+                type: argon2.argon2id,
+            });
 
             await db.query(
                 'INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3)',
@@ -31,7 +35,11 @@ const signupUser = (app: Express, db: Pool) => {
             if (err.code === '23505') {
                 console.log('Client tried to create a user with already existing name or email');
                 return res.status(409).send('Username or email already in use');
-            } else {
+            } else if (err instanceof z.ZodError) {
+                const msg = err.issues[0].message;
+                res.status(401).send(msg);
+            }
+            else {
                 console.error('Error creating user', err);
                 res.status(500).send('Internal server error');
             }
@@ -54,7 +62,7 @@ const loginUser = (app: Express, db: Pool) => {
             }
             
             const user = result.rows[0];
-            const match = await bcrypt.compare(password, user.hashed_password);
+            const match = await argon2.verify(user.hashed_password, password);
 
             if (match) {
                 console.log("Authentication success!");

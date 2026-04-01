@@ -1,6 +1,10 @@
 import styles from "./Login.page.module.css";
-import { useState, MouseEvent } from 'react';
+import { useState } from 'react';
+import type {SubmitEvent} from 'react';
 import type {SigningUser} from "#shared/src/types";
+import { z } from "zod";
+
+const emailSchema = z.email();
 
 export default function SignupPage() {
 
@@ -9,13 +13,22 @@ export default function SignupPage() {
     const [password, setUserPassword] = useState('');
     const [password2, setUserPassword2] = useState('');
 
-    const submit = (event: MouseEvent<HTMLButtonElement>) => {
+    const submit = (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!username || !email || !password) {
             window.alert("Please fill all the fields!");
             return;
         }
+
+        console.log(email);
         
+        try {
+            emailSchema.parse(email);
+        } catch {
+            window.alert("Invalid email");
+            return;
+        }
+
         if (password != password2) {
             window.alert("The passwords don't match!");
             return;
@@ -31,16 +44,23 @@ export default function SignupPage() {
             method: 'POST',
             body: JSON.stringify(newUser),
             headers: { "Content-Type": "application/json" },
-        } satisfies RequestInit)
+        })
         .then((response) => {
-            if (!response.ok) throw new Error('Something went wrong');
             console.log(response);
-            //console.log(`User ${response.row created");
-            //TODO(Jyri): Redirect the user to main page
+            if (!response.ok) {
+                return response.text().then((msg) => {
+                    throw new Error(msg);
+                });
+            }
+            return response.json();
+        })
+        .then((data) => {
+            console.log("Success:", data);
+            //Redirect and show message of success
         })
         .catch((err) => {
-            console.error("Error:", err);
-            window.alert("User creation failed");
+            console.log(err);
+            window.alert(err);
         });
     };
 
@@ -65,6 +85,7 @@ export default function SignupPage() {
                 </div>
                 <div>
                     <input
+                        type="email" required
                         placeholder="email"
                         value={email}
                         onChange={(e) => setUserEmail(e.target.value)} />
