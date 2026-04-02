@@ -1,37 +1,36 @@
 import styles from "./Login.page.module.css";
-import { useState, MouseEvent } from 'react';
+import { useState } from 'react';
+import type { SubmitEvent } from 'react';
 //import type {LoginUser} from "#shared/src/types";
 
 export default function LoginPage() {
 
-    const [userCredentials, setUserCredentials] = useState('');
+    const [loginIdentifier, setLoginIdentifier] = useState('');
     const [userPassword, setUserPassword] = useState('');
 
-    const submit = (event: MouseEvent<HTMLButtonElement>) => {
+    const submit = async (event: SubmitEvent<HTMLButtonElement>) => {
         event.preventDefault();
-        if (!userCredentials || !userPassword) {
-            window.alert("Please fill all the fields!")
-            return;
-        }
 
-        const user = {
-            user: userCredentials,
-            password: userPassword,
-        }
-        fetch('/api/login', {
-            method: 'POST',
-            body: JSON.stringify(user),
-            headers: { "Content-Type": "application/json" },
-        } satisfies RequestInit)
-        .then((response) => {
-            if (!response.ok) throw new Error("Wrong username or password");
+        try {
+            if (!loginIdentifier || !userPassword) {
+                throw new Error("Please fill all the fields!")
+            }
+
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                body: JSON.stringify({ loginIdentifier, password: userPassword }),
+                headers: { "Content-Type": "application/json" },
+            })
+            if (!response.ok) {
+                const msg = await response.text();
+                throw new Error(msg);
+            }
             console.log("login successful");
-            //TODO(Jyri): Redirect the user to main page
-            //use navigate react router 
-        })
-        .catch((error) => {
-            window.alert('Login failed: ' + error.message);
-        });
+            //TODO! Redirect the user to main page
+        } catch (e) {
+            // TODO! Add the toast
+            window.alert(`Login failed: ${e.message}`);
+        }
     };
 
     //should we use maxlength for the input fields?
@@ -44,8 +43,8 @@ export default function LoginPage() {
                 <div>
                     <input
                         placeholder="username or email"
-                        value={userCredentials}
-                        onChange={(e) => setUserCredentials(e.target.value)} />
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)} />
                 </div>
                 <div>
                     <input

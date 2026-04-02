@@ -13,55 +13,44 @@ export default function SignupPage() {
     const [password, setUserPassword] = useState('');
     const [password2, setUserPassword2] = useState('');
 
-    const submit = (event: SubmitEvent<HTMLFormElement>) => {
+    const submit = async (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!username || !email || !password) {
-            window.alert("Please fill all the fields!");
-            return;
-        }
 
-        console.log(email);
-        
         try {
-            emailSchema.parse(email);
-        } catch {
-            window.alert("Invalid email");
-            return;
-        }
-
-        if (password != password2) {
-            window.alert("The passwords don't match!");
-            return;
-        }
-
-        const newUser: SigningUser = {
-            username: username,
-            email: email,
-            password: password,
-        }
-
-        fetch('/api/signup', {
-            method: 'POST',
-            body: JSON.stringify(newUser),
-            headers: { "Content-Type": "application/json" },
-        })
-        .then((response) => {
-            console.log(response);
-            if (!response.ok) {
-                return response.text().then((msg) => {
-                    throw new Error(msg);
-                });
+            if (!username || !email || !password) {
+                throw new Error("Please fill all the fields!");
             }
-            return response.json();
-        })
-        .then((data) => {
-            console.log("Success:", data);
-            //Redirect and show message of success
-        })
-        .catch((err) => {
-            console.log(err);
-            window.alert(err);
-        });
+
+            const result = emailSchema.safeParse(email);
+            if (!result.success) {
+                throw new Error("Invalid email");
+            }
+
+            if (password != password2) {
+                throw new Error("The passwords don't match!");
+            }
+
+            const newUser: SigningUser = {
+                username: username,
+                email: email,
+                password: password,
+            }
+
+            const response = await fetch('/api/signup', {
+                method: 'POST',
+                body: JSON.stringify(newUser),
+                headers: { "Content-Type": "application/json" },
+            })
+            if (!response.ok) {
+                const msg = await response.text();
+                throw new Error(msg);
+            }
+            console.log("Signup successful");
+            //TODO! Redirect and show message of success
+        } catch (e) {
+            // TODO! Add the toast
+            window.alert(e);
+        }
     };
 
     // Store token
@@ -85,7 +74,6 @@ export default function SignupPage() {
                 </div>
                 <div>
                     <input
-                        type="email" required
                         placeholder="email"
                         value={email}
                         onChange={(e) => setUserEmail(e.target.value)} />
