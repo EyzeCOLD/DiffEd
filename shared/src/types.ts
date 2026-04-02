@@ -7,7 +7,7 @@ export interface UserFile {
 	content: string;
 }
 
-export interface SigningUser {
+export type SigningUser  = {
    username: string;
    email: string;
    password: string;

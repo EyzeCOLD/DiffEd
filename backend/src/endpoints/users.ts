@@ -1,6 +1,5 @@
 import { type Express } from "express";
 import { type Pool } from "pg";
-import { timestampedLog } from "../logging.js";
 import argon2 from "argon2";
 import rateLimit from 'express-rate-limit';
 import {UserSignupSchema} from "../validation/schemas.js";
@@ -8,7 +7,7 @@ import { z } from "zod";
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 min (how long to remember requests for)
-    limit: 500, // TODO! limit each IP to 5 login requests per windowMs, 500 for testing purposes
+    limit: 500, // TODO! limit each IP to 5 login requests per windowMs, 500 for developing purposes
     message: 'Too many login attempts, please try again later.'
 });
 
