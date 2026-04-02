@@ -6,10 +6,26 @@ import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import UserEndpoints from "./endpoints/users.js";
 
+import passport from "passport";
+import session from "express-session";
+import pgSession from "connect-pg-simple";
+
 const app = express();
 app.use(express.static("../frontend/dist"));
 app.use(express.json());
 app.use(helmetSecurity());
+
+const pgSessionStore = pgSession(session);
+app.use(session({
+    store: new pgSessionStore({
+        pool: postgres,
+        tableName: 'user_sessions',
+    }),
+    secret: 'sessionkey',
+    resave: false,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 } // 1 day
+}));
+app.use(passport.authenticate('session'));
 
 Endpoints.getFiles(app, postgres);
 Endpoints.getFileById(app, postgres);
@@ -19,7 +35,8 @@ Endpoints.uploadMultipleFiles(app, postgres);
 Endpoints.deleteFile(app, postgres);
 
 UserEndpoints.signupUser(app, postgres);
-UserEndpoints.loginUser(app, postgres);
+UserEndpoints.loginUser(app);
+//UserEndpoints.loginUser(app, postgres);
 
 // Catch-all to serve the frontend, needed for subroutes.
 app.get("/*splat", function (request, response) {
