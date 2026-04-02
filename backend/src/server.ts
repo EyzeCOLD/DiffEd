@@ -16,6 +16,7 @@ Endpoints.getFileById(app, postgres);
 Endpoints.uploadFile(app, postgres);
 Endpoints.editFile(app, postgres);
 Endpoints.uploadMultipleFiles(app, postgres);
+Endpoints.deleteFile(app, postgres);
 
 UserEndpoints.signupUser(app, postgres);
 UserEndpoints.loginUser(app, postgres);

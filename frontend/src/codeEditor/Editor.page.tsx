@@ -2,10 +2,12 @@ import CodeEditor from "./CodeEditor";
 import {useParams} from "react-router";
 import type {UserFile} from "#shared/src/types";
 import {useEffect, useState} from "react";
+import {useNavigate} from "react-router";
 
 export default function EditorPage() {
 	const [fileData, setFileData] = useState<UserFile | null>(null);
 	const params = useParams();
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		if (!fileData) return;
@@ -14,8 +16,17 @@ export default function EditorPage() {
 			body: JSON.stringify(fileData),
 			headers: [["Content-Type", "application/json"] as [string, string]],
 		} satisfies RequestInit)
-			.then(() => console.log("File updated"))
-			.catch((error) => console.error("Error updating file:", error));
+			.then((response) => {
+				if (!response.ok) {
+					throw `${params.fileId}`;
+				}
+				console.log("File updated");
+			})
+			.catch((error) => {
+				console.error("Error updating file:", error);
+				// kick user out on error eg. file stops existing
+				navigate("/filebrowser");
+			});
 	}, [fileData?.name, fileData?.content]);
 
 	if (!params.fileId) {
@@ -25,13 +36,7 @@ export default function EditorPage() {
 	if (!fileData) {
 		fetch(`/api/files/${params.fileId}`)
 			.then((response) => {
-				if (!response.ok) {
-					fetch("/api/files", {
-						method: "POST",
-						body: JSON.stringify({name: "editedFile"}),
-						headers: [["Content-Type", "application/json"] as [string, string]],
-					} satisfies RequestInit).then(() => console.log("File created"));
-				}
+				if (!response.ok) throw `${params.fileId}`;
 				return response.json();
 			})
 			.then((data) => {
@@ -40,6 +45,8 @@ export default function EditorPage() {
 			})
 			.catch((error) => {
 				console.error("Error fetching file:", error);
+				// kick user out on error eg. file stops existing
+				navigate("/filebrowser");
 			});
 	}
 

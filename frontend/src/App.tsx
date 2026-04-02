@@ -8,10 +8,7 @@ export default function App() {
 		<div className={styles.page}>
 			Transcendence: It's a thing we're making™
 			<div>
-				<Link to="/edit/200">Code editor page</Link>
-			</div>
-			<div>
-				<Link to="/upload">Upload files</Link>
+				<Link to="/filebrowser">File Browser</Link>
 			</div>
 		</div>
 	);
