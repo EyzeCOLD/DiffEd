@@ -168,18 +168,6 @@ export async function pushUpdates(
 	return result === true;
 }
 
-export async function getFileName(connection: CollabConnection): Promise<NameUpdateResponse> {
-	return (await connection.request({type: "getInitialFIleName"})) as NameUpdateResponse;
-}
-
-export async function pushFileName(
-	connection: CollabConnection,
-	version: number,
-	name: string,
-): Promise<NameUpdateResponse> {
-	return (await connection.request({type: "pushFileName", version, name})) as NameUpdateResponse;
-}
-
-export async function pullFileName(connection: CollabConnection, version: number): Promise<NameUpdateResponse> {
-	return (await connection.request({type: "pullFileName", version})) as NameUpdateResponse;
+export async function pushFileName(connection: CollabConnection, name: string): Promise<NameUpdateResponse> {
+	return (await connection.request({type: "pushFileName", name})) as NameUpdateResponse;
 }

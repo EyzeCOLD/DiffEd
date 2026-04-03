@@ -2,10 +2,8 @@ import CodeEditor from "./CodeEditor";
 import {useNavigate, useParams} from "react-router";
 import type {UserFile} from "#shared/src/types";
 import {useEffect, useRef, useState} from "react";
-import {CollabConnection, getFileName, pullFileName, pushFileName} from "./collabClient";
+import {CollabConnection, pushFileName} from "./collabClient";
 import styles from "./editor.page.module.css";
-
-const NAME_SYNC_RETRY_MS = 1000;
 
 export default function EditorPage() {
 	const [fileData, setFileData] = useState<UserFile | null>(null);
@@ -14,7 +12,6 @@ export default function EditorPage() {
 	const params = useParams();
 	const fileId = params.fileId;
 	const nameConnectionRef = useRef<CollabConnection | null>(null);
-	const nameVersionRef = useRef(0);
 
 	function setFileName(name: string) {
 		setFileData((previous) => (previous ? {...previous, name} : previous));
@@ -43,57 +40,8 @@ export default function EditorPage() {
 
 		const connection = new CollabConnection(fileId);
 		nameConnectionRef.current = connection;
-		let isNameSyncStopped = false;
-		let initializedNameSyncing = false;
-
-		const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-		const startNameSync = async () => {
-			while (!isNameSyncStopped) {
-				try {
-					if (!initializedNameSyncing) {
-						const initial = await getFileName(connection);
-						if (isNameSyncStopped) {
-							return;
-						}
-						if ("error" in initial) {
-							setErrorMessage(`Failed to get initial file name: ${initial.error}`);
-							await delay(NAME_SYNC_RETRY_MS);
-							continue;
-						}
-
-						nameVersionRef.current = initial.version;
-						setFileName(initial.name);
-						initializedNameSyncing = true;
-					}
-
-					const update = await pullFileName(connection, nameVersionRef.current);
-					if (isNameSyncStopped) {
-						return;
-					}
-					if ("error" in update) {
-						setErrorMessage(`Failed to pull file name updates: ${update.error}`);
-						await delay(NAME_SYNC_RETRY_MS);
-						continue;
-					}
-
-					nameVersionRef.current = update.version;
-					setFileName(update.name);
-					setErrorMessage(null);
-				} catch (error) {
-					if (isNameSyncStopped) {
-						return;
-					}
-					console.error("Name sync error:", error);
-					await delay(NAME_SYNC_RETRY_MS);
-				}
-			}
-		};
-
-		void startNameSync();
 
 		return () => {
-			isNameSyncStopped = true;
 			connection.disconnect();
 			if (nameConnectionRef.current === connection) {
 				nameConnectionRef.current = null;
@@ -121,12 +69,11 @@ export default function EditorPage() {
 						if (!connection) return;
 
 						try {
-							const updated = await pushFileName(connection, nameVersionRef.current, nextName);
+							const updated = await pushFileName(connection, nextName);
 							if ("error" in updated) {
 								setErrorMessage(`Failed to update file name: ${updated.error}`);
 								return;
 							}
-							nameVersionRef.current = updated.version;
 						} catch (error) {
 							console.error("Failed to push file name:", error);
 						}

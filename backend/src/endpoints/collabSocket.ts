@@ -14,18 +14,11 @@ import {
 
 const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
 
-type NameUpdate = {
-	name: string;
-	version: number;
-};
-
 type CollabSession = {
 	updates: Update[];
 	doc: Text;
 	pending: ((value: SerializedUpdate[]) => void)[];
 	fileName: string;
-	nameVersion: number;
-	pendingName: ((value: NameUpdate) => void)[];
 	hasUnsavedChanges: boolean;
 	isFlushInProgress: boolean;
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
@@ -81,8 +74,6 @@ function collabSocket(sockets: Server, db: Pool) {
 			doc,
 			pending: [],
 			fileName,
-			nameVersion: 0,
-			pendingName: [],
 			hasUnsavedChanges: false,
 			isFlushInProgress: false,
 			dbSaveDebounceTimer: null,
@@ -224,31 +215,6 @@ function collabSocket(sockets: Server, db: Pool) {
 						} satisfies DocumentResponse);
 						break;
 					}
-					case "getInitialFIleName": {
-						sendResponse({
-							name: session.fileName,
-							version: session.nameVersion,
-						} satisfies NameUpdateResponse);
-						break;
-					}
-					case "pullFileName": {
-						if (data.version < session.nameVersion) {
-							sendResponse({
-								name: session.fileName,
-								version: session.nameVersion,
-							} satisfies NameUpdateResponse);
-						} else if (data.version === session.nameVersion) {
-							session.pendingName.push((nameUpdate: NameUpdate) => {
-								sendResponse(nameUpdate satisfies NameUpdateResponse);
-							});
-						} else {
-							sendResponse({
-								name: session.fileName,
-								version: session.nameVersion,
-							} satisfies NameUpdateResponse);
-						}
-						break;
-					}
 					case "pushFileName": {
 						const nextNameRaw = data.name;
 						if (typeof nextNameRaw !== "string") {
@@ -258,20 +224,11 @@ function collabSocket(sockets: Server, db: Pool) {
 
 						if (nextNameRaw !== session.fileName) {
 							session.fileName = nextNameRaw;
-							session.nameVersion += 1;
 							scheduleFlush(fileId, session);
-
-							const nameUpdate: NameUpdate = {
-								name: session.fileName,
-								version: session.nameVersion,
-							} satisfies NameUpdateResponse;
-
-							drainPending(session.pendingName, nameUpdate);
 						}
 
 						sendResponse({
 							name: session.fileName,
-							version: session.nameVersion,
 						} satisfies NameUpdateResponse);
 						break;
 					}

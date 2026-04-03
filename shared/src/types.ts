@@ -30,15 +30,7 @@ export type CollabRequestPayload =
 			updates: SerializedUpdate[];
 	  }
 	| {
-			type: "getInitialFIleName";
-	  }
-	| {
-			type: "pullFileName";
-			version: number;
-	  }
-	| {
 			type: "pushFileName";
-			version: number;
 			name: string;
 	  };
 
@@ -57,6 +49,5 @@ export type DocumentResponse =
 export type NameUpdateResponse =
 	| {
 			name: string;
-			version: number;
 	  }
 	| ErrorResponse;
