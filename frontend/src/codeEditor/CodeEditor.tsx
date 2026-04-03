@@ -11,10 +11,10 @@ import styles from "./CodeEditor.module.css";
 const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
 
-interface CodeEditorProps {
+type CodeEditorProps = {
 	fileId: string;
 	onChange?: (value: string) => void;
-}
+};
 
 function peerExtension(startVersion: number, connection: CollabConnection) {
 	class LocalPeerPlugin implements PluginValue {

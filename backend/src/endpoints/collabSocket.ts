@@ -14,12 +14,12 @@ import {
 
 const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
 
-interface NameUpdate {
+type NameUpdate = {
 	name: string;
 	version: number;
-}
+};
 
-interface CollabSession {
+type CollabSession = {
 	updates: Update[];
 	doc: Text;
 	pending: ((value: SerializedUpdate[]) => void)[];

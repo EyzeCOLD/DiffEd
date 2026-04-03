@@ -1,20 +1,20 @@
 export type Placeholder = string;
 
 // id here for testing
-export interface UserFile {
+export type UserFile = {
 	id: string;
 	name: string;
 	content: string;
-}
+};
 
-export interface ErrorResponse {
+export type ErrorResponse = {
 	error: string;
-}
+};
 
-export interface SerializedUpdate {
+export type SerializedUpdate = {
 	clientID: string;
 	changes: unknown;
-}
+};
 
 export type CollabRequestPayload =
 	| {
