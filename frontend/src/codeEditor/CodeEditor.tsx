@@ -11,12 +11,6 @@ import styles from "./CodeEditor.module.css";
 const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
 
-type CodeEditorProps = {
-	fileId: string;
-	connection: CollabConnection;
-	onChange?: (value: string) => void;
-};
-
 function peerExtension(startVersion: number, connection: CollabConnection) {
 	class LocalPeerPlugin implements PluginValue {
 		pushing = false;
@@ -76,6 +70,11 @@ function peerExtension(startVersion: number, connection: CollabConnection) {
 	return [collab({startVersion}), plugin];
 }
 
+type CodeEditorProps = {
+	fileId: string;
+	connection: CollabConnection;
+	onChange?: (value: string) => void;
+};
 export default function CodeEditor({fileId, connection, onChange}: CodeEditorProps): JSX.Element {
 	const editorRef = useRef<HTMLDivElement>(null);
 	const [isLoading, setIsLoading] = useState(true);
