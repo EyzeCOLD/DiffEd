@@ -80,7 +80,7 @@ export default function CodeEditor({fileId, onChange}: CodeEditorProps): JSX.Ele
 	const connectionRef = useRef<CollabConnection | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const onChangeRef = useRef(onChange);
+	const onChangeRef = useRef<(value: string) => void>(onChange);
 
 	useEffect(() => {
 		onChangeRef.current = onChange;
