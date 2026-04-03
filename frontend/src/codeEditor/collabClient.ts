@@ -169,7 +169,7 @@ export async function pushUpdates(
 }
 
 export async function getFileName(connection: CollabConnection): Promise<NameUpdateResponse> {
-	return (await connection.request({type: "getFileName"})) as NameUpdateResponse;
+	return (await connection.request({type: "getInitialFIleName"})) as NameUpdateResponse;
 }
 
 export async function pushFileName(

@@ -200,7 +200,7 @@ function collabSocket(sockets: Server, db: Pool) {
 						} satisfies DocumentResponse);
 						break;
 					}
-					case "getFileName": {
+					case "getInitialFIleName": {
 						sendResponse({
 							name: session.fileName,
 							version: session.nameVersion,

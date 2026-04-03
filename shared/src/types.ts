@@ -30,7 +30,7 @@ export type CollabRequestPayload =
 			updates: SerializedUpdate[];
 	  }
 	| {
-			type: "getFileName";
+			type: "getInitialFIleName";
 	  }
 	| {
 			type: "pullFileName";
