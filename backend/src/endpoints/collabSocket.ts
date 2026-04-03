@@ -27,8 +27,9 @@ type CollabSession = {
 	nameVersion: number;
 	pendingName: ((value: NameUpdate) => void)[];
 	hasUnsavedChanges: boolean;
+	isFlushInProgress: boolean;
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
-}
+};
 
 function serializeUpdates(updates: readonly Update[]): SerializedUpdate[] {
 	return updates.map((update: Update) => ({
@@ -46,7 +47,7 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 function collabSocket(sockets: Server, db: Pool) {
 	const sessions = new Map<string, CollabSession>();
 
-	const getSession = async (fileId: string): Promise<CollabSession | undefined> => {
+	async function getSession(fileId: string): Promise<CollabSession | undefined> {
 		const session = sessions.get(fileId);
 		if (session) {
 			return session;
@@ -62,13 +63,17 @@ function collabSocket(sockets: Server, db: Pool) {
 			if (!result.rowCount) {
 				sessions.delete(fileId);
 				return undefined;
-			}
-			if (result.rowCount === 1) {
+			} else if (result.rowCount === 1) {
 				doc = Text.of((result.rows[0].content ?? "").split("\n"));
 				fileName = String(result.rows[0].name ?? fileName);
+			} else {
+				timestampedLog(`Multiple files found for collab document ${fileId}`);
+				sessions.delete(fileId);
+				return undefined;
 			}
 		} catch (error) {
 			timestampedLog(`Error loading collab document ${fileId}: ${String(error)}`);
+			return undefined;
 		}
 
 		const created: CollabSession = {
@@ -79,12 +84,13 @@ function collabSocket(sockets: Server, db: Pool) {
 			nameVersion: 0,
 			pendingName: [],
 			hasUnsavedChanges: false,
+			isFlushInProgress: false,
 			dbSaveDebounceTimer: null,
 		};
 
 		sessions.set(fileId, created);
 		return created;
-	};
+	}
 
 	const flushSession = async (fileId: string) => {
 		const session = sessions.get(fileId);
@@ -92,35 +98,53 @@ function collabSocket(sockets: Server, db: Pool) {
 			return;
 		}
 
+		// The callback that fired is no longer pending once we start processing it
 		session.dbSaveDebounceTimer = null;
-		if (!session.hasUnsavedChanges) {
+		// `isFlushInProgress` prevents overlapping DB writes
+		// `hasUnsavedChanges` skips stale callbacks when there is nothing left to save
+		if (session.isFlushInProgress || !session.hasUnsavedChanges) {
 			return;
 		}
 
+		session.isFlushInProgress = true;
+
 		session.hasUnsavedChanges = false;
 		const content = session.doc.toString();
+		const fileName = session.fileName;
 
 		try {
 			const updateResult = await db.query("UPDATE files SET name = $1, content = $2 WHERE id = $3", [
-				session.fileName,
+				fileName,
 				content,
 				fileId,
 			]);
 			if (updateResult.rowCount === 0) {
 				timestampedLog(`No file found to update for collab document ${fileId}`);
 				sessions.delete(fileId);
+				session.isFlushInProgress = false;
+				return;
+			} else if (updateResult.rowCount! > 1) {
+				timestampedLog(`Multiple files updated for collab document ${fileId}`);
+				sessions.delete(fileId);
+				session.isFlushInProgress = false;
+				return;
 			}
 		} catch (error) {
 			session.hasUnsavedChanges = true;
 			timestampedLog(`Error persisting collab document ${fileId}: ${String(error)}`);
 		}
 
+		session.isFlushInProgress = false;
+
+		// If new changes arrived while we were awaiting the DB, or a stale timer already fired, queue a follow-up flush
 		if (session.hasUnsavedChanges && !session.dbSaveDebounceTimer) {
-			session.dbSaveDebounceTimer = setTimeout(() => flushSession(fileId), DATABASE_SAVE_DEBOUNCE_TIME);
+			session.dbSaveDebounceTimer = setTimeout(() => {
+				void flushSession(fileId);
+			}, DATABASE_SAVE_DEBOUNCE_TIME);
 		}
 	};
 
-	const schedulePersist = (fileId: string, session: CollabSession) => {
+	const scheduleFlush = (fileId: string, session: CollabSession) => {
 		session.hasUnsavedChanges = true;
 		if (session.dbSaveDebounceTimer) {
 			clearTimeout(session.dbSaveDebounceTimer);
@@ -186,7 +210,7 @@ function collabSocket(sockets: Server, db: Pool) {
 						}
 
 						sendResponse(true);
-						schedulePersist(fileId, session);
+						scheduleFlush(fileId, session);
 
 						if (received.length) {
 							drainPending(session.pending, serializeUpdates(received));
@@ -235,7 +259,7 @@ function collabSocket(sockets: Server, db: Pool) {
 						if (nextNameRaw !== session.fileName) {
 							session.fileName = nextNameRaw;
 							session.nameVersion += 1;
-							schedulePersist(fileId, session);
+							scheduleFlush(fileId, session);
 
 							const nameUpdate: NameUpdate = {
 								name: session.fileName,
