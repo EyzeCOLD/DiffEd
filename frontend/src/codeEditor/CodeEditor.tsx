@@ -13,6 +13,7 @@ const PULL_MS_INTERVAL = 1000;
 
 type CodeEditorProps = {
 	fileId: string;
+	connection: CollabConnection;
 	onChange?: (value: string) => void;
 };
 
@@ -75,9 +76,8 @@ function peerExtension(startVersion: number, connection: CollabConnection) {
 	return [collab({startVersion}), plugin];
 }
 
-export default function CodeEditor({fileId, onChange}: CodeEditorProps): JSX.Element {
+export default function CodeEditor({fileId, connection, onChange}: CodeEditorProps): JSX.Element {
 	const editorRef = useRef<HTMLDivElement>(null);
-	const connectionRef = useRef<CollabConnection | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const onChangeRef = useRef<(value: string) => void>(onChange);
@@ -93,11 +93,10 @@ export default function CodeEditor({fileId, onChange}: CodeEditorProps): JSX.Ele
 
 		const initializeEditor = async (): Promise<void> => {
 			try {
-				connectionRef.current = new CollabConnection(fileId);
-				const {doc, version} = await getInitialDocument(connectionRef.current);
+				const {doc, version} = await getInitialDocument(connection);
 				const state = EditorState.create({
 					doc,
-					extensions: [basicSetup, langServer.markdown(), ...peerExtension(version, connectionRef.current)],
+					extensions: [basicSetup, langServer.markdown(), ...peerExtension(version, connection)],
 				});
 
 				const editorView = new EditorView({
@@ -125,17 +124,12 @@ export default function CodeEditor({fileId, onChange}: CodeEditorProps): JSX.Ele
 		void initializeEditor();
 
 		return () => {
-			// Cleanup
 			if (view) {
 				view.destroy();
 				view = null;
 			}
-			if (connectionRef.current) {
-				connectionRef.current.disconnect();
-				connectionRef.current = null;
-			}
 		};
-	}, [fileId]);
+	}, [fileId, connection]);
 
 	if (error) {
 		return (

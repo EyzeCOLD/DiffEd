@@ -1,7 +1,7 @@
 import CodeEditor from "./CodeEditor";
 import {useNavigate, useParams} from "react-router";
 import type {UserFile} from "#shared/src/types";
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {CollabConnection, pushFileName} from "./collabClient";
 import styles from "./editor.page.module.css";
 
@@ -11,7 +11,7 @@ export default function EditorPage() {
 	const navigate = useNavigate();
 	const params = useParams();
 	const fileId = params.fileId;
-	const nameConnectionRef = useRef<CollabConnection | null>(null);
+	const connection = useMemo(() => (fileId ? new CollabConnection(fileId) : null), [fileId]);
 
 	function setFileName(name: string) {
 		setFileData((previous) => (previous ? {...previous, name} : previous));
@@ -34,26 +34,16 @@ export default function EditorPage() {
 	}, [params.fileId]);
 
 	useEffect(() => {
-		if (!fileId) {
-			return;
-		}
-
-		const connection = new CollabConnection(fileId);
-		nameConnectionRef.current = connection;
-
 		return () => {
-			connection.disconnect();
-			if (nameConnectionRef.current === connection) {
-				nameConnectionRef.current = null;
-			}
+			connection?.disconnect();
 		};
-	}, [fileId]);
+	}, [connection]);
 
 	if (!params.fileId) {
 		return <div>File ID is missing</div>;
 	}
 
-	return fileData && fileId ? (
+	return fileData && fileId && connection ? (
 		<>
 			<label>
 				{"File Name: "}
@@ -64,9 +54,6 @@ export default function EditorPage() {
 					onChange={async (e) => {
 						const nextName = e.target.value;
 						setFileName(nextName);
-
-						const connection = nameConnectionRef.current;
-						if (!connection) return;
 
 						try {
 							const updated = await pushFileName(connection, nextName);
@@ -81,7 +68,11 @@ export default function EditorPage() {
 				/>
 			</label>
 			{errorMessage && <div className={styles.errorMessage}>{errorMessage}</div>}
-			<CodeEditor fileId={fileId} onChange={(value) => setFileData({...fileData, content: value})} />
+			<CodeEditor
+				fileId={fileId}
+				connection={connection}
+				onChange={(value) => setFileData({...fileData, content: value})}
+			/>
 		</>
 	) : (
 		<div>Loading...</div>
