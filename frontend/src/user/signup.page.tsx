@@ -1,6 +1,7 @@
 import styles from "./Login.page.module.css";
-import { useState } from 'react';
-import type {SubmitEvent} from 'react';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
+import type {SubmitEvent} from "react";
 import type {SigningUser} from "#shared/src/types";
 import { z } from "zod";
 
@@ -8,12 +9,28 @@ const emailSchema = z.email();
 
 export default function SignupPage() {
 
-    const [username, setUserName] = useState('');
-    const [email, setUserEmail] = useState('');
-    const [password, setUserPassword] = useState('');
-    const [password2, setUserPassword2] = useState('');
+    const [username, setUserName] = useState("");
+    const [email, setUserEmail] = useState("");
+    const [password, setUserPassword] = useState("");
+    const [password2, setUserPassword2] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
 
-    const submit = async (event: SubmitEvent<HTMLFormElement>) => {
+    useEffect(() => {
+        fetch("/api/dashboard", {
+            credentials: "include", //send session cookie
+        })
+            .then((res) => {
+                if(res.ok) {
+                    navigate("/dashboard");
+                } else {
+                    setIsLoading(false);
+                }
+            })
+            .catch(() => setIsLoading(false));
+    }, [navigate]);
+
+    const submit = async (event: SubmitEvent<HTMLButtonElement>) => {
         event.preventDefault();
 
         try {
@@ -27,7 +44,7 @@ export default function SignupPage() {
             }
 
             if (password != password2) {
-                throw new Error("The passwords don't match!");
+                throw new Error("The passwords do not match!");
             }
 
             const newUser: SigningUser = {
@@ -36,31 +53,28 @@ export default function SignupPage() {
                 password: password,
             }
 
-            const response = await fetch('/api/signup', {
-                method: 'POST',
-                body: JSON.stringify(newUser),
+            const response = await fetch("/api/signup", {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(newUser),
             })
             if (!response.ok) {
                 const msg = await response.text();
                 throw new Error(msg);
             }
             console.log("Signup successful");
-            //TODO! Redirect and show message of success
+            navigate("/login");
         } catch (e) {
             // TODO! Add the toast
             window.alert(e);
         }
     };
 
-    // Store token
-    //localStorage.setItem('token', response.data.token);
-    //redirect to protectec route
-    //history.push('/app/frontpage');
-
     // TODO: should we use maxlength for the input fields?
-    // TODO: The link to sign in page must be fixed
-    return (
+    return (isLoading ? (
+        <div>Loading...</div>
+    ) : (
         <div className={styles.page}>
             <div>
                 Welcome to the signup page
@@ -101,5 +115,5 @@ export default function SignupPage() {
                 </div>
             </form>
         </div>
-    )
+    ))
 }

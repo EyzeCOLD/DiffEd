@@ -1,12 +1,29 @@
 import styles from "./Login.page.module.css";
-import { useState } from 'react';
-import type { SubmitEvent } from 'react';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
+import type { SubmitEvent } from "react";
 //import type {LoginUser} from "#shared/src/types";
 
 export default function LoginPage() {
 
-    const [loginIdentifier, setLoginIdentifier] = useState('');
-    const [userPassword, setUserPassword] = useState('');
+    const [loginIdentifier, setLoginIdentifier] = useState("");
+    const [userPassword, setUserPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        fetch("/api/dashboard", {
+            credentials: "include", //send session cookie
+        })
+            .then((res) => {
+                if(res.ok) {
+                    navigate("/dashboard");
+                } else {
+                    setIsLoading(false);
+                }
+            })
+            .catch(() => setIsLoading(false));
+    }, [navigate]);
 
     const submit = async (event: SubmitEvent<HTMLButtonElement>) => {
         event.preventDefault();
@@ -16,17 +33,19 @@ export default function LoginPage() {
                 throw new Error("Please fill all the fields!")
             }
 
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                body: JSON.stringify({ loginIdentifier, password: userPassword }),
+            const response = await fetch("/api/login", {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ loginIdentifier, password: userPassword }),
             })
             if (!response.ok) {
                 const msg = await response.text();
                 throw new Error(msg);
             }
             console.log("login successful");
-            //TODO! Redirect the user to main page
+            navigate("/dashboard");
+            //TODO! Redirect the user to dashboard
         } catch (e) {
             // TODO! Add the toast
             window.alert(`Login failed: ${e.message}`);
@@ -34,7 +53,9 @@ export default function LoginPage() {
     };
 
     //should we use maxlength for the input fields?
-    return (
+    return (isLoading ? (
+        <div>Loading...</div>
+    ) : (
         <div className={styles.page}>
             <div>
                 Welcome to the login page
@@ -61,13 +82,13 @@ export default function LoginPage() {
                     </a>
                 </div>
                 <div>
-                    Don't have an account? Create one
+                    Don"t have an account? Create one
                     <a className={styles.link} href="http://localhost:8080/signup">
                         here
                     </a>
                 </div>
             </form>
         </div>
-    )
+    ))
 }
 
