@@ -96,7 +96,7 @@ export default function CodeEditor({fileId, onChange}: CodeEditorProps): JSX.Ele
 				connectionRef.current = new CollabConnection(fileId);
 				const {doc, version} = await getInitialDocument(connectionRef.current);
 				const state = EditorState.create({
-					doc: doc.toString(),
+					doc,
 					extensions: [basicSetup, langServer.markdown(), ...peerExtension(version, connectionRef.current)],
 				});
 
