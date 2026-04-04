@@ -3,8 +3,18 @@ import {useState, useRef} from "react";
 const FileUploader = ({refreshFileList}: {refreshFileList: () => void}) => {
 	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const MAX_FILE_SIZE = 1000000; // 1meg
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files) {
+			for (const f of e.target.files) {
+				if (f.size > MAX_FILE_SIZE) {
+					console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
+					e.target.value = "";
+				}
+			}
+		}
+
 		if (e.target.files) {
 			setFileUploads(e.target.files);
 		}
@@ -39,20 +49,25 @@ const FileUploader = ({refreshFileList}: {refreshFileList: () => void}) => {
 	return (
 		<>
 			<div className="input-group">
-				<input ref={fileInputRef} id="file" type="file" multiple onChange={handleFileChange} />
+				<input ref={fileInputRef} id="file" type="file" multiple accept="text/*" onChange={handleFileChange} />
 			</div>
-			{fileUploads &&
-				[...fileUploads].map((file, index) => (
-					<section key={file.name}>
-						File {index + 1}:
-						<ul>
-							<li>Name: {file.name}</li>
-							<li>Type: {file.type}</li>
-							<li>Size: {file.size} bytes</li>
-						</ul>
-					</section>
-				))}
-
+			<table>
+				<thead>
+					<th>filename</th>
+					<th>size</th>
+					<th>type</th>
+				</thead>
+				<tbody>
+					{fileUploads &&
+						[...fileUploads].map((file) => (
+							<tr key={file.name}>
+								<td>{file.name}</td>
+								<td>{file.size} bytes</td>
+								<td>{file.type}</td>
+							</tr>
+						))}
+				</tbody>
+			</table>
 			{fileUploads && <button onClick={handleUpload}>Upload a file</button>}
 		</>
 	);

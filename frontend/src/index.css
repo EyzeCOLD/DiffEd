@@ -1,9 +1,9 @@
 :root {
-	--text-primary: #fafafa;
-	--text-secondary: #999;
+	--text-primary: #CFCCD6;
+	--text-secondary: #BBC2E2;
 
-	--background-primary: #171717;
-	--background-secondary: #232323;
+	--background-primary: #322E18;
+	--background-secondary: #847979;
 
 	background-color: var(--background-primary);
 }
@@ -39,7 +39,9 @@ a {
 }
 
 button {
-	background-color: #000000;
+	background-color: var(--background-secondary);
+	padding: 8px 4px;
+	margin: 8px 4px;
 }
 
 button:focus {
