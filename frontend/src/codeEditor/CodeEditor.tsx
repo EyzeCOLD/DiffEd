@@ -90,7 +90,7 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		if (!editorElement) return;
 		let view: EditorView | null = null;
 
-		const initializeEditor = async (): Promise<void> => {
+		async function initializeEditor(): Promise<void> {
 			try {
 				const {doc, version} = await getInitialDocument(connection);
 				const state = EditorState.create({
@@ -100,7 +100,7 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 
 				const editorView = new EditorView({
 					state,
-					parent: editorElement,
+					parent: editorElement ?? undefined,
 					dispatch: (tr: Transaction) => {
 						editorView.update([tr]);
 
@@ -118,11 +118,11 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 				setIsLoading(false);
 				console.error("Failed to initialize editor:", err);
 			}
-		};
+		}
 
 		void initializeEditor();
 
-		return () => {
+		return function cleanup() {
 			if (view) {
 				view.destroy();
 				view = null;

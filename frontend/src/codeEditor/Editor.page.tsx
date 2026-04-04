@@ -34,7 +34,7 @@ export default function EditorPage() {
 	}, [params.fileId]);
 
 	useEffect(() => {
-		return () => {
+		return function cleanup() {
 			connection?.disconnect();
 		};
 	}, [connection]);

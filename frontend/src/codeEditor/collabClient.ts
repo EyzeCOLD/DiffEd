@@ -83,16 +83,17 @@ export class CollabConnection {
 				reject(new Error("Timed out connecting to collaboration server"));
 			}, CONNECT_TIMEOUT_MS);
 
-			const onConnect = () => {
+			function onConnect() {
 				cleanup();
 				resolve();
-			};
+			}
 
-			const onError = (error: Error) => {
+			function onError(error: Error) {
 				cleanup();
 				reject(error);
-			};
+			}
 
+			// Declared in arrow syntax to maintain class' `this` context
 			const cleanup = () => {
 				clearTimeout(timeoutId);
 				this.socket.off("connect", onConnect);

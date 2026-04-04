@@ -84,7 +84,7 @@ function collabSocket(sockets: Server, db: Pool) {
 		return created;
 	}
 
-	const flushSession = async (fileId: string) => {
+	async function flushSession(fileId: string) {
 		const session = sessions.get(fileId);
 		if (!session) {
 			return;
@@ -134,9 +134,9 @@ function collabSocket(sockets: Server, db: Pool) {
 				void flushSession(fileId);
 			}, DATABASE_SAVE_DEBOUNCE_TIME);
 		}
-	};
+	}
 
-	const scheduleFlush = (fileId: string, session: CollabSession) => {
+	function scheduleFlush(fileId: string, session: CollabSession) {
 		session.hasUnsavedChanges = true;
 		if (session.dbSaveDebounceTimer) {
 			clearTimeout(session.dbSaveDebounceTimer);
@@ -144,7 +144,7 @@ function collabSocket(sockets: Server, db: Pool) {
 		session.dbSaveDebounceTimer = setTimeout(() => {
 			void flushSession(fileId);
 		}, DATABASE_SAVE_DEBOUNCE_TIME);
-	};
+	}
 
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
