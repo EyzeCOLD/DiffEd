@@ -60,7 +60,7 @@ function collabSocket(sockets: Server, db: Pool) {
 				doc = Text.of((result.rows[0].content ?? "").split("\n"));
 				fileName = String(result.rows[0].name ?? fileName);
 			} else {
-				timestampedLog(`Multiple files found for collab document ${fileId}`);
+				timestampedLog(`Found ${result.rowCount} for collab document ${fileId}`);
 				sessions.delete(fileId);
 				return undefined;
 			}
