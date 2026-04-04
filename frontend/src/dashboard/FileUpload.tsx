@@ -1,6 +1,6 @@
 import {useState, useRef} from "react";
 
-const FileUploader = ({refreshFileList}: {refreshFileList: () => void}) => {
+function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const MAX_FILE_SIZE = 1000000; // 1meg
@@ -9,8 +9,15 @@ const FileUploader = ({refreshFileList}: {refreshFileList: () => void}) => {
 		if (e.target.files) {
 			for (const f of e.target.files) {
 				if (f.size > MAX_FILE_SIZE) {
+					window.alert(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 					console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
-					e.target.value = "";
+					setFileUploads(null);
+					return;
+				} else if (f.type.slice(0, 5) !== "text/") {
+					window.alert(`File '${f.name}' is of unaccepted filetype ${f.type}`);
+					console.error(`File '${f.name}' is of unaccepted filetype ${f.type}`);
+					setFileUploads(null);
+					return;
 				}
 			}
 		}
@@ -22,7 +29,7 @@ const FileUploader = ({refreshFileList}: {refreshFileList: () => void}) => {
 
 	const handleUpload = async () => {
 		if (fileUploads) {
-			console.log("Uploading file...");
+			console.log("Uploading file(s)...", fileUploads);
 
 			const formData = new FormData();
 			[...fileUploads].forEach(function (file: File) {
@@ -49,28 +56,40 @@ const FileUploader = ({refreshFileList}: {refreshFileList: () => void}) => {
 	return (
 		<>
 			<div className="input-group">
-				<input ref={fileInputRef} id="file" type="file" multiple accept="text/*" onChange={handleFileChange} />
+				<input
+					ref={fileInputRef}
+					style={{display: "none"}}
+					id="file"
+					type="file"
+					multiple
+					onChange={handleFileChange}
+				/>
+				<button onClick={() => fileInputRef.current?.click()}>Upload Files</button>
 			</div>
-			<table>
-				<thead>
-					<th>filename</th>
-					<th>size</th>
-					<th>type</th>
-				</thead>
-				<tbody>
-					{fileUploads &&
-						[...fileUploads].map((file) => (
-							<tr key={file.name}>
-								<td>{file.name}</td>
-								<td>{file.size} bytes</td>
-								<td>{file.type}</td>
-							</tr>
-						))}
-				</tbody>
-			</table>
-			{fileUploads && <button onClick={handleUpload}>Upload a file</button>}
+			{fileUploads && (
+				<>
+					<table>
+						<thead>
+							<th>filename</th>
+							<th>size</th>
+							<th>type</th>
+						</thead>
+						<tbody>
+							{fileUploads &&
+								[...fileUploads].map((file) => (
+									<tr key={file.name}>
+										<td>{file.name}</td>
+										<td>{file.size} bytes</td>
+										<td>{file.type}</td>
+									</tr>
+								))}
+						</tbody>
+					</table>
+					<button onClick={handleUpload}>Submit</button>
+				</>
+			)}
 		</>
 	);
-};
+}
 
 export default FileUploader;
