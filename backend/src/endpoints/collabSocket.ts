@@ -66,6 +66,7 @@ function collabSocket(sockets: Server, db: Pool) {
 			}
 		} catch (error) {
 			timestampedLog(`Error loading collab document ${fileId}: ${String(error)}`);
+			sessions.delete(fileId);
 			return undefined;
 		}
 
