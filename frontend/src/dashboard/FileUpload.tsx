@@ -13,7 +13,7 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 					console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 					setFileUploads(null);
 					return;
-				} else if (f.type.slice(0, 5) !== "text/") {
+				} else if (!f.type.startsWith("text/")) {
 					window.alert(`File '${f.name}' is of unaccepted filetype ${f.type}`);
 					console.error(`File '${f.name}' is of unaccepted filetype ${f.type}`);
 					setFileUploads(null);
