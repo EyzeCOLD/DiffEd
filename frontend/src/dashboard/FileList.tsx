@@ -9,11 +9,11 @@ function FileList({
 	fileList: UserFile[] | null;
 	refreshFileList: () => void;
 }): JSX.Element {
-	if (!fileList) {
-		return <p>Loading really slow...</p>;
-	}
+	if (!fileList) return <p>Loading really slow...</p>;
+	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
 
 	async function handleDelete(id: string) {
+		if (!window.confirm("Are you sure you want to delete this file?")) return;
 		try {
 			const result = await fetch(`/api/files/${id}`, {
 				method: "DELETE",

@@ -1,0 +1,26 @@
+#!/bin/sh
+
+RED="\033[91m"
+GREEN="\033[92m"
+CYAN="\033[96m"
+RESET="\033[0m"
+
+echo $CYAN "Running pre-push checks..." $RESET
+
+npm install
+
+echo $CYAN "Running Prettier..." $RESET
+npx prettier --check .
+PRETTIER_EXIT=$?
+
+echo $CYAN "Running ESLint..." $RESET
+npx eslint .
+ESLINT_EXIT=$?
+
+if [ $PRETTIER_EXIT -ne 0 ] || [ $ESLINT_EXIT -ne 0 ]; then
+  echo  $RED "Pre-push checks failed. Push aborted. (bypass with 'git push --no-verify')" $RESET
+  exit 1
+fi
+
+echo $GREEN "All checks passed." $RESET
+exit 0
