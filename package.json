@@ -16,7 +16,8 @@
 		"re": "npm run fclean && npm run up",
 		"installAll": "npm install && cd shared && npm install && cd ../backend && npm install && cd ../frontend && npm install && cd ../testing && npm install",
 		"prettier": "npx prettier --write .",
-		"eslint": "npx eslint ."
+		"eslint": "npx eslint .",
+		"githook": "chmod +x scripts/pre-push-hook && cp scripts/pre-push-hook .git/hooks/pre-push"
 	},
 	"type": "module",
 	"private": true,

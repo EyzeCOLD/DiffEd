@@ -11,13 +11,6 @@ const limiter = rateLimit({
     message: "Too many login attempts, please try again later."
 });
 
-//function requireAuth(req, res, next) {
-    //if (!req.session.userId) {
-        //return res.status(401).json({ error: "Not logged in" });
-    //}
-    //next();
-//}
-
 const signupUser = (app: Express, db: Pool) => {
     app.post("/api/signup", async (req, res) => {
 
@@ -107,14 +100,13 @@ const logoutUser = (app: Express) => {
 }
 
 const userAuthCheck = (app: Express) => {
-   app.get("/api/auth/check", (req, res) => {
-       if(!req.session.userId) {
-        return res.status(401).json({ loggedIn: false });
-       }
+    app.get("/api/auth/check", (req, res) => {
+        if(!req.session.userId) {
+            return res.status(401).json({ loggedIn: false });
+        }
 
-       res.status(200).json({ loggedIn: true });
-       });
-   }); 
+        res.status(200).json({ loggedIn: true });
+    });
 }
 
 export default { signupUser , loginUser, logoutUser, userAuthCheck };

@@ -1,5 +1,7 @@
 import path from "node:path";
 import express from "express";
+import {createServer} from "node:http";
+import {Server} from "socket.io";
 import helmetSecurity from "helmet";
 import {postgres} from "./postgres.js";
 import {timestampedLog} from "./logging.js";
@@ -8,11 +10,12 @@ import UserEndpoints from "./endpoints/users.js";
 
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import {collabSocket} from "./endpoints/collabSocket.js";
 
-const app = express();
-app.use(express.static("../frontend/dist"));
-app.use(express.json());
-app.use(helmetSecurity());
+const api = express();
+const server = createServer(api);
+const sockets = new Server(server, {cors: {origin: "*"}});
+collabSocket(sockets, postgres);
 
 declare module "express-session" {
     interface SessiosData {
@@ -23,7 +26,7 @@ declare module "express-session" {
 
 const pgSession = connectPgSimple(session);
 
-app.use(session({
+api.use(session({
     store: new pgSession({
         pool: postgres,
         tableName: 'user_sessions',
@@ -38,23 +41,27 @@ app.use(session({
     }
 }));
 
-Endpoints.getFiles(app, postgres);
-Endpoints.getFileById(app, postgres);
-Endpoints.uploadFile(app, postgres);
-Endpoints.editFile(app, postgres);
-Endpoints.uploadMultipleFiles(app, postgres);
-Endpoints.deleteFile(app, postgres);
+api.use(express.static("../frontend/dist"));
+api.use(express.json());
+api.use(helmetSecurity());
 
-UserEndpoints.signupUser(app, postgres);
-UserEndpoints.loginUser(app, postgres);
-UserEndpoints.logoutUser(app);
-UserEndpoints.userAuthCheck(app);
+Endpoints.getFiles(api, postgres);
+Endpoints.getFileById(api, postgres);
+Endpoints.uploadFile(api, postgres);
+Endpoints.editFile(api, postgres);
+Endpoints.uploadMultipleFiles(api, postgres);
+Endpoints.deleteFile(api, postgres);
+
+UserEndpoints.signupUser(api, postgres);
+UserEndpoints.loginUser(api, postgres);
+UserEndpoints.logoutUser(api);
+UserEndpoints.userAuthCheck(api);
 
 // Catch-all to serve the frontend, needed for subroutes.
-app.get("/*splat", function (request, response) {
+api.get("/*splat", function (request, response) {
 	response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));
 });
 
-app.listen(3000, () => {
+server.listen(3000, () => {
 	timestampedLog("Server online at http://localhost:8080");
 });

@@ -1,46 +1,29 @@
 import CodeEditor from "./CodeEditor";
-import {useParams} from "react-router";
+import {useNavigate, useParams} from "react-router";
 import type {UserFile} from "#shared/src/types";
-import {useEffect, useState} from "react";
-import {useNavigate} from "react-router";
+import {useEffect, useMemo, useState} from "react";
+import {CollabConnection, pushFileName} from "./collabClient";
+import styles from "./editor.page.module.css";
 
 export default function EditorPage() {
 	const [fileData, setFileData] = useState<UserFile | null>(null);
-	const params = useParams();
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const navigate = useNavigate();
+	const params = useParams();
+	const fileId = params.fileId;
+	const connection = useMemo(() => (fileId ? new CollabConnection(fileId) : null), [fileId]);
 
-	useEffect(() => {
-		if (!fileData) return;
-		fetch(`/api/files/${params.fileId}`, {
-			method: "PUT",
-			body: JSON.stringify(fileData),
-			headers: [["Content-Type", "application/json"] as [string, string]],
-		} satisfies RequestInit)
-			.then((response) => {
-				if (!response.ok) {
-					throw `${params.fileId}`;
-				}
-				console.log("File updated");
-			})
-			.catch((error) => {
-				console.error("Error updating file:", error);
-				// kick user out on error eg. file stops existing
-				navigate("/filebrowser");
-			});
-	}, [fileData?.name, fileData?.content]);
-
-	if (!params.fileId) {
-		return <div>File ID is missing</div>;
+	function setFileName(name: string) {
+		setFileData((previous) => (previous ? {...previous, name} : previous));
 	}
 
-	if (!fileData) {
+	useEffect(() => {
 		fetch(`/api/files/${params.fileId}`)
 			.then((response) => {
 				if (!response.ok) throw `${params.fileId}`;
 				return response.json();
 			})
 			.then((data) => {
-				console.log("File data:", data);
 				setFileData(data);
 			})
 			.catch((error) => {
@@ -48,9 +31,19 @@ export default function EditorPage() {
 				// kick user out on error eg. file stops existing
 				navigate("/filebrowser");
 			});
+	}, [params.fileId]);
+
+	useEffect(() => {
+		return function cleanup() {
+			connection?.disconnect();
+		};
+	}, [connection]);
+
+	if (!params.fileId) {
+		return <div>File ID is missing</div>;
 	}
 
-	return fileData ? (
+	return fileData && fileId && connection ? (
 		<>
 			<label>
 				{"File Name: "}
@@ -58,10 +51,28 @@ export default function EditorPage() {
 					aria-label="File name"
 					type="text"
 					value={fileData.name}
-					onChange={(e) => setFileData({...fileData, name: e.target.value})}
+					onChange={async (e) => {
+						const nextName = e.target.value;
+						setFileName(nextName);
+
+						try {
+							const updated = await pushFileName(connection, nextName);
+							if ("error" in updated) {
+								setErrorMessage(`Failed to update file name: ${updated.error}`);
+								return;
+							}
+						} catch (error) {
+							console.error("Failed to push file name:", error);
+						}
+					}}
 				/>
 			</label>
-			<CodeEditor value={fileData.content} onChange={(value) => setFileData({...fileData, content: value})} />
+			{errorMessage && <div className={styles.errorMessage}>{errorMessage}</div>}
+			<CodeEditor
+				fileId={fileId}
+				connection={connection}
+				onChange={(value) => setFileData({...fileData, content: value})}
+			/>
 		</>
 	) : (
 		<div>Loading...</div>

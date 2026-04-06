@@ -14,6 +14,8 @@
 	"dependencies": {
 		"argon2": "^0.44.0",
 		"connect-pg-simple": "^10.0.0",
+		"@codemirror/collab": "^6.1.1",
+		"@codemirror/state": "^6.6.0",
 		"express": "5.2.1",
 		"express-rate-limit": "^8.3.1",
 		"express-session": "^1.19.0",
@@ -21,6 +23,7 @@
 		"multer": "^2.1.1",
 		"pg": "^8.20.0",
 		"pg-promise": "12.6.2",
+		"socket.io": "^4.8.3",
 		"zod": "4.3.6"
 	},
 	"devDependencies": {
