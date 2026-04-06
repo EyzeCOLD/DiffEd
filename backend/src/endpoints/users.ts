@@ -88,7 +88,6 @@ const loginUser = (app: Express, db: Pool) => {
                     res.status(200).json({ message: "Login successful" });
                 });
             });
-            //res.status(200).json({ message: "login successful", token: ID, userID: result.rows[0].id });
 
         } catch (err) {
             console.log("Error authenticating user: ", err);
@@ -107,19 +106,15 @@ const logoutUser = (app: Express) => {
     });
 }
 
-const temporary = (app: Express) => {
-   app.get("/api/dashboard", (req, res) => {
+const userAuthCheck = (app: Express) => {
+   app.get("/api/auth/check", (req, res) => {
        if(!req.session.userId) {
-        return res.status(401).json({ error: "Not logged in" });
+        return res.status(401).json({ loggedIn: false });
        }
 
-       res.status(200).json({ message: "Welcome to dashboard",
-           user: {
-               id: req.session.userId,
-               username: req.session.username,
-           },
+       res.status(200).json({ loggedIn: true });
        });
    }); 
 }
 
-export default { signupUser , loginUser, logoutUser, temporary };
+export default { signupUser , loginUser, logoutUser, userAuthCheck };

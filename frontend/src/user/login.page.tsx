@@ -2,34 +2,25 @@ import styles from "./Login.page.module.css";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { SubmitEvent } from "react";
-//import type {LoginUser} from "#shared/src/types";
+import useAuthCheck from "../components/auth.tsx";
 
 export default function LoginPage() {
 
     const [loginIdentifier, setLoginIdentifier] = useState("");
-    const [userPassword, setUserPassword] = useState("");
-    const [isLoading, setIsLoading] = useState(true);
+    const [loginPassword, setLoginPassword] = useState("");
     const navigate = useNavigate();
 
-    useEffect(() => {
-        fetch("/api/dashboard", {
-            credentials: "include", //send session cookie
-        })
-            .then((res) => {
-                if(res.ok) {
-                    navigate("/dashboard");
-                } else {
-                    setIsLoading(false);
-                }
-            })
-            .catch(() => setIsLoading(false));
-    }, [navigate]);
+    const { isLoading, isAuthenticated } = useAuthCheck();
+    if (isAuthenticated) {
+        navigate("/dashboard");
+        return null;
+    }
 
-    const submit = async (event: SubmitEvent<HTMLButtonElement>) => {
+    const login = async (event: SubmitEvent<HTMLButtonElement>) => {
         event.preventDefault();
 
         try {
-            if (!loginIdentifier || !userPassword) {
+            if (!loginIdentifier || !loginPassword) {
                 throw new Error("Please fill all the fields!")
             }
 
@@ -37,7 +28,7 @@ export default function LoginPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ loginIdentifier, password: userPassword }),
+                body: JSON.stringify({ loginIdentifier, password: loginPassword }),
             })
             if (!response.ok) {
                 const msg = await response.text();
@@ -45,7 +36,6 @@ export default function LoginPage() {
             }
             console.log("login successful");
             navigate("/dashboard");
-            //TODO! Redirect the user to dashboard
         } catch (e) {
             // TODO! Add the toast
             window.alert(`Login failed: ${e.message}`);
@@ -60,7 +50,7 @@ export default function LoginPage() {
             <div>
                 Welcome to the login page
             </div>
-            <form onSubmit={submit}>
+            <form onSubmit={login}>
                 <div>
                     <input
                         placeholder="username or email"
@@ -70,24 +60,33 @@ export default function LoginPage() {
                 <div>
                     <input
                         placeholder="password"
-                        value={userPassword}
-                        onChange={(e) => setUserPassword(e.target.value)} />
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)} />
                 </div>
                 <div>
                     <button type="submit">login</button>
                 </div>
-                <div>
-                    <a className={styles.link} href="http://localhost:8080">
-                        Forgot Password?
-                    </a>
-                </div>
-                <div>
-                    Don"t have an account? Create one
-                    <a className={styles.link} href="http://localhost:8080/signup">
-                        here
-                    </a>
-                </div>
             </form>
+            <div>
+                <button
+                    className={styles.link}
+                    //TODO! Link to forgot password page
+                    onClick={() => navigate('/signup')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                    Forgot Password?
+                </button>
+            </div>
+            <div>
+                Don't have an account? Create one&nbsp; 
+                <button
+                    className={styles.link}
+                    onClick={() => navigate('/signup')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                    here
+                </button>
+            </div>
         </div>
     ))
 }

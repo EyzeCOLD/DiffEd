@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import type {SubmitEvent} from "react";
 import type {SigningUser} from "#shared/src/types";
+import useAuthCheck from "../components/auth.tsx";
 import { z } from "zod";
 
 const emailSchema = z.email();
@@ -13,24 +14,15 @@ export default function SignupPage() {
     const [email, setUserEmail] = useState("");
     const [password, setUserPassword] = useState("");
     const [password2, setUserPassword2] = useState("");
-    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        fetch("/api/dashboard", {
-            credentials: "include", //send session cookie
-        })
-            .then((res) => {
-                if(res.ok) {
-                    navigate("/dashboard");
-                } else {
-                    setIsLoading(false);
-                }
-            })
-            .catch(() => setIsLoading(false));
-    }, [navigate]);
+    const { isLoading, isAuthenticated } = useAuthCheck();
+    if (isAuthenticated) {
+        navigate("/dashboard");
+        return null;
+    }
 
-    const submit = async (event: SubmitEvent<HTMLButtonElement>) => {
+    const signup = async (event: SubmitEvent<HTMLButtonElement>) => {
         event.preventDefault();
 
         try {
@@ -79,7 +71,7 @@ export default function SignupPage() {
             <div>
                 Welcome to the signup page
             </div>
-            <form onSubmit={submit}>
+            <form onSubmit={signup}>
                 <div>
                     <input
                         placeholder="username"
@@ -107,13 +99,17 @@ export default function SignupPage() {
                 <div>
                     <button type="submit">login</button>
                 </div>
-                <div>
-                    Already have an account? Go to login page
-                    <a className={styles.link} href="http://localhost:8080/login">
-                        here
-                    </a>
-                </div>
             </form>
+                <div>
+                    Already have an account? Go to&nbsp; 
+                    <button
+                        className={styles.link}
+                        onClick={() => navigate('/login')}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                        login page
+                    </button>
+                </div>
         </div>
     ))
 }

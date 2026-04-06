@@ -48,7 +48,7 @@ Endpoints.deleteFile(app, postgres);
 UserEndpoints.signupUser(app, postgres);
 UserEndpoints.loginUser(app, postgres);
 UserEndpoints.logoutUser(app);
-UserEndpoints.temporary(app);
+UserEndpoints.userAuthCheck(app);
 
 // Catch-all to serve the frontend, needed for subroutes.
 app.get("/*splat", function (request, response) {
