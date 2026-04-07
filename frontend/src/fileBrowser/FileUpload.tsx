@@ -20,6 +20,11 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 				showToast("error", `File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 				setFileUploads(null);
 				return;
+			} else if (!fileTypeIsValid(f.type)) {
+				window.alert(`File '${f.name}' is of unaccepted filetype '${f.type}'`);
+				console.error(`File '${f.name}' is of unaccepted filetype '${f.type}'`);
+				setFileUploads(null);
+				return;
 			}
 		}
 
@@ -32,7 +37,7 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 			showToast("info", "Uploading file(s)...");
 
 			const formData = new FormData();
-			[...fileUploads].forEach(function (file: File) {
+			[...fileUploads].forEach((file: File) => {
 				formData.append("file", file);
 			});
 

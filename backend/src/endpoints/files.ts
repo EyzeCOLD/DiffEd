@@ -4,8 +4,9 @@ import {timestampedLog} from "#/src/logging.js";
 import {UserFileSchema} from "#/src/validation/schemas.js";
 import {requireAuth} from "#/src/middleware.js";
 import type {UserFile, ApiResponse} from "#shared/src/types.js";
-import multer from "multer";
 import {isDbError, isUniqueViolation} from "#/src/utils.js";
+
+import multer from "multer";
 const storage = multer.memoryStorage();
 const upload = multer({storage: storage});
 
