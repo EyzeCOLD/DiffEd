@@ -15,6 +15,8 @@
 		"prune": "docker builder prune -af && docker image prune -af && docker volume prune -af",
 		"re": "npm run fclean && npm run up",
 		"installAll": "npm install && cd shared && npm install && cd ../backend && npm install && cd ../frontend && npm install && cd ../testing && npm install",
+		"audit": "npm audit && cd shared && npm audit && cd ../backend && npm audit && cd ../frontend && npm audit && cd ../testing && npm audit",
+		"auditFix": "npm audit fix && cd shared && npm audit fix && cd ../backend && npm audit fix && cd ../frontend && npm audit fix && cd ../testing && npm audit fix",
 		"prettier": "npx prettier --write .",
 		"eslint": "npx eslint .",
 		"githook": "chmod +x scripts/pre-push-hook && cp scripts/pre-push-hook .git/hooks/pre-push"
