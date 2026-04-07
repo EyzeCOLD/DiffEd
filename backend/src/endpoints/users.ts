@@ -1,15 +1,9 @@
 import { type Express } from "express";
 import { type Pool } from "pg";
 import argon2 from "argon2";
-import rateLimit from "express-rate-limit";
 import { UserSignupSchema } from "../validation/schemas.js";
 import { z } from "zod";
-
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 min (how long to remember requests for)
-    limit: 500, // TODO! limit each IP to 5 login requests per windowMs, 500 for developing purposes
-    message: "Too many login attempts, please try again later."
-});
+import middlewares from "../middleware.js";
 
 const signupUser = (app: Express, db: Pool) => {
     app.post("/api/signup", async (req, res) => {
@@ -31,6 +25,7 @@ const signupUser = (app: Express, db: Pool) => {
             res.status(201).json({ success: "User Created" });
 
         } catch (err: any) {
+            // TODO!! use types for errors as well
             if (err.code === "23505") {
                 console.log("Client tried to create a user with already existing name or email");
                 res.status(409).send("Username or email already in use");
@@ -47,7 +42,7 @@ const signupUser = (app: Express, db: Pool) => {
 };
 
 const loginUser = (app: Express, db: Pool) => {
-    app.post("/api/login", limiter, async (req, res) => {
+    app.post("/api/session", middlewares.limiter, async (req, res) => {
 
         const { loginIdentifier, password } = req.body;
 
@@ -78,6 +73,7 @@ const loginUser = (app: Express, db: Pool) => {
 
                 req.session.save((err) => {
                     if (err) return res.status(500).json({ error: "Session save failed" });
+
                     res.status(200).json({ message: "Login successful" });
                 });
             });
@@ -90,7 +86,7 @@ const loginUser = (app: Express, db: Pool) => {
 };
 
 const logoutUser = (app: Express) => {
-    app.post("/api/logout", (req, res) => {
+    app.delete("/api/session", (req, res) => {
         req.session.destroy((err) => {
             if (err) return res.status(500).json({ error: "Logout failed" });
             res.clearCookie("connect.sid");
@@ -99,14 +95,14 @@ const logoutUser = (app: Express) => {
     });
 }
 
-const userAuthCheck = (app: Express) => {
-    app.get("/api/auth/check", (req, res) => {
-        if(!req.session.userId) {
-            return res.status(401).json({ loggedIn: false });
-        }
-
-        res.status(200).json({ loggedIn: true });
+const getSession = (app: Express) => {
+    app.get("/api/session", (req, res) => {
+        if (req.session.userId) {
+            res.status(200).send();
+        } else {
+            res.status(404).send();
+        } 
     });
 }
 
-export default { signupUser , loginUser, logoutUser, userAuthCheck };
+export default { signupUser , loginUser, logoutUser, getSession };

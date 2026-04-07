@@ -1,8 +1,7 @@
 import styles from "./Login.page.module.css";
-import { useState, useEffect } from "react";
+import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router";
-import type { SubmitEvent } from "react";
-import useAuthCheck from "../components/auth.tsx";
+import getSession from "../utils.ts"
 
 export default function LoginPage() {
 
@@ -10,13 +9,13 @@ export default function LoginPage() {
     const [loginPassword, setLoginPassword] = useState("");
     const navigate = useNavigate();
 
-    const { isLoading, isAuthenticated } = useAuthCheck();
-    if (isAuthenticated) {
-        navigate("/dashboard");
-        return null;
-    }
+    getSession().then((isLoggedIn) => {
+        if (isLoggedIn) {
+            navigate("/dashboard");
+        }
+    });
 
-    const login = async (event: SubmitEvent<HTMLButtonElement>) => {
+    const login = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
         try {
@@ -24,7 +23,7 @@ export default function LoginPage() {
                 throw new Error("Please fill all the fields!")
             }
 
-            const response = await fetch("/api/login", {
+            const response = await fetch("/api/session", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -38,14 +37,12 @@ export default function LoginPage() {
             navigate("/dashboard");
         } catch (e) {
             // TODO! Add the toast
-            window.alert(`Login failed: ${e.message}`);
+            window.alert(`Login failed: ${e}`);
         }
     };
 
     //should we use maxlength for the input fields?
-    return (isLoading ? (
-        <div>Loading...</div>
-    ) : (
+    return (
         <div className={styles.page}>
             <div>
                 Welcome to the login page
@@ -88,6 +85,6 @@ export default function LoginPage() {
                 </button>
             </div>
         </div>
-    ))
+    )
 }
 

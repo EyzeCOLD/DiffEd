@@ -1,24 +1,24 @@
 import styles from "./Login.page.module.css";
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import useAuthCheck from "../components/auth.tsx";
+import type { SubmitEvent } from "react";
+import getSession from "../utils.ts"
+
 
 export default function Dashboard() {
     const navigate = useNavigate();
 
-    const { isLoading, isAuthenticated } = useAuthCheck();
-    if (isLoading) return <div>Loading...</div>;
-    if (!isAuthenticated) {
-        navigate("/login");
-        return null;
-    }
+    getSession().then((isLoggedIn) => {
+        if (!isLoggedIn) {
+            navigate("/login");
+        }
+    });
 
     const logout = async (event: SubmitEvent<HTMLButtonElement>) => {
         event.preventDefault();
 
         try {
-            const response = await fetch("api/logout", {
-                method: "POST",
+            const response = await fetch("api/session", {
+                method: "DELETE",
                 credentials: "include",
             });
             if (response.ok) {
@@ -35,18 +35,19 @@ export default function Dashboard() {
         }
     };
 
-    return (<div className={styles.page}>
-        <div>Welcome to Dashboard!</div>
-        <div>
-            <button
-                type="submit"
-                className={styles.link}
-                onClick={logout}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-            >
-                logout 
-            </button>
+    return (
+        <div className={styles.page}>
+            <div>Welcome to Dashboard!</div>
+            <div>
+                <button
+                    type="submit"
+                    className={styles.link}
+                    onClick={logout}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                    logout 
+                </button>
+            </div>
         </div>
-    </div>
     );
 }

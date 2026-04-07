@@ -1,9 +1,9 @@
 import styles from "./Login.page.module.css";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import type {SubmitEvent} from "react";
 import type {SigningUser} from "#shared/src/types";
-import useAuthCheck from "../components/auth.tsx";
+import getSession from "../utils.ts"
 import { z } from "zod";
 
 const emailSchema = z.email();
@@ -16,11 +16,11 @@ export default function SignupPage() {
     const [password2, setUserPassword2] = useState("");
     const navigate = useNavigate();
 
-    const { isLoading, isAuthenticated } = useAuthCheck();
-    if (isAuthenticated) {
-        navigate("/dashboard");
-        return null;
-    }
+    getSession().then((isLoggedIn) => {
+        if (isLoggedIn) {
+            navigate("/dashboard");
+        }
+    });
 
     const signup = async (event: SubmitEvent<HTMLButtonElement>) => {
         event.preventDefault();
@@ -64,9 +64,7 @@ export default function SignupPage() {
     };
 
     // TODO: should we use maxlength for the input fields?
-    return (isLoading ? (
-        <div>Loading...</div>
-    ) : (
+    return (
         <div className={styles.page}>
             <div>
                 Welcome to the signup page
@@ -97,19 +95,19 @@ export default function SignupPage() {
                         onChange={(e) => setUserPassword2(e.target.value)} />
                 </div>
                 <div>
-                    <button type="submit">login</button>
+                    <button type="submit">signup</button>
                 </div>
             </form>
-                <div>
-                    Already have an account? Go to&nbsp; 
-                    <button
-                        className={styles.link}
-                        onClick={() => navigate('/login')}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                        login page
-                    </button>
-                </div>
+            <div>
+                Already have an account? Go to&nbsp; 
+                <button
+                    className={styles.link}
+                    onClick={() => navigate('/login')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                    login page
+                </button>
+            </div>
         </div>
-    ))
+    )
 }
