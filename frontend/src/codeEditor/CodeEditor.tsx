@@ -6,7 +6,6 @@ import {collab, getSyncedVersion, sendableUpdates, receiveUpdates} from "@codemi
 import {basicSetup} from "codemirror";
 import langServer from "./langExtensions";
 import {CollabConnection, pushUpdates, pullUpdates, getInitialDocument} from "./collabClient";
-import styles from "./CodeEditor.module.css";
 
 const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
@@ -132,17 +131,16 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 
 	if (error) {
 		return (
-			<div className={styles.container}>
-				<div ref={editorRef} className={`${styles.editorHost} ${styles.hidden}`} />
-				<div className={styles.errorMessage}>Error initializing editor: {error}</div>
+			<div className="h-full w-full">
+				<div className="border border-red-500 p-2 text-red-500">Error initializing editor: {error}</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className={styles.relativeContainer}>
-			<div ref={editorRef} className={styles.editorHost} />
-			{isLoading ? <div className={styles.loadingOverlay}>Initializing collaborative editor...</div> : null}
+		<div className="relative h-full w-full">
+			{isLoading ? <div className="absolute inset-0 p-2">Initializing collaborative editor...</div> : null}
+			<div ref={editorRef} className="h-full w-full" />
 		</div>
 	);
 }

@@ -16,11 +16,13 @@
 		"@codemirror/language-data": "^6.5.2",
 		"@codemirror/state": "^6.6.0",
 		"@codemirror/view": "^6.33.0",
+		"@tailwindcss/vite": "^4.2.2",
 		"codemirror": "^6.0.0",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",
 		"react-router": "^7.13.1",
-		"socket.io-client": "^4.8.3"
+		"socket.io-client": "^4.8.3",
+		"tailwindcss": "^4.2.2"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.1",
