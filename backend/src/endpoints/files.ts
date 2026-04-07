@@ -1,12 +1,10 @@
 import {type Express} from "express";
-import {type Pool} from "pg";
+import {Pool} from "pg";
 import {timestampedLog} from "#/src/logging.js";
 import {UserFileSchema} from "#/src/validation/schemas.js";
 import {requireAuth} from "#/src/middleware.js";
 import z from "zod";
 import multer from "multer";
-const storage = multer.memoryStorage();
-const upload = multer({storage: storage});
 
 // Type guard. Makes a type assertion for the error for TS.
 function isDbError(error: unknown): error is {code: string; detail?: string; constraint?: string} {
@@ -55,88 +53,83 @@ function getFileById(app: Express, db: Pool) {
 	});
 }
 
-function uploadNewFile(app: Express, db: Pool) {
+const storage = multer.memoryStorage();
+const upload = multer({
+	storage: storage,
+	limits: {
+		fileSize: 1 * 1024 * 1024,
+	},
+	fileFilter: (req, file, callback) => {
+		if (!file.mimetype.startsWith("text/")) {
+			callback(new Error(`Invalid mime-type (filetype) for file:'${file.originalname}'`));
+		} else {
+			callback(null, true);
+			return;
+		}
+		// You can always pass an error if something goes wrong:
+		callback(new Error("I don't have a clue!"));
+	},
+});
+
+const uploadFileArray = upload.array("file", 200);
+function uploadFiles(app: Express, db: Pool) {
 	app.post("/api/files", requireAuth, async (req, res) => {
-		// the front end could possibly check if a filename is valid (no repeats for a user/project)
-
-		const parsedBody = UserFileSchema.pick({name: true}).strict().safeParse(req.body);
-		if (!parsedBody.success) {
-			console.error("bad POST request", parsedBody.error);
-			return res.status(400).json({error: "Bad request"});
-		}
-
-		try {
-			const fileName = parsedBody.data.name;
-			const uuid = crypto.randomUUID();
-			timestampedLog(`Sent INSERT query to DB: id:[${uuid}] name: '${fileName}'`);
-			const result = await db.query(
-				"INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id",
-				[uuid, fileName, "", req.session.userId],
-			);
-			console.log(`result of INSERT query to DB: id:[${uuid}] name: '${fileName}'`, result.rows);
-			if (result.rowCount != 1) {
-				console.error("Not found");
-				return res.status(403).send();
-			} else {
-				console.log(result.rows);
-				return res.status(201).json(result.rows[0]);
+		uploadFileArray(req, res, async (err) => {
+			if (err instanceof multer.MulterError) {
+				console.log(err);
+				if (err.code === "LIMIT_FILE_SIZE") {
+					res.status(413).send(err.message);
+				} else {
+					res.status(415).send(err.message);
+				}
+				return;
+			} else if (err) {
+				console.log("huh??", err);
+				res.status(415).send();
+				return;
 			}
-		} catch (error: unknown) {
-			if (isDbError(error)) {
-				if (error.constraint === "files_name_owner_id_key") {
-					console.error({error: `${error.detail}`});
-					return res.status(409).json({error: `${error.detail}`});
+			console.log(req.body);
+			console.log(req.files);
+			if (!req.files) {
+				console.log("How did we get here? Where are the files?");
+				return res.status(400).send();
+			}
+			if (!Array.isArray(req.files) || !req.files.length) {
+				console.log("How did we get here? Where is the array?");
+				return res.status(400).send();
+			}
+			// @NOTE this is a mess
+			let query_string: string = "INSERT INTO files (id, name, content) VALUES ";
+			const argumentArray: (string | number)[] = [];
+			req.files.forEach((file, i) => {
+				const uuid = crypto.randomUUID();
+				argumentArray.push(uuid);
+				argumentArray.push(file.originalname);
+				argumentArray.push(file.buffer.toString("utf8"));
+				argumentArray.push(req.session.userId!);
+				const index: number = i * 4; // i * number of fields, fields are one indexed so +1,+2,+3,+4
+				query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}, $${index + 4}), `;
+			});
+			query_string = query_string.substring(0, query_string.length - 2);
+			query_string += " RETURNING id;";
+			console.log(argumentArray);
+			console.log(query_string);
+
+			try {
+				const result = await db.query(query_string, argumentArray);
+				console.log("result rows", result.rows);
+				return res.status(201).json(result.rows);
+			} catch (error: unknown) {
+				if (isDbError(error)) {
+					if (error.constraint === "files_name_owner_id_key") {
+						console.error(`${error.detail}`);
+						return res.status(409).json({error});
+					}
+					console.log("Query failed:", error);
+					return res.status(500).send();
 				}
 			}
-			console.error("Query failed:", error);
-			return res.status(500).send();
-		}
-	});
-}
-
-function uploadMultipleFiles(app: Express, db: Pool) {
-	app.post("/api/upload", requireAuth, upload.array("file", 2000), async (req, res) => {
-		console.log(req.body);
-		console.log(req.files);
-		if (!req.files) {
-			console.log("How did we get here? Where are the files?");
-			return res.status(400).send();
-		}
-		if (!Array.isArray(req.files) || !req.files.length) {
-			console.log("How did we get here? Where is the array?");
-			return res.status(400).send();
-		}
-		// @NOTE this is a mess
-		let query_string: string = "INSERT INTO files (id, name, content, owner_id) VALUES ";
-		const argumentArray: (string | number)[] = [];
-		req.files.forEach((file, i) => {
-			const uuid = crypto.randomUUID();
-			argumentArray.push(uuid);
-			argumentArray.push(file.originalname);
-			argumentArray.push(file.buffer.toString("utf8"));
-			argumentArray.push(req.session.userId!);
-			const index: number = i * 4; // i * number of fields, fields are one indexed so +1,+2,+3,+4
-			query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}, $${index + 4}), `;
 		});
-		query_string = query_string.substring(0, query_string.length - 2);
-		query_string += " RETURNING id;";
-		console.log(argumentArray);
-		console.log(query_string);
-
-		try {
-			const result = await db.query(query_string, argumentArray);
-			console.log("result rows", result.rows);
-			return res.status(201).json(result.rows);
-		} catch (error: unknown) {
-			if (isDbError(error)) {
-				if (error.constraint === "files_name_owner_id_key") {
-					console.error(`${error.detail}`);
-					return res.status(409).json({error});
-				}
-			}
-			console.log("Query failed:", error);
-			return res.status(500).send();
-		}
 	});
 }
 
@@ -229,4 +222,4 @@ function downloadFile(app: Express, db: Pool) {
 	});
 }
 
-export default {getFiles, getFileById, uploadNewFile, uploadMultipleFiles, editFile, deleteFile, downloadFile};
+export default {getFiles, getFileById, uploadFiles, editFile, deleteFile, downloadFile};

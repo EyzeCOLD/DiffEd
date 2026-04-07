@@ -11,10 +11,12 @@ function NewFile() {
 
 	async function openNewFile() {
 		try {
+			const formData = new FormData();
+			const file = new File([""], newFilename!, {type: "text/weee"});
+			formData.append("file", file);
 			const result = await fetch("/api/files", {
 				method: "POST",
-				body: JSON.stringify({name: newFilename}),
-				headers: [["Content-Type", "application/json"] as [string, string]],
+				body: formData,
 			} satisfies RequestInit);
 
 			const res = await result.json();

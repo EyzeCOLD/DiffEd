@@ -28,12 +28,12 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 			console.log("Uploading file(s)...", fileUploads);
 
 			const formData = new FormData();
-			[...fileUploads].forEach(function (file: File) {
+			[...fileUploads].forEach((file: File) => {
 				formData.append("file", file);
 			});
 
 			try {
-				const result = await fetch("/api/upload", {
+				const result = await fetch("/api/files", {
 					method: "POST",
 					body: formData,
 				});
@@ -46,6 +46,11 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 					return;
 				}
 
+				if (!result.ok) {
+					console.error("File creation failed!");
+					setFileUploads(null);
+					return;
+				}
 				const data = await result.json();
 				refreshFileList();
 				setFileUploads(null);
