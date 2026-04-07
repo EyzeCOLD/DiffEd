@@ -85,7 +85,7 @@ function uploadFiles(app: Express, db: Pool) {
 				return;
 			} else if (err) {
 				console.log("huh??", err);
-				res.status(415).send();
+				res.status(500).send();
 				return;
 			}
 			console.log(req.body);
