@@ -113,7 +113,7 @@ function uploadMultipleFiles(app: Express, db: Pool) {
 			const uuid = crypto.randomUUID();
 			argumentArray.push(uuid);
 			argumentArray.push(file.originalname);
-			argumentArray.push(file.buffer.toString());
+			argumentArray.push(file.buffer.toString("utf8"));
 			argumentArray.push(req.session.userId!);
 			const index: number = i * 4; // i * number of fields, fields are one indexed so +1,+2,+3,+4
 			query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}, $${index + 4}), `;

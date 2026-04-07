@@ -26,6 +26,15 @@ export const SignupSchema = z.object({
 // id here for testing
 export const UserFileSchema = z.object({
 	id: z.uuidv4(),
-	name: z.string(),
-	content: z.string(),
+	name: z
+		.string()
+		.min(1)
+		.max(255)
+		// regex to catch suspicious stuff (<, >, :, ", |, ?, *, \x00)
+		.regex(/^[^<>"|?*\x00]+$/, "Invalid filename")
+		.refine((val) => !val.includes("../"), "Path traversal not allowed")
+		.refine((val) => !val.startsWith("/"), "Path must be relative")
+		.refine((val) => !val.includes("/\/"), "Invalid path")
+		.refine((val) => !val.endsWith("/"), "Path cannot end with a slash"),
+	content: z.string().refine((val) => Buffer.byteLength(val, "utf8") <= 1000000, {message: "File content exceeds 1MB"}),
 }) satisfies ZodType<UserFile>;
