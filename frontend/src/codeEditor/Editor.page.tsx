@@ -3,7 +3,6 @@ import {useNavigate, useParams} from "react-router";
 import type {UserFile} from "#shared/src/types";
 import {useEffect, useMemo, useState} from "react";
 import {CollabConnection, pushFileName} from "./collabClient";
-import styles from "./editor.page.module.css";
 
 export default function EditorPage() {
 	const [fileData, setFileData] = useState<UserFile | null>(null);
@@ -67,7 +66,7 @@ export default function EditorPage() {
 					}}
 				/>
 			</label>
-			{errorMessage && <div className={styles.errorMessage}>{errorMessage}</div>}
+			{errorMessage && <div className="text-red-500">{errorMessage}</div>}
 			<CodeEditor
 				fileId={fileId}
 				connection={connection}
