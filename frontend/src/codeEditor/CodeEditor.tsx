@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import type {JSX} from "react";
-import {EditorState, Transaction} from "@codemirror/state";
+import {EditorState} from "@codemirror/state";
+import {unifiedMergeView} from "@codemirror/merge";
 import {EditorView, ViewUpdate, ViewPlugin, type PluginValue} from "@codemirror/view";
 import {collab, getSyncedVersion, sendableUpdates, receiveUpdates} from "@codemirror/collab";
 import {basicSetup} from "codemirror";
@@ -9,6 +10,18 @@ import {CollabConnection, pushUpdates, pullUpdates, getInitialDocument} from "./
 
 const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
+
+const theme = EditorView.theme({
+	// ".cm-gutters": {backgroundColor: "#000"},
+	// ".cm-deletedChunk": {backgroundColor: "#ffe4e6", borderLeft: "3px solid #e11d48"},
+	// ".cm-deletedLine": {backgroundColor: "#ffe4e6"},
+	// ".cm-insertedLine": {backgroundColor: "#dcfce7"},
+	// ".cm-changedLine": {backgroundColor: "#fef9c3"},
+	// ".cm-changedText": {backgroundColor: "#fde68a"},
+	// ".cm-changeGutter": {backgroundColor: "#ffedd5"},
+	// ".cm-deletedLineGutter": {backgroundColor: "#ffe4e6"},
+	// ".cm-changedLineGutter": {backgroundColor: "#fef9c3"},
+});
 
 function peerExtension(startVersion: number, connection: CollabConnection) {
 	class LocalPeerPlugin implements PluginValue {
@@ -94,19 +107,29 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 				const {doc, version} = await getInitialDocument(connection);
 				const state = EditorState.create({
 					doc,
-					extensions: [basicSetup, langServer.markdown(), ...peerExtension(version, connection)],
+					extensions: [
+						basicSetup,
+						EditorView.updateListener.of((update) => {
+							if (update.docChanged && onChangeRef.current) {
+								onChangeRef.current(update.state.doc.toString());
+							}
+						}),
+						langServer.markdown(),
+						unifiedMergeView({
+							original: doc,
+							gutter: true,
+							mergeControls: true,
+							allowInlineDiffs: true,
+							highlightChanges: true,
+						}),
+						theme,
+						...peerExtension(version, connection),
+					],
 				});
 
 				const editorView = new EditorView({
 					state,
 					parent: editorElement ?? undefined,
-					dispatch: (tr: Transaction) => {
-						editorView.update([tr]);
-
-						if (tr.docChanged && onChangeRef.current) {
-							onChangeRef.current(editorView.state.doc.toString());
-						}
-					},
 				});
 				view = editorView;
 
