@@ -21,7 +21,8 @@ function getFiles(app: Express, db: Pool) {
 			return res.status(200).json(result.rows);
 		} catch (error) {
 			console.log(`Error: ${error}`);
-			return res.status(500).send();
+			res.status(500).send();
+			return;
 		}
 	});
 }
@@ -32,7 +33,8 @@ function getFileById(app: Express, db: Pool) {
 
 		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
 		if (!fileId.success) {
-			return res.status(400).json({error: "Invalid file ID"});
+			res.status(400).json({error: "Invalid file ID"});
+			return;
 		}
 
 		try {
@@ -41,14 +43,17 @@ function getFileById(app: Express, db: Pool) {
 			const result = await db.query("SELECT * FROM files WHERE id = $1 AND owner_id = $2", [id, req.session.userId]);
 			if (result.rowCount != 1) {
 				console.log("Not found");
-				return res.status(403).send();
+				res.status(403).send();
+				return;
 			} else {
 				console.log(result.rows);
-				return res.status(200).json(result.rows[0]);
+				res.status(200).json(result.rows[0]);
+				return;
 			}
 		} catch (error) {
 			console.log(`Error: ${error}`);
-			return res.status(500).send();
+			res.status(500).send();
+			return;
 		}
 	});
 }
@@ -62,12 +67,11 @@ const upload = multer({
 	fileFilter: (req, file, callback) => {
 		if (!file.mimetype.startsWith("text/")) {
 			callback(new Error(`Invalid mime-type (filetype) for file:'${file.originalname}'`));
+			return;
 		} else {
 			callback(null, true);
 			return;
 		}
-		// You can always pass an error if something goes wrong:
-		callback(new Error("I don't have a clue!"));
 	},
 });
 
@@ -92,11 +96,13 @@ function uploadFiles(app: Express, db: Pool) {
 			console.log(req.files);
 			if (!req.files) {
 				console.log("How did we get here? Where are the files?");
-				return res.status(400).send();
+				res.status(400).send();
+				return;
 			}
 			if (!Array.isArray(req.files) || !req.files.length) {
 				console.log("How did we get here? Where is the array?");
-				return res.status(400).send();
+				res.status(400).send();
+				return;
 			}
 			// @NOTE this is a mess
 			let query_string: string = "INSERT INTO files (id, name, content) VALUES ";
@@ -118,15 +124,18 @@ function uploadFiles(app: Express, db: Pool) {
 			try {
 				const result = await db.query(query_string, argumentArray);
 				console.log("result rows", result.rows);
-				return res.status(201).json(result.rows);
+				res.status(201).json(result.rows);
+				return;
 			} catch (error: unknown) {
 				if (isDbError(error)) {
 					if (error.constraint === "files_name_owner_id_key") {
 						console.error(`${error.detail}`);
-						return res.status(409).json({error});
+						res.status(409).json({error});
+						return;
 					}
 					console.log("Query failed:", error);
-					return res.status(500).send();
+					res.status(500).send();
+					return;
 				}
 			}
 		});
@@ -137,16 +146,19 @@ function editFile(app: Express, db: Pool) {
 	app.put("/api/files/:fileId", requireAuth, async (req, res) => {
 		const fileId = z.uuidv4().safeParse(req.params.fileId);
 		if (!fileId.success) {
-			return res.status(400).json({error: "Invalid file ID"});
+			res.status(400).json({error: "Invalid file ID"});
+			return;
 		}
 		const parsedBody = UserFileSchema.safeParse(req.body);
 		if (!parsedBody.success) {
 			console.log("bad PUT request", parsedBody.error);
-			return res.status(400).send();
+			res.status(400).send();
+			return;
 		}
 		if (parsedBody.data.id != fileId.data) {
 			console.log("bad PUT request Error: File id mismatch");
-			return res.status(400).json({error: "File id mismatch"});
+			res.status(400).json({error: "File id mismatch"});
+			return;
 		}
 
 		try {
@@ -158,13 +170,16 @@ function editFile(app: Express, db: Pool) {
 				req.session.userId,
 			]);
 			if (!result.rowCount || result.rowCount < 1) {
-				return res.status(403).send();
+				res.status(403).send();
+				return;
 			}
 			console.log(`result of UPDATE query to DB: id:[${fileId.data}] name: '${parsedBody.data.name}'`, result.rows);
-			return res.status(200).json(result.rows[0]);
+			res.status(200).json(result.rows[0]);
+			return;
 		} catch (error) {
 			console.log("Query failed:", error);
-			return res.status(500).send();
+			res.status(500).send();
+			return;
 		}
 	});
 }
@@ -173,7 +188,8 @@ function deleteFile(app: Express, db: Pool) {
 	app.delete("/api/files/:fileId", requireAuth, async (req, res) => {
 		const fileId = z.uuidv4().safeParse(req.params.fileId);
 		if (!fileId.success) {
-			return res.status(400).json({error: "Invalid file ID"});
+			res.status(400).json({error: "Invalid file ID"});
+			return;
 		}
 
 		try {
@@ -184,12 +200,15 @@ function deleteFile(app: Express, db: Pool) {
 			]);
 			console.log(`result of DELETE query to DB: id:[${fileId.data}], deleted rows count:`, result.rowCount);
 			if (!result.rowCount || result.rowCount < 1) {
-				return res.status(403).send();
+				res.status(403).send();
+				return;
 			}
-			return res.status(200).send();
+			res.status(200).send();
+			return;
 		} catch (error) {
 			console.log("Query failed:", error);
-			return res.status(500).send();
+			res.status(500).send();
+			return;
 		}
 	});
 }
