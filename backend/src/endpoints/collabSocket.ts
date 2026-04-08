@@ -19,6 +19,7 @@ type CollabSession = {
 	doc: Text;
 	pending: ((value: SerializedUpdate[]) => void)[];
 	fileName: string;
+	connectedSockets: Set<string>;
 	hasUnsavedChanges: boolean;
 	isFlushInProgress: boolean;
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
@@ -75,6 +76,7 @@ function collabSocket(sockets: Server, db: Pool) {
 			doc,
 			pending: [],
 			fileName,
+			connectedSockets: new Set(),
 			hasUnsavedChanges: false,
 			isFlushInProgress: false,
 			dbSaveDebounceTimer: null,
@@ -128,11 +130,23 @@ function collabSocket(sockets: Server, db: Pool) {
 
 		session.isFlushInProgress = false;
 
-		// If new changes arrived while we were awaiting the DB, or a stale timer already fired, queue a follow-up flush
-		if (session.hasUnsavedChanges && !session.dbSaveDebounceTimer) {
-			session.dbSaveDebounceTimer = setTimeout(() => {
-				void flushSession(fileId);
-			}, DATABASE_SAVE_DEBOUNCE_TIME);
+		// If new changes arrived while we were awaiting the DB, keep the session alive until that work is persisted;
+		// otherwise, a stale timer can be cleared and the empty session deleted once no clients remain.
+		if (session.hasUnsavedChanges) {
+			if (!session.dbSaveDebounceTimer) {
+				session.dbSaveDebounceTimer = setTimeout(() => {
+					void flushSession(fileId);
+				}, DATABASE_SAVE_DEBOUNCE_TIME);
+			}
+			return;
+		}
+
+		if (session.connectedSockets.size === 0) {
+			if (session.dbSaveDebounceTimer) {
+				clearTimeout(session.dbSaveDebounceTimer);
+				session.dbSaveDebounceTimer = null;
+			}
+			sessions.delete(fileId);
 		}
 	}
 
@@ -146,8 +160,41 @@ function collabSocket(sockets: Server, db: Pool) {
 		}, DATABASE_SAVE_DEBOUNCE_TIME);
 	}
 
+	function attachSocketToSession(socketId: string, session: CollabSession) {
+		session.connectedSockets.add(socketId);
+	}
+
+	function detachSocketFromSession(fileId: string, session: CollabSession, socketId: string) {
+		session.connectedSockets.delete(socketId);
+
+		if (session.connectedSockets.size > 0) {
+			return;
+		}
+
+		if (session.dbSaveDebounceTimer) {
+			clearTimeout(session.dbSaveDebounceTimer);
+			session.dbSaveDebounceTimer = null;
+		}
+
+		if (session.isFlushInProgress || session.hasUnsavedChanges) {
+			void flushSession(fileId);
+			return;
+		}
+
+		sessions.delete(fileId);
+	}
+
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
+
+		socket.on("disconnect", () => {
+			for (const [fileId, session] of sessions.entries()) {
+				if (session.connectedSockets.has(socket.id)) {
+					detachSocketFromSession(fileId, session, socket.id);
+					break;
+				}
+			}
+		});
 
 		socket.on("collabRequest", async (data: CollabRequest) => {
 			const {id, type, fileId} = data;
@@ -167,6 +214,12 @@ function collabSocket(sockets: Server, db: Pool) {
 					sendResponse({error: "File does not exist"} satisfies ErrorResponse);
 					return;
 				}
+
+				if (!socket.connected) {
+					return;
+				}
+
+				attachSocketToSession(socket.id, session);
 
 				switch (type) {
 					case "pullUpdates": {
