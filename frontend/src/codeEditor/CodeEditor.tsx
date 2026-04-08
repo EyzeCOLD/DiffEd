@@ -8,6 +8,14 @@ import keybinds from "./keybinds";
 import langServer from "./langExtensions";
 import {CollabConnection, pushUpdates, pullUpdates, getInitialDocument} from "./collabClient";
 
+const INITIAL_DOC_MAX_ATTEMPTS = 2;
+const INITIAL_DOC_RETRY_DELAY_MS = 250;
+const RETRYABLE_INITIAL_DOC_MESSAGES = [
+	"Timed out connecting to collaboration server",
+	"Timed out waiting for collab response",
+	"Collab connection closed",
+];
+
 const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
 
@@ -93,10 +101,39 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		const editorElement = editorRef.current;
 		if (!editorElement) return;
 		let view: EditorView | null = null;
+		let hasUnmounted = false;
+
+		// Rapid back/forward navigation can interrupt the first collab request,
+		// so retry once before showing an initialization error.
+		async function getInitialDocumentWithRetry() {
+			for (let attempt = 1; attempt <= INITIAL_DOC_MAX_ATTEMPTS; attempt += 1) {
+				try {
+					return await getInitialDocument(connection);
+				} catch (error) {
+					if (hasUnmounted) {
+						throw error;
+					}
+
+					const message = error instanceof Error ? error.message : "";
+					const isRetryable = RETRYABLE_INITIAL_DOC_MESSAGES.some((entry) => message.includes(entry));
+					if (!isRetryable || attempt === INITIAL_DOC_MAX_ATTEMPTS) {
+						throw error;
+					}
+
+					await new Promise((resolve) => setTimeout(resolve, INITIAL_DOC_RETRY_DELAY_MS));
+				}
+			}
+
+			throw new Error("Failed to get initial document");
+		}
 
 		async function initializeEditor(): Promise<void> {
 			try {
-				const {doc, version} = await getInitialDocument(connection);
+				const {doc, version} = await getInitialDocumentWithRetry();
+				if (hasUnmounted) {
+					return;
+				}
+
 				const state = EditorState.create({
 					doc,
 					extensions: [basicSetup, keybinds, langServer.markdown(), ...peerExtension(version, connection)],
@@ -115,8 +152,20 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 				});
 				view = editorView;
 
+				// If the page was left while the editor was initializing, discard the
+				// editor instance instead of mounting stale UI.
+				if (hasUnmounted) {
+					view.destroy();
+					view = null;
+					return;
+				}
+
 				setIsLoading(false);
 			} catch (err) {
+				if (hasUnmounted) {
+					return;
+				}
+
 				const message = err instanceof Error ? err.message : "Unknown error";
 				setError(message);
 				setIsLoading(false);
@@ -127,6 +176,8 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		void initializeEditor();
 
 		return function cleanup() {
+			// Prevent async startup work from updating state after navigation away.
+			hasUnmounted = true;
 			if (view) {
 				view.destroy();
 				view = null;

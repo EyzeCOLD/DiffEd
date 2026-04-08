@@ -40,6 +40,7 @@ export class CollabConnection {
 		this.socket = io(COLLAB_URL, {
 			path: "/socket.io",
 			autoConnect: true,
+			forceNew: true,
 			transports: ["websocket", "polling"],
 		});
 		this.pendingRequests = new Map();
