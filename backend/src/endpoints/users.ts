@@ -1,10 +1,16 @@
 import { type Express } from "express";
 import { type Pool } from "pg";
+import pgPromise from "pg-promise";
 import argon2 from "argon2";
 import { UserSignupSchema } from "../validation/schemas.js";
 import { z } from "zod";
-import middlewares from "../middleware.js";
+import rateLimit from "express-rate-limit";
 
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 min (how long to remember requests for)
+    limit: 5, // 5 attempts per 15 min
+    message: "Too many login attempts, please try again later."
+});
 const signupUser = (app: Express, db: Pool) => {
     app.post("/api/signup", async (req, res) => {
 
@@ -24,10 +30,9 @@ const signupUser = (app: Express, db: Pool) => {
             console.log("Successfully created user");
             res.status(201).json({ success: "User Created" });
 
-        } catch (err: any) {
-            // TODO!! use types for errors as well
-            if (err.code === "23505") {
-                console.log("Client tried to create a user with already existing name or email");
+        } catch (err: unknown) {
+            if (err instanceof pgPromise.errors.QueryResultError && err.code === 23505 as number) {
+                console.log("Client tried to create user with already existing name or email");
                 res.status(409).send("Username or email already in use");
             } else if (err instanceof z.ZodError) {
                 const msg = err.issues[0].message;
@@ -42,7 +47,7 @@ const signupUser = (app: Express, db: Pool) => {
 };
 
 const loginUser = (app: Express, db: Pool) => {
-    app.post("/api/session", middlewares.limiter, async (req, res) => {
+    app.post("/api/session", limiter, async (req, res) => {
 
         const { loginIdentifier, password } = req.body;
 
@@ -61,10 +66,10 @@ const loginUser = (app: Express, db: Pool) => {
 
             if (!match) {
                 console.log("Invalid password for existing user");
-                res.status(401).json({ error: "Incorrect username or password" });
+                return res.status(401).json({ error: "Incorrect username or password" });
             }
             console.log("Authentication success!");
-            // TODO: Generate and return a token or session ID
+            // Generate a session and add requesting users id and username to the session
             req.session.regenerate((err) => {
                 if (err) return res.status(500).json({ error: "Session error" });
 
@@ -95,6 +100,7 @@ const logoutUser = (app: Express) => {
     });
 }
 
+// TODO: This function could query and return the user data
 const getSession = (app: Express) => {
     app.get("/api/session", (req, res) => {
         if (req.session.userId) {

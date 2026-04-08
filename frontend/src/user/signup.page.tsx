@@ -1,9 +1,8 @@
-import styles from "./Login.page.module.css";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import type {SubmitEvent} from "react";
-import type {SigningUser} from "#shared/src/types";
-import getSession from "../utils.ts"
+import type { SubmitEvent } from "react";
+import type { SigningUser } from "#shared/src/types";
+import { getSession } from "../utils.ts"
 import { z } from "zod";
 
 const emailSchema = z.email();
@@ -22,7 +21,7 @@ export default function SignupPage() {
         }
     });
 
-    const signup = async (event: SubmitEvent<HTMLButtonElement>) => {
+    const signup = async (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
 
         try {
@@ -65,7 +64,7 @@ export default function SignupPage() {
 
     // TODO: should we use maxlength for the input fields?
     return (
-        <div className={styles.page}>
+        <div>
             <div>
                 Welcome to the signup page
             </div>
@@ -101,7 +100,6 @@ export default function SignupPage() {
             <div>
                 Already have an account? Go to&nbsp; 
                 <button
-                    className={styles.link}
                     onClick={() => navigate('/login')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >

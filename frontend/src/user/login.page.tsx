@@ -1,7 +1,7 @@
-import styles from "./Login.page.module.css";
-import { useState, FormEvent } from "react";
+import { useState } from "react";
+import type { SubmitEvent } from "react";
 import { useNavigate } from "react-router";
-import getSession from "../utils.ts"
+import { getSession } from "../utils.ts"
 
 export default function LoginPage() {
 
@@ -15,7 +15,7 @@ export default function LoginPage() {
         }
     });
 
-    const login = async (event: FormEvent<HTMLFormElement>) => {
+    const login = async (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
 
         try {
@@ -43,7 +43,7 @@ export default function LoginPage() {
 
     //should we use maxlength for the input fields?
     return (
-        <div className={styles.page}>
+        <div>
             <div>
                 Welcome to the login page
             </div>
@@ -66,7 +66,6 @@ export default function LoginPage() {
             </form>
             <div>
                 <button
-                    className={styles.link}
                     //TODO! Link to forgot password page
                     onClick={() => navigate('/signup')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
@@ -77,7 +76,6 @@ export default function LoginPage() {
             <div>
                 Don't have an account? Create one&nbsp; 
                 <button
-                    className={styles.link}
                     onClick={() => navigate('/signup')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >

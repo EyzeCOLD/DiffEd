@@ -1,8 +1,0 @@
-change logging.ts to utils.ts 
-check that there is no "any" => follow typescript convetions
-move authentication to backend function
-create ticket for frontend input validation
-implement session endpoint to fetch user related data
-
-
-

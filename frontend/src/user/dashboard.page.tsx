@@ -1,7 +1,6 @@
-import styles from "./Login.page.module.css";
 import { useNavigate } from "react-router";
-import type { SubmitEvent } from "react";
-import getSession from "../utils.ts"
+import type { MouseEvent } from "react";
+import { getSession } from "../utils.ts"
 
 
 export default function Dashboard() {
@@ -13,7 +12,7 @@ export default function Dashboard() {
         }
     });
 
-    const logout = async (event: SubmitEvent<HTMLButtonElement>) => {
+    const logout = async (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
 
         try {
@@ -36,14 +35,13 @@ export default function Dashboard() {
     };
 
     return (
-        <div className={styles.page}>
+        <div>
             <div>Welcome to Dashboard!</div>
             <div>
                 <button
                     type="submit"
-                    className={styles.link}
                     onClick={logout}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ background: 'none', cursor: 'pointer', padding: 0 }}
                 >
                     logout 
                 </button>
