@@ -15,9 +15,9 @@ createRoot(document.getElementById("root")!).render(
 			<Routes>
 				<Route path="/" element={<App />} />
 				<Route path="/edit/:fileId" element={<EditorPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/dashboard" element={<Dashboard />} />
+				<Route path="/signup" element={<SignupPage />} />
+				<Route path="/login" element={<LoginPage />} />
+				<Route path="/dashboard" element={<Dashboard />} />
 				<Route path="/filebrowser" element={<FileBrowserPage />} />
 			</Routes>
 		</BrowserRouter>

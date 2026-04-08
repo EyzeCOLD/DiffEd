@@ -20,28 +20,30 @@ collabSocket(sockets, postgres);
 /*=======USER SESSION==============*/
 
 declare module "express-session" {
-    interface SessionData {
-        userId: number;
-        username: string;
-    }
+	interface SessionData {
+		userId: number;
+		username: string;
+	}
 }
 
 const pgSession = connectPgSimple(session);
 
-api.use(session({
-    store: new pgSession({
-        pool: postgres,
-        tableName: 'user_sessions',
-    }),
-    secret: 'sessionkey', //TODO! Change to process.env.SECRET_VAR
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        maxAge: 24 * 60 * 60 * 1000, // 1 day
-        httpOnly: true,
-        //secure: true, //for https
-    }
-}));
+api.use(
+	session({
+		store: new pgSession({
+			pool: postgres,
+			tableName: "user_sessions",
+		}),
+		secret: "sessionkey", //TODO! Change to process.env.SECRET_VAR
+		resave: false,
+		saveUninitialized: false,
+		cookie: {
+			maxAge: 24 * 60 * 60 * 1000, // 1 day
+			httpOnly: true,
+			//secure: true, //for https
+		},
+	}),
+);
 
 /*=========USER SESSION END==========*/
 
