@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
 	--text-primary: #dabfff;
 	--text-secondary: #7fdeff;

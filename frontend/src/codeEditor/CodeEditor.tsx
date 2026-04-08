@@ -4,9 +4,9 @@ import {EditorState, Transaction} from "@codemirror/state";
 import {EditorView, ViewUpdate, ViewPlugin, type PluginValue} from "@codemirror/view";
 import {collab, getSyncedVersion, sendableUpdates, receiveUpdates} from "@codemirror/collab";
 import {basicSetup} from "codemirror";
+import keybinds from "./keybinds";
 import langServer from "./langExtensions";
 import {CollabConnection, pushUpdates, pullUpdates, getInitialDocument} from "./collabClient";
-import styles from "./CodeEditor.module.css";
 
 const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
@@ -75,11 +75,15 @@ type CodeEditorProps = {
 	connection: CollabConnection;
 	onChange?: (value: string) => void;
 };
+
 export default function CodeEditor({fileId, connection, onChange}: CodeEditorProps): JSX.Element {
 	const editorRef = useRef<HTMLDivElement>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const onChangeRef = useRef<(value: string) => void>(onChange);
+	const tabUsageHintId = `tab-usage-hint-${fileId}`;
+	const tabUsageHintText =
+		"Tab inserts indentation in the editor. To move keyboard focus away from the editor, first press Escape.";
 
 	useEffect(() => {
 		onChangeRef.current = onChange;
@@ -95,7 +99,7 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 				const {doc, version} = await getInitialDocument(connection);
 				const state = EditorState.create({
 					doc,
-					extensions: [basicSetup, langServer.markdown(), ...peerExtension(version, connection)],
+					extensions: [basicSetup, keybinds, langServer.markdown(), ...peerExtension(version, connection)],
 				});
 
 				const editorView = new EditorView({
@@ -130,19 +134,19 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		};
 	}, [fileId, connection]);
 
-	if (error) {
-		return (
-			<div className={styles.container}>
-				<div ref={editorRef} className={`${styles.editorHost} ${styles.hidden}`} />
-				<div className={styles.errorMessage}>Error initializing editor: {error}</div>
-			</div>
-		);
-	}
-
 	return (
-		<div className={styles.relativeContainer}>
-			<div ref={editorRef} className={styles.editorHost} />
-			{isLoading ? <div className={styles.loadingOverlay}>Initializing collaborative editor...</div> : null}
+		<div className="h-full w-full">
+			<div className="relative h-full w-full" aria-describedby={tabUsageHintId}>
+				<div ref={editorRef} className={"h-full w-full" + (error ? " hidden" : "")} />
+				{error ? (
+					<div className="border border-red-500 p-2 text-red-500">Error initializing editor: {error}</div>
+				) : isLoading ? (
+					<div className="p-2">Initializing collaborative editor...</div>
+				) : null}
+			</div>
+			<p id={tabUsageHintId} className="m-0 text-sm text-(--text-secondary)">
+				{tabUsageHintText}
+			</p>
 		</div>
 	);
 }
