@@ -88,6 +88,7 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 	const editorRef = useRef<HTMLDivElement>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [retryCount, setRetryCount] = useState(0);
 	const onChangeRef = useRef<(value: string) => void>(onChange);
 	const tabUsageHintId = `tab-usage-hint-${fileId}`;
 	const tabUsageHintText =
@@ -183,14 +184,25 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 				view = null;
 			}
 		};
-	}, [fileId, connection]);
+	}, [fileId, connection, retryCount]);
+
+	function retryInitialization(): void {
+		setError(null);
+		setIsLoading(true);
+		setRetryCount((count) => count + 1);
+	}
 
 	return (
 		<div className="h-full w-full">
 			<div className="relative h-full w-full" aria-describedby={tabUsageHintId}>
 				<div ref={editorRef} className={"h-full w-full" + (error ? " hidden" : "")} />
 				{error ? (
-					<div className="border border-red-500 p-2 text-red-500">Error initializing editor: {error}</div>
+					<div className="border border-red-500 p-2 text-red-500">
+						<div>Error initializing editor: {error}</div>
+						<button className="mt-2 border px-2 py-1" onClick={retryInitialization} type="button">
+							Retry
+						</button>
+					</div>
 				) : isLoading ? (
 					<div className="p-2">Initializing collaborative editor...</div>
 				) : null}
