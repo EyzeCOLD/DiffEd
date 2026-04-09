@@ -27,6 +27,7 @@ Endpoints.uploadFile(api, postgres);
 Endpoints.editFile(api, postgres);
 Endpoints.uploadMultipleFiles(api, postgres);
 Endpoints.deleteFile(api, postgres);
+Endpoints.downloadFile(api, postgres);
 
 UserEndpoints.signupUser(api, postgres);
 UserEndpoints.loginUser(api, postgres);

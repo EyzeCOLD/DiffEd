@@ -1,5 +1,6 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
+import {Button} from "../components/Button";
 
 function NewFile() {
 	const [newFilename, setNewFilename] = useState<string>();
@@ -25,18 +26,16 @@ function NewFile() {
 
 	return (
 		<>
-			<button onClick={() => setShowFilenamePrompt(!showFilenamePrompt)}>New file</button>
+			<Button onClick={() => setShowFilenamePrompt(!showFilenamePrompt)}>New File</Button>
 			{showFilenamePrompt ? (
-				<form>
-					<input value={newFilename} onChange={(event) => setNewFilename(event.target.value)} />
-					<button
-						onClick={(e) => {
-							e.preventDefault();
-							openNewFile();
-						}}
-					>
-						Submit
-					</button>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault();
+						openNewFile();
+					}}
+				>
+					<input id="fileNameInput" value={newFilename} onChange={(event) => setNewFilename(event.target.value)} />
+					<Button type="submit">Submit</Button>
 				</form>
 			) : null}
 		</>

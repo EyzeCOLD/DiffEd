@@ -1,4 +1,5 @@
 import {useState, useRef} from "react";
+import {Button} from "../components/Button";
 
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
@@ -11,11 +12,6 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 				if (f.size > MAX_FILE_SIZE) {
 					window.alert(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 					console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
-					setFileUploads(null);
-					return;
-				} else if (!f.type.startsWith("text/")) {
-					window.alert(`File '${f.name}' is of unaccepted filetype ${f.type}`);
-					console.error(`File '${f.name}' is of unaccepted filetype ${f.type}`);
 					setFileUploads(null);
 					return;
 				}
@@ -64,28 +60,24 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 					multiple
 					onChange={handleFileChange}
 				/>
-				<button onClick={() => fileInputRef.current?.click()}>Upload Files</button>
+				<Button onClick={() => fileInputRef.current?.click()}>Upload Files</Button>
 			</div>
 			{fileUploads && (
 				<>
 					<table>
 						<thead>
-							<th>filename</th>
-							<th>size</th>
-							<th>type</th>
+							<th>file(s)</th>
 						</thead>
 						<tbody>
 							{fileUploads &&
 								[...fileUploads].map((file) => (
 									<tr key={file.name}>
-										<td>{file.name}</td>
-										<td>{file.size} bytes</td>
-										<td>{file.type}</td>
+										<td>🗎 {file.name}</td>
 									</tr>
 								))}
 						</tbody>
 					</table>
-					<button onClick={handleUpload}>Submit</button>
+					<Button onClick={() => handleUpload()}>Submit</Button>
 				</>
 			)}
 		</>
