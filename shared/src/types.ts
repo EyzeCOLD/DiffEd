@@ -1,5 +1,3 @@
-export type Placeholder = string;
-
 // id here for testing
 export type UserFile = {
 	id: string;
