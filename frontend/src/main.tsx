@@ -9,6 +9,7 @@ import EditorPage from "./codeEditor/Editor.page.tsx";
 import FileBrowserPage from "./dashboard/FileBrowser.page.tsx";
 import Dashboard from "./user/dashboard.page.tsx";
 import UserLayout from "./user/layout/UserLayout.tsx";
+import UserManagementPage from "./user/userManagement.page.tsx";
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
@@ -21,6 +22,7 @@ createRoot(document.getElementById("root")!).render(
 					<Route path="/dashboard" element={<Dashboard />} />
 					<Route path="/filebrowser" element={<FileBrowserPage />} />
 					<Route path="/edit/:fileId" element={<EditorPage />} />
+                    <Route path="/usermanagement" element={<UserManagementPage />} />
 				</Route>
 			</Routes>
 		</BrowserRouter>

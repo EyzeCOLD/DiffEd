@@ -4,13 +4,6 @@ import pgPromise from "pg-promise";
 import argon2 from "argon2";
 import {SignupSchema} from "../validation/schemas.js";
 import {z} from "zod";
-import rateLimit from "express-rate-limit";
-
-const limiter = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 min (how long to remember requests for)
-	limit: 5, // 5 attempts per 15 min
-	message: "Too many login attempts, please try again later.",
-});
 
 function signupUser(app: Express, db: Pool) {
 	app.post("/api/signup", async (req, res) => {
@@ -45,65 +38,56 @@ function signupUser(app: Express, db: Pool) {
 	});
 }
 
-function loginUser(app: Express, db: Pool) {
-	app.post("/api/session", limiter, async (req, res) => {
-		const {loginIdentifier, password} = req.body;
+//const modifyUser = (app: Express, db: Pool) => {
+//    app.put
+//}
 
-		try {
-			const result = await db.query("SELECT * FROM users WHERE username = $1 OR email = $1", [loginIdentifier]);
+const deleteUser = (app: Express, db: Pool) => {
+    app.delete("/api/user", async (req, res) => {
+        if (req.session.userId) {
+            const user = req.session.userId;
+            try {
+                await db.query("DELETE FROM users WHERE id = $1", [user]);
 
-			if (result.rows.length === 0) {
-				console.log("No such user:", loginIdentifier);
-				return res.status(401).json({error: "Incorrect username or password"});
-			}
-
-			const user = result.rows[0];
-			const match = await argon2.verify(user.hashed_password, password);
-
-			if (!match) {
-				console.log("Invalid password for existing user");
-				return res.status(401).json({error: "Incorrect username or password"});
-			}
-			console.log("Authentication success!");
-			// Generate a session and add requesting users id and username to the session
-			req.session.regenerate((err) => {
-				if (err) return res.status(500).json({error: "Session error"});
-
-				req.session.userId = user.id;
-				req.session.username = user.username;
-
-				req.session.save((err) => {
-					if (err) return res.status(500).json({error: "Session save failed"});
-
-					res.status(200).json({message: "Login successful"});
-				});
-			});
-		} catch (err) {
-			console.log("Error authenticating user: ", err);
-			res.status(500).json({error: "Internal server error"});
-		}
-	});
+                res.clearCookie("connect.sid");
+                res.status(200).send();
+            } catch (err) {
+                console.log("Error deleting user: ", err);
+                res.status(400).json({ error: "Couldn't delete use at this time" });
+            }
+        } else {
+            res.status(404).json({ error: "User not found" });
+        }
+    });
 }
 
-function logoutUser(app: Express) {
-	app.delete("/api/session", (req, res) => {
-		req.session.destroy((err) => {
-			if (err) return res.status(500).json({error: "Logout failed"});
-			res.clearCookie("connect.sid");
-			res.status(200).send();
-		});
-	});
+const getUser = (app: Express, db: Pool) => {
+    app.get("/api/user", async (req, res) => {
+        if (req.session.userId) {
+            const user = req.session.userId;
+            try {
+                const result = await db.query("SELECT username, email FROM users WHERE id = $1", [user]);
+
+                if (result.rows.length === 0) {
+                    throw new Error("No query result");
+                }
+                console.log(result.rows[0])
+
+                const obj = {
+                    username: result.rows[0].username,
+                    email: result.rows[0].email,
+                }
+
+                res.status(200).json(obj);
+
+            } catch (err) {
+                console.log("Error fetching user: ", err);
+                res.status(400).json({ error: "Internal Server error" });
+            }
+        } else {
+            res.status(404).json({ error: "User not found" });
+        }
+    });
 }
 
-// TODO: This function could query and return the user data
-function getSession(app: Express) {
-	app.get("/api/session", (req, res) => {
-		if (req.session.userId) {
-			res.status(200).send();
-		} else {
-			res.status(404).send();
-		}
-	});
-}
-
-export default {signupUser, loginUser, logoutUser, getSession};
+export default {signupUser, deleteUser, getUser};
