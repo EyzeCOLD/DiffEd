@@ -37,7 +37,12 @@ export default function Dashboard() {
 		<div>
 			<div>Welcome to Dashboard!</div>
 			<div>
-				<button type="submit" onClick={logout} style={{background: "none", cursor: "pointer", padding: 0}}>
+                <button onClick={() => navigate("/usermanagement")} style={{background: "none", cursor: "pointer", padding: 0}}>
+					user management
+				</button>
+            </div>
+            <div>
+				<button onClick={logout} style={{background: "none", cursor: "pointer", padding: 0}}>
 					logout
 				</button>
 			</div>
