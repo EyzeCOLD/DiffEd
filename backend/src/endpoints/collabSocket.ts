@@ -199,9 +199,9 @@ function collabSocket(sockets: Server, db: Pool) {
 		socket.on("collabRequest", async (data: CollabRequest) => {
 			const {id, type, fileId} = data;
 
-			const sendResponse = (result: unknown) => {
+			function sendResponse(result: unknown) {
 				socket.emit("collabResponse", {id, result});
-			};
+			}
 
 			try {
 				if (!fileId || fileId.length === 0) {
@@ -232,10 +232,10 @@ function collabSocket(sockets: Server, db: Pool) {
 							sendResponse(serializeUpdates(session.updates.slice(data.version)));
 						} else if (data.version === session.updates.length) {
 							session.pending.push((newUpdates: SerializedUpdate[]) => {
-								sendResponse(newUpdates);
+								sendResponse(newUpdates satisfies SerializedUpdate[]);
 							});
 						} else {
-							sendResponse([]);
+							sendResponse([] satisfies SerializedUpdate[]);
 						}
 						break;
 					}
@@ -272,7 +272,7 @@ function collabSocket(sockets: Server, db: Pool) {
 					case "pushFileName": {
 						const nextNameRaw = data.name;
 						if (typeof nextNameRaw !== "string") {
-							sendResponse({error: "Invalid file name"});
+							sendResponse({error: "Invalid file name"} satisfies ErrorResponse);
 							return;
 						}
 
@@ -289,7 +289,7 @@ function collabSocket(sockets: Server, db: Pool) {
 				}
 			} catch (error) {
 				timestampedLog(`Error handling collab request (${type}): ${error}`);
-				sendResponse({error: String(error)});
+				sendResponse({error: String(error)} satisfies ErrorResponse);
 			}
 		});
 	});
