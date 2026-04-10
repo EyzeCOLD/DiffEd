@@ -7,28 +7,30 @@ function NewFile() {
 	const [showFilenamePrompt, setShowFilenamePrompt] = useState(false);
 	const navigate = useNavigate();
 
-	function openNewFile() {
-		fetch("/api/files", {
-			method: "POST",
-			body: JSON.stringify({name: newFilename}),
-			headers: [["Content-Type", "application/json"] as [string, string]],
-		} satisfies RequestInit)
-			.then((response) => {
-				if (response.status === 409) {
-					const text = response.text();
-					console.error(`${text}`);
-					window.alert(`${text}`);
-					return;
-				} else if (!response.ok) {
-					console.error("File creation failed!");
-					return;
-				}
-				console.log("New file created!");
-				return response.json();
-			})
-			.then((f) => {
-				if (f) navigate(`/edit/${f.id}`);
-			});
+	async function openNewFile() {
+		try {
+			const result = await fetch("/api/files", {
+				method: "POST",
+				body: JSON.stringify({name: newFilename}),
+				headers: [["Content-Type", "application/json"] as [string, string]],
+			} satisfies RequestInit);
+
+			const res = await result.json();
+
+			if (result.status === 409) {
+				console.error(`${res.error}`);
+				window.alert(`${res.error}`);
+				return;
+			} else if (!result.ok) {
+				console.error("File creation failed!");
+				return;
+			}
+
+			console.log("New file created!");
+			if (res) navigate(`/edit/${res.id}`);
+		} catch (error) {
+			console.error(error);
+		}
 	}
 
 	return (

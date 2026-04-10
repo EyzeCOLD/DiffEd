@@ -37,9 +37,9 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 				});
 
 				if (result.status === 409) {
-					const text = await result.text();
-					console.error(`${text}`);
-					window.alert(`${text}`);
+					const res = await result.json();
+					console.error(`${res.error.detail}`);
+					window.alert(`${res.error.detail}`);
 					setFileUploads(null);
 					return;
 				}
