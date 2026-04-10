@@ -5,7 +5,7 @@ import argon2 from "argon2";
 import {SignupSchema} from "../validation/schemas.js";
 import {z} from "zod";
 
-const signupUser = (app: Express, db: Pool) => {
+function signupUser(app: Express, db: Pool) {
 	app.post("/api/signup", async (req, res) => {
 		const {username, email, password} = req.body;
 
@@ -36,58 +36,57 @@ const signupUser = (app: Express, db: Pool) => {
 			}
 		}
 	});
-};
+}
 
 //const modifyUser = (app: Express, db: Pool) => {
 //    app.put
 //}
 
-const deleteUser = (app: Express, db: Pool) => {
-    app.delete("/api/user", async (req, res) => {
-        if (req.session.userId) {
-            const user = req.session.userId;
-            try {
-                await db.query("DELETE FROM users WHERE id = $1", [user]);
+function deleteUser(app: Express, db: Pool) {
+	app.delete("/api/user", async (req, res) => {
+		if (req.session.userId) {
+			const user = req.session.userId;
+			try {
+				await db.query("DELETE FROM users WHERE id = $1", [user]);
 
-                res.clearCookie("connect.sid");
-                res.status(200).send();
-            } catch (err) {
-                console.log("Error deleting user: ", err);
-                res.status(400).json({ error: "Couldn't delete use at this time" });
-            }
-        } else {
-            res.status(404).json({ error: "User not found" });
-        }
-    });
+				res.clearCookie("connect.sid");
+				res.status(200).send();
+			} catch (err) {
+				console.log("Error deleting user: ", err);
+				res.status(400).json({error: "Couldn't delete use at this time"});
+			}
+		} else {
+			res.status(404).json({error: "User not found"});
+		}
+	});
 }
 
-const getUser = (app: Express, db: Pool) => {
-    app.get("/api/user", async (req, res) => {
-        if (req.session.userId) {
-            const user = req.session.userId;
-            try {
-                const result = await db.query("SELECT username, email FROM users WHERE id = $1", [user]);
+function getUser(app: Express, db: Pool) {
+	app.get("/api/user", async (req, res) => {
+		if (req.session.userId) {
+			const user = req.session.userId;
+			try {
+				const result = await db.query("SELECT username, email FROM users WHERE id = $1", [user]);
 
-                if (result.rows.length === 0) {
-                    throw new Error("No query result");
-                }
-                console.log(result.rows[0])
+				if (result.rows.length === 0) {
+					throw new Error("No query result");
+				}
+				console.log(result.rows[0]);
 
-                const obj = {
-                    username: result.rows[0].username,
-                    email: result.rows[0].email,
-                }
+				const obj = {
+					username: result.rows[0].username,
+					email: result.rows[0].email,
+				};
 
-                res.status(200).json(obj);
-
-            } catch (err) {
-                console.log("Error fetching user: ", err);
-                res.status(400).json({ error: "Internal Server error" });
-            }
-        } else {
-            res.status(404).json({ error: "User not found" });
-        }
-    });
+				res.status(200).json(obj);
+			} catch (err) {
+				console.log("Error fetching user: ", err);
+				res.status(400).json({error: "Internal Server error"});
+			}
+		} else {
+			res.status(404).json({error: "User not found"});
+		}
+	});
 }
 
 export default {signupUser, deleteUser, getUser};

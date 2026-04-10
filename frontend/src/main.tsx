@@ -20,7 +20,7 @@ createRoot(document.getElementById("root")!).render(
 				<Route path="/login" element={<LoginPage />} />
 				<Route path="/dashboard" element={<Dashboard />} />
 				<Route path="/filebrowser" element={<FileBrowserPage />} />
-                <Route path="/usermanagement" element={<UserManagementPage />} />
+				<Route path="/usermanagement" element={<UserManagementPage />} />
 			</Routes>
 		</BrowserRouter>
 	</StrictMode>,

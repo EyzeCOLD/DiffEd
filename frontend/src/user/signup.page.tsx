@@ -22,7 +22,7 @@ export default function SignupPage() {
 		});
 	}, [navigate]);
 
-	const signup = async (event: SubmitEvent<HTMLFormElement>) => {
+	async function signup(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 
 		try {
@@ -62,7 +62,7 @@ export default function SignupPage() {
 			// TODO! Add the toast
 			window.alert(e);
 		}
-	};
+	}
 
 	// TODO: should we use maxlength for the input fields?
 	return (

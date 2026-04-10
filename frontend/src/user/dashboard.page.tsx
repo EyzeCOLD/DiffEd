@@ -11,7 +11,7 @@ export default function Dashboard() {
 		}
 	});
 
-	const logout = async (event: MouseEvent<HTMLButtonElement>) => {
+	async function logout(event: MouseEvent<HTMLButtonElement>) {
 		event.preventDefault();
 
 		try {
@@ -31,17 +31,17 @@ export default function Dashboard() {
 			console.log("Logout error:", e);
 			window.alert("Network error. Please try again.");
 		}
-	};
+	}
 
 	return (
 		<div>
 			<div>Welcome to Dashboard!</div>
 			<div>
-                <button onClick={() => navigate("/usermanagement")} style={{background: "none", cursor: "pointer", padding: 0}}>
+				<button onClick={() => navigate("/usermanagement")} style={{background: "none", cursor: "pointer", padding: 0}}>
 					user management
 				</button>
-            </div>
-            <div>
+			</div>
+			<div>
 				<button onClick={logout} style={{background: "none", cursor: "pointer", padding: 0}}>
 					logout
 				</button>
