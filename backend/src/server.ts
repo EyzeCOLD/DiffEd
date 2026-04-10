@@ -4,8 +4,11 @@ import {createServer} from "node:http";
 import {Server} from "socket.io";
 import helmetSecurity from "helmet";
 import {postgres} from "./postgres.js";
+import sessionConfig from "./sessionConfig.js";
 import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
+import UserEndpoints from "./endpoints/users.js";
+
 import {collabSocket} from "./endpoints/collabSocket.js";
 
 const api = express();
@@ -13,6 +16,7 @@ const server = createServer(api);
 const sockets = new Server(server, {cors: {origin: "*"}});
 collabSocket(sockets, postgres);
 
+api.use(sessionConfig);
 api.use(express.static("../frontend/dist"));
 api.use(express.json());
 api.use(helmetSecurity());
@@ -23,6 +27,11 @@ Endpoints.uploadFile(api, postgres);
 Endpoints.editFile(api, postgres);
 Endpoints.uploadMultipleFiles(api, postgres);
 Endpoints.deleteFile(api, postgres);
+
+UserEndpoints.signupUser(api, postgres);
+UserEndpoints.loginUser(api, postgres);
+UserEndpoints.logoutUser(api);
+UserEndpoints.getSession(api);
 
 // Catch-all to serve the frontend, needed for subroutes.
 api.get("/*splat", function (request, response) {

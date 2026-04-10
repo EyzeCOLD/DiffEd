@@ -5,6 +5,12 @@ export type UserFile = {
 	content: string;
 };
 
+export type SigningUser = {
+	username: string;
+	email: string;
+	password: string;
+};
+
 export type ErrorResponse = {
 	error: string;
 };
