@@ -25,7 +25,6 @@ app.use(helmetSecurity());
 
 Endpoints.getFiles(app, postgres);
 Endpoints.getFileById(app, postgres);
-Endpoints.createNewFile(app, postgres);
 Endpoints.uploadFiles(app, postgres);
 Endpoints.deleteFile(app, postgres);
 Endpoints.downloadFile(app, postgres);

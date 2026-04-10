@@ -7,8 +7,12 @@ import type {UserFile, ApiResponse} from "#shared/src/types.js";
 import {isDbError, isUniqueViolation} from "#/src/utils.js";
 
 import multer from "multer";
-const storage = multer.memoryStorage();
-const upload = multer({storage: storage});
+
+// doing #shared does not work for some reason
+// having is text or binary package only in shard is not enought for some reason, also need in backend
+import {fileNotValid} from "../../../shared/src/fileTypeCheck.js";
+
+// doing #shared does not work for some reason
 
 function getFiles(app: Express, db: Pool) {
 	app.get("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile[]>>) => {
@@ -20,7 +24,7 @@ function getFiles(app: Express, db: Pool) {
 
 		try {
 			const result = await db.query(query, [req.session.userId]);
-
+			console.log({ok: true, data: result.rows});
 			return res.status(200).json({ok: true, data: result.rows});
 		} catch (error: unknown) {
 			if (isDbError(error)) {
@@ -66,47 +70,14 @@ function getFileById(app: Express, db: Pool) {
 	});
 }
 
-function createNewFile(app: Express, db: Pool) {
-	app.post("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile["id"]>>) => {
-		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-		const body = UserFileSchema.pick({name: true}).strict().safeParse(req.body);
-		if (body.error) {
-			return res.status(400).json({ok: false, error: "Bad request"});
-		}
-
-		const newFile: UserFile = {
-			id: crypto.randomUUID(),
-			name: body.data.name,
-			content: "",
-			owner_id: req.session.userId!,
-		};
-
-		const query = `INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id`;
-		timestampedLog(`DB QUERY >>> ${query}`);
-		timestampedLog(`DB VALUES >>> ${JSON.stringify(newFile)}`);
-
-		try {
-			const result = await db.query(query, Object.values(newFile));
-
-			return res.status(201).json({ok: true, data: result.rows[0].id});
-		} catch (error: unknown) {
-			if (isDbError(error) && isUniqueViolation(error)) {
-				return res.status(409).json({ok: false, error: `A file with name '${newFile.name}' already exists`});
-			}
-
-			if (isDbError(error)) {
-				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
-			} else {
-				timestampedLog(`ERROR <<< ${error}`);
-			}
-			return res.status(500).json({ok: false, error: "Internal server error"});
-		}
-	});
-}
+// const storage = multer.memoryStorage();
+const upload = multer({
+	storage: multer.memoryStorage(),
+});
 
 function uploadFiles(app: Express, db: Pool) {
 	app.post(
-		"/api/files/upload",
+		"/api/files",
 		requireAuth,
 		upload.array("file", 100),
 		async (req: Request, res: Response<ApiResponse<null>>) => {
@@ -122,10 +93,22 @@ function uploadFiles(app: Express, db: Pool) {
 				return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`;
 			});
 
-			const query = `INSERT INTO files (id, name, content, owner_id) VALUES ${rows.join(", ")}`;
-			const values = req.files.flatMap((file) => {
-				return [crypto.randomUUID(), file.originalname, file.buffer.toString(), req.session.userId];
-			});
+			const query = `INSERT INTO files (id, name, content, owner_id) VALUES ${rows.join(", ")} RETURNING id;`;
+
+			let values;
+			try {
+				values = req.files.flatMap((file) => {
+					const content: string = file.buffer.toString("utf8");
+					const err: string | null = fileNotValid(file.mimetype, file.size, content);
+					if (err) throw {reasonText: `file '${file.originalname}' is ${err}`};
+
+					return [crypto.randomUUID(), file.originalname, content, req.session.userId];
+				});
+			} catch (error: unknown) {
+				if (typeof error === "object" && error !== null && "reasonText" in error)
+					return res.status(415).json({ok: false, error: error.reasonText as string});
+				else throw error;
+			}
 			timestampedLog(`DB QUERY >>> ${query}`);
 			timestampedLog(`DB VALUES >>> ${JSON.stringify(values)}`);
 
@@ -219,4 +202,4 @@ function downloadFile(app: Express, db: Pool) {
 	});
 }
 
-export default {getFiles, getFileById, createNewFile, uploadFiles, deleteFile, downloadFile};
+export default {getFiles, getFileById, uploadFiles, deleteFile, downloadFile};

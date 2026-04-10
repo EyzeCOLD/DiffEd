@@ -16,10 +16,13 @@ function NewFile({onCreated}: NewFileProps): JSX.Element {
 	const showToast = useShowToast();
 
 	async function openNewFile() {
+		const formData = new FormData();
+		const file = new File([""], newFilename!, {type: "text/weee"});
+		formData.append("file", file);
+
 		const fileResult = await apiFetch<string>("/api/files", {
 			method: "POST",
-			body: JSON.stringify({name: newFilename}),
-			headers: [["Content-Type", "application/json"] as [string, string]],
+			body: formData,
 		});
 
 		if (!fileResult.ok) {
