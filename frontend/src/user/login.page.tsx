@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
 import {getSession} from "../utils.ts";
@@ -8,11 +8,13 @@ export default function LoginPage() {
 	const [loginPassword, setLoginPassword] = useState("");
 	const navigate = useNavigate();
 
-	getSession().then((isLoggedIn) => {
-		if (isLoggedIn) {
-			navigate("/dashboard");
-		}
-	});
+	useEffect(() => {
+		getSession().then((isLoggedIn) => {
+			if (isLoggedIn) {
+				navigate("/dashboard");
+			}
+		});
+	}, [navigate]);
 
 	const login = async (event: SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -29,14 +31,15 @@ export default function LoginPage() {
 				body: JSON.stringify({loginIdentifier, password: loginPassword}),
 			});
 			if (!response.ok) {
-				const msg = await response.text();
-				throw new Error(msg);
+				const data = await response.json();
+				console.log(data.error);
+				throw new Error(data.error || "Login failed");
 			}
 			console.log("login successful");
 			navigate("/dashboard");
 		} catch (e) {
 			// TODO! Add the toast
-			window.alert(`Login failed: ${e}`);
+			window.alert(`Login failed. ${e}`);
 		}
 	};
 

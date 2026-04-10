@@ -4,12 +4,11 @@ import {createServer} from "node:http";
 import {Server} from "socket.io";
 import helmetSecurity from "helmet";
 import {postgres} from "./postgres.js";
+import sessionConfig from "./sessionConfig.js";
 import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import UserEndpoints from "./endpoints/users.js";
 
-import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import {collabSocket} from "./endpoints/collabSocket.js";
 
 const api = express();
@@ -17,36 +16,7 @@ const server = createServer(api);
 const sockets = new Server(server, {cors: {origin: "*"}});
 collabSocket(sockets, postgres);
 
-/*=======USER SESSION==============*/
-
-declare module "express-session" {
-	interface SessionData {
-		userId: number;
-		username: string;
-	}
-}
-
-const pgSession = connectPgSimple(session);
-
-api.use(
-	session({
-		store: new pgSession({
-			pool: postgres,
-			tableName: "user_sessions",
-		}),
-		secret: "sessionkey", //TODO! Change to process.env.SECRET_VAR
-		resave: false,
-		saveUninitialized: false,
-		cookie: {
-			maxAge: 24 * 60 * 60 * 1000, // 1 day
-			httpOnly: true,
-			//secure: true, //for https
-		},
-	}),
-);
-
-/*=========USER SESSION END==========*/
-
+api.use(sessionConfig);
 api.use(express.static("../frontend/dist"));
 api.use(express.json());
 api.use(helmetSecurity());

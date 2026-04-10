@@ -2,7 +2,7 @@ import {type Express} from "express";
 import {type Pool} from "pg";
 import pgPromise from "pg-promise";
 import argon2 from "argon2";
-import {UserSignupSchema} from "../validation/schemas.js";
+import {SignupSchema} from "../validation/schemas.js";
 import {z} from "zod";
 import rateLimit from "express-rate-limit";
 
@@ -16,7 +16,7 @@ const signupUser = (app: Express, db: Pool) => {
 		const {username, email, password} = req.body;
 
 		try {
-			UserSignupSchema.parse({username, email, password});
+			SignupSchema.parse({username, email, password});
 			const hash = await argon2.hash(password, {
 				type: argon2.argon2id,
 			});
@@ -28,11 +28,11 @@ const signupUser = (app: Express, db: Pool) => {
 			]);
 
 			console.log("Successfully created user");
-			res.status(201).json({success: "User Created"});
+			res.status(201).send();
 		} catch (err: unknown) {
 			if (err instanceof pgPromise.errors.QueryResultError && err.code === (23505 as number)) {
 				console.log("Client tried to create user with already existing name or email");
-				res.status(409).send("Username or email already in use");
+				res.status(409).json({error: "Username or email already in use"});
 			} else if (err instanceof z.ZodError) {
 				const msg = err.issues[0].message;
 				res.status(401).json({error: msg});
@@ -89,7 +89,7 @@ const logoutUser = (app: Express) => {
 		req.session.destroy((err) => {
 			if (err) return res.status(500).json({error: "Logout failed"});
 			res.clearCookie("connect.sid");
-			res.json({message: "Logged out"});
+			res.status(200).send();
 		});
 	});
 };

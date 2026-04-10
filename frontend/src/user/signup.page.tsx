@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import type {SubmitEvent} from "react";
 import type {SigningUser} from "#shared/src/types";
@@ -14,11 +14,13 @@ export default function SignupPage() {
 	const [password2, setUserPassword2] = useState("");
 	const navigate = useNavigate();
 
-	getSession().then((isLoggedIn) => {
-		if (isLoggedIn) {
-			navigate("/dashboard");
-		}
-	});
+	useEffect(() => {
+		getSession().then((isLoggedIn) => {
+			if (isLoggedIn) {
+				navigate("/dashboard");
+			}
+		});
+	}, [navigate]);
 
 	const signup = async (event: SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -50,9 +52,10 @@ export default function SignupPage() {
 				body: JSON.stringify(newUser),
 			});
 			if (!response.ok) {
-				const msg = await response.text();
-				throw new Error(msg);
+				const data = await response.json();
+				throw new Error(data.error);
 			}
+			//TODO: Let the user briefly know about successful registration and then navigate to login page
 			console.log("Signup successful");
 			navigate("/login");
 		} catch (e) {
