@@ -23,7 +23,7 @@ api.use(helmetSecurity());
 
 Endpoints.getFiles(api, postgres);
 Endpoints.getFileById(api, postgres);
-Endpoints.uploadFile(api, postgres);
+Endpoints.uploadNewFile(api, postgres);
 Endpoints.editFile(api, postgres);
 Endpoints.uploadMultipleFiles(api, postgres);
 Endpoints.deleteFile(api, postgres);

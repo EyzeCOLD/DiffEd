@@ -6,24 +6,22 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const MAX_FILE_SIZE = 1000000; // 1meg
 
-	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (e.target.files) {
-			for (const f of e.target.files) {
-				if (f.size > MAX_FILE_SIZE) {
-					window.alert(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
-					console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
-					setFileUploads(null);
-					return;
-				}
+	function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+		if (!e.target.files) return;
+
+		for (const f of e.target.files) {
+			if (f.size > MAX_FILE_SIZE) {
+				window.alert(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
+				console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
+				setFileUploads(null);
+				return;
 			}
 		}
 
-		if (e.target.files) {
-			setFileUploads(e.target.files);
-		}
-	};
+		setFileUploads(e.target.files);
+	}
 
-	const handleUpload = async () => {
+	async function handleUpload() {
 		if (fileUploads) {
 			console.log("Uploading file(s)...", fileUploads);
 
@@ -38,6 +36,14 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 					body: formData,
 				});
 
+				if (result.status === 409) {
+					const text = await result.text();
+					console.error(`${text}`);
+					window.alert(`${text}`);
+					setFileUploads(null);
+					return;
+				}
+
 				const data = await result.json();
 				refreshFileList();
 				setFileUploads(null);
@@ -47,7 +53,7 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 				console.error(error);
 			}
 		}
-	};
+	}
 
 	return (
 		<>

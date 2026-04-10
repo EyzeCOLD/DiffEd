@@ -14,14 +14,21 @@ function NewFile() {
 			headers: [["Content-Type", "application/json"] as [string, string]],
 		} satisfies RequestInit)
 			.then((response) => {
-				if (!response.ok) {
+				if (response.status === 409) {
+					const text = response.text();
+					console.error(`${text}`);
+					window.alert(`${text}`);
+					return;
+				} else if (!response.ok) {
 					console.error("File creation failed!");
 					return;
 				}
 				console.log("New file created!");
 				return response.json();
 			})
-			.then((f) => navigate(`/edit/${f.id}`));
+			.then((f) => {
+				if (f) navigate(`/edit/${f.id}`);
+			});
 	}
 
 	return (
