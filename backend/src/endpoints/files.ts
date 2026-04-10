@@ -187,4 +187,32 @@ const deleteFile = (app: Express, db: Pool) => {
 	});
 };
 
-export default {getFiles, getFileById, uploadFile, uploadMultipleFiles, editFile, deleteFile};
+function downloadFile(app: Express, db: Pool) {
+	app.get("/api/download/:fileId", async (req, res) => {
+		timestampedLog("Received request to " + req.baseUrl);
+
+		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
+		if (!fileId.success) return res.status(400).send("Invalid file ID");
+
+		try {
+			const id = fileId.data;
+			timestampedLog(`Sent SELECT query to DB: id:[${id}]`);
+			const result = await db.query("Select * FROM files WHERE id = $1", [id]);
+			if (result.rowCount != 1) {
+				console.error("Invalid file ID");
+				return res.status(403).send();
+			} else {
+				const file = result.rows[0];
+				console.log(file);
+				res.setHeader("Content-Disposition", `attachment; filename="${file.name}"`);
+				res.setHeader("Content-Type", "text/plain");
+				return res.status(200).send(file.content);
+			}
+		} catch (error) {
+			console.error(`Error: ${error}`);
+			return res.status(500).send();
+		}
+	});
+}
+
+export default {getFiles, getFileById, uploadFile, uploadMultipleFiles, editFile, deleteFile, downloadFile};

@@ -1,106 +1,78 @@
 @import "tailwindcss";
 
-:root {
-	--text-primary: #dabfff;
-	--text-secondary: #7fdeff;
+@theme {
+	--color-foreground: #dabfff;
+	--color-accent: #7fdeff;
+	--color-canvas: #2c2a4a;
+	--color-surface: #4f518c;
 
-	--background-primary: #2c2a4a;
-	--background-secondary: #4f518c;
-
-	background-color: var(--background-primary);
+	--font-family-sans: Arial, sans-serif;
 }
 
-@media (prefers-color-scheme: light) {
-	html {
-		color-scheme: light;
+@layer base {
+	:root {
+		background-color: var(--color-canvas);
 	}
-}
 
-html,
-body {
-	max-width: 100vw;
-	overflow-x: hidden;
-}
+	@media (prefers-color-scheme: light) {
+		html {
+			color-scheme: light;
+		}
+	}
 
-body {
-	color: var(--text-primary);
-	background-color: var(--background-primary);
-	font-family: Arial, sans-serif;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-}
+	html,
+	body {
+		max-width: 100vw;
+		overflow-x: hidden;
+	}
 
-* {
-	box-sizing: border-box;
-	padding: 0;
-	margin: 0;
-}
+	body {
+		color: var(--color-foreground);
+		background-color: var(--color-canvas);
+		@apply font-sans antialiased;
+	}
 
-a {
-	text-decoration: none;
-}
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+		padding: 0;
+		margin: 0;
+	}
 
-table {
-	border-collapse: collapse;
-}
+	a {
+		text-decoration: none;
+	}
 
-td,
-th {
-	border: 1px solid var(--background-secondary);
-	padding: 2px;
-	padding: 4px 4px;
-}
+	input {
+		@apply border-2 border-surface;
+	}
 
-th {
-	text-align: left;
-	padding: 2px;
-	padding-left: 8px;
-	padding-right: 8px;
-}
+	table {
+		@apply border-collapse;
+	}
 
-button {
-	background-color: var(--background-secondary);
-	padding: 4px 4px;
-	margin: 4px 2px;
-}
+	th {
+		@apply text-left px-2;
+	}
 
-button:focus {
-	outline: unset;
-}
-
-button,
-a,
-summary,
-input[type="checkbox"],
-select {
-	color: inherit;
-	cursor: pointer;
-}
-button,
-a,
-summary,
-input,
-textarea {
-	font-size: inherit;
-	font-family: inherit;
-}
-
-::-webkit-scrollbar {
-	width: 0.65rem;
-	height: 0.65rem;
-}
-::-webkit-scrollbar-track {
-	background-color: transparent;
-	margin: 0.2rem;
-}
-::-webkit-scrollbar-corner {
-	background-color: transparent;
-}
-::-webkit-scrollbar-thumb {
-	background-color: var(--text-secondary);
-	border: 0.15rem solid var(--text-secondary);
-	border-radius: 1rem;
-}
-::-webkit-scrollbar-thumb:hover {
-	border-color: var(--background-primary);
+	::-webkit-scrollbar {
+		width: 0.65rem;
+		height: 0.65rem;
+	}
+	::-webkit-scrollbar-track {
+		background-color: transparent;
+		margin: 0.2rem;
+	}
+	::-webkit-scrollbar-corner {
+		background-color: transparent;
+	}
+	::-webkit-scrollbar-thumb {
+		background-color: var(--color-accent);
+		border: 0.15rem solid var(--color-accent);
+		border-radius: 1rem;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		border-color: var(--color-canvas);
+	}
 }
