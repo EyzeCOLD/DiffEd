@@ -1,7 +1,5 @@
-import {type Placeholder, type UserFile, type SigningUser} from "#shared/src/types.js";
+import {type UserFile, type SigningUser} from "#shared/src/types.js";
 import {z, type ZodType} from "zod";
-
-export const placeholderSchema = z.string() satisfies ZodType<Placeholder>;
 
 const passwordSchema = z
 	.string()
