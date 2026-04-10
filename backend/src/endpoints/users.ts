@@ -35,7 +35,7 @@ const signupUser = (app: Express, db: Pool) => {
 				res.status(409).json({error: "Username or email already in use"});
 			} else if (err instanceof z.ZodError) {
 				const msg = err.issues[0].message;
-				res.status(401).json({error: msg});
+				res.status(400).json({error: msg});
 			} else {
 				console.error("Error creating user", err);
 				res.status(500).json({error: "Internal server error"});
