@@ -16,7 +16,7 @@ export default function LoginPage() {
 		});
 	}, [navigate]);
 
-	const login = async (event: SubmitEvent<HTMLFormElement>) => {
+	async function login(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 
 		try {
@@ -41,7 +41,7 @@ export default function LoginPage() {
 			// TODO! Add the toast
 			window.alert(`Login failed. ${e}`);
 		}
-	};
+	}
 
 	//should we use maxlength for the input fields?
 	return (
