@@ -1,10 +1,17 @@
 import {type Express} from "express";
 import {Pool} from "pg";
 import {timestampedLog} from "#/src/logging.js";
+<<<<<<< HEAD
 import {UserFileSchema} from "#/src/validation/schemas.js";
 import {requireAuth} from "#/src/middleware.js";
+=======
+import {UserFileSchema} from "../../../shared/src/schemas.js";
+>>>>>>> 0407f6f (testing with removing file download endpoint and having getfiles endpoint just return id and filename)
 import z from "zod";
 import multer from "multer";
+
+// doing #shared does not work for some reason
+// having is text or binary package only in shard is not enought for some reason, also need in backend
 import {fileTypeIsValid} from "../../../shared/src/fileTypeCheck.js";
 
 // Type guard. Makes a type assertion for the error for TS.
@@ -19,7 +26,7 @@ function getFiles(app: Express, db: Pool) {
 
 		try {
 			timestampedLog("Sent SELECT query to DB: all files for user " + req.session.userId);
-			const result = await db.query(`SELECT * FROM files WHERE owner_id = $1`, [req.session.userId]);
+			const result = await db.query(`SELECT id, name FROM files WHERE owner_id = $1`, [req.session.userId]);
 			return res.status(200).json(result.rows);
 		} catch (error) {
 			console.log(`Error: ${error}`);
@@ -43,12 +50,12 @@ function getFileById(app: Express, db: Pool) {
 			const id = fileId.data;
 			timestampedLog(`Sent SELECT query to DB: id:[${id}]`);
 			const result = await db.query("SELECT * FROM files WHERE id = $1 AND owner_id = $2", [id, req.session.userId]);
-			if (result.rowCount != 1) {
+			if (result.rowCount !== 1) {
 				console.log("Not found");
 				res.status(403).send();
 				return;
 			} else {
-				console.log(result.rows);
+				console.log(result.rows[0]);
 				res.status(200).json(result.rows[0]);
 				return;
 			}
@@ -67,8 +74,9 @@ const upload = multer({
 		fileSize: 1 * 1024 * 1024,
 	},
 	fileFilter: (req, file, callback) => {
-		if (fileTypeIsValid(file.mimetype, file.buffer)) {
-			callback(new Error(`Invalid mime-type (filetype) for file:'${file.originalname}'`));
+		if (!fileTypeIsValid(file.mimetype, file.buffer)) {
+			callback(new Error(`Invalid mime-type(filetype): '${file.mimetype}' for file:'${file.originalname}'`));
+
 			return;
 		} else {
 			callback(null, true);
@@ -171,7 +179,7 @@ function editFile(app: Express, db: Pool) {
 				fileId.data,
 				req.session.userId,
 			]);
-			if (!result.rowCount || result.rowCount < 1) {
+			if (result.rowCount !== 1) {
 				res.status(403).send();
 				return;
 			}
@@ -201,7 +209,7 @@ function deleteFile(app: Express, db: Pool) {
 				req.session.userId,
 			]);
 			console.log(`result of DELETE query to DB: id:[${fileId.data}], deleted rows count:`, result.rowCount);
-			if (!result.rowCount || result.rowCount < 1) {
+			if (result.rowCount !== 1) {
 				res.status(403).send();
 				return;
 			}
@@ -226,7 +234,7 @@ function downloadFile(app: Express, db: Pool) {
 			const id = fileId.data;
 			timestampedLog(`Sent SELECT query to DB: id:[${id}]`);
 			const result = await db.query("SELECT * FROM files WHERE id = $1 AND owner_id = $2", [id, req.session.userId]);
-			if (result.rowCount != 1) {
+			if (result.rowCount !== 1) {
 				console.error("Invalid file ID");
 				return res.status(403).send();
 			} else {

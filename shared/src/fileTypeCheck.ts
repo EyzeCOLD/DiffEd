@@ -8,7 +8,10 @@ export function fileTypeIsValid(fileType: string, buffer?: Buffer<ArrayBufferLik
 		}
 	}
 	if (buffer) {
-		if (isBinary(null, buffer)) return false;
+		if (isBinary(null, buffer)) {
+			console.log("file is binary");
+			return false;
+		}
 	}
 	return true;
 }

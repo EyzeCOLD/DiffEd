@@ -1,4 +1,4 @@
-import {type UserFile, type SigningUser} from "#shared/src/types.js";
+import {type UserFile, type SigningUser} from "../src/types.js"; // huh???
 import {z, type ZodType} from "zod";
 
 export const passwordSchema = z

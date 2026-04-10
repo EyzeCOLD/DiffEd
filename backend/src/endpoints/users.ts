@@ -2,7 +2,7 @@ import {type Express} from "express";
 import {type Pool} from "pg";
 import pgPromise from "pg-promise";
 import argon2 from "argon2";
-import {SignupSchema, usernameSchema, emailSchema, passwordSchema} from "../validation/schemas.js";
+import {SignupSchema, usernameSchema, emailSchema, passwordSchema} from "../../../shared/src/schemas.js";
 import {z} from "zod";
 
 // Type guard. This will be deleted with ticket #

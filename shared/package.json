@@ -10,6 +10,7 @@
 	},
 	"dependencies": {
 		"@types/istextorbinary": "^2.3.4",
-		"istextorbinary": "^9.5.0"
+		"istextorbinary": "^9.5.0",
+		"zod": "^4.3.6"
 	}
 }
