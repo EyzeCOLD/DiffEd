@@ -66,7 +66,7 @@ export default function EditorPage() {
 					}}
 				/>
 			</label>
-			<Link to="/filebrowser">Fire Browser</Link>
+			<Link to="/filebrowser">File Browser</Link>
 			{errorMessage && <div className="text-red-500">{errorMessage}</div>}
 			<CodeEditor
 				fileId={fileId}
