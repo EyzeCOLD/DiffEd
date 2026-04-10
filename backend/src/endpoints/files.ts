@@ -5,11 +5,13 @@ import {UserFileSchema} from "#/src/validation/schemas.js";
 import {requireAuth} from "#/src/middleware.js";
 import z from "zod";
 import multer from "multer";
+import {fileTypeIsValid} from "../../../shared/src/fileTypeCheck.js";
 
 // Type guard. Makes a type assertion for the error for TS.
 function isDbError(error: unknown): error is {code: string; detail?: string; constraint?: string} {
 	return typeof error === "object" && error !== null && "code" in error;
 }
+// doing #shared does not work for some reason
 
 function getFiles(app: Express, db: Pool) {
 	app.get("/api/files", requireAuth, async (req, res) => {
@@ -65,7 +67,7 @@ const upload = multer({
 		fileSize: 1 * 1024 * 1024,
 	},
 	fileFilter: (req, file, callback) => {
-		if (!file.mimetype.startsWith("text/")) {
+		if (fileTypeIsValid(file.mimetype, file.buffer)) {
 			callback(new Error(`Invalid mime-type (filetype) for file:'${file.originalname}'`));
 			return;
 		} else {

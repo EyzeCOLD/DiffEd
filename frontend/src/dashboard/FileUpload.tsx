@@ -1,6 +1,7 @@
 import {useState, useRef} from "react";
 import {Button} from "../components/Button";
 import {useToastStore} from "../components/toastStore.ts";
+import {fileTypeIsValid} from "#shared/src/fileTypeCheck";
 
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
@@ -15,6 +16,11 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 			if (f.size > MAX_FILE_SIZE) {
 				showToast("error", `File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 				console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
+				setFileUploads(null);
+				return;
+			} else if (!fileTypeIsValid(f.type)) {
+				window.alert(`File '${f.name}' is of unaccepted filetype '${f.type}'`);
+				console.error(`File '${f.name}' is of unaccepted filetype '${f.type}'`);
 				setFileUploads(null);
 				return;
 			}
@@ -47,6 +53,7 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 				}
 
 				if (!result.ok) {
+					window.alert("File creation failed!");
 					console.error("File creation failed!");
 					setFileUploads(null);
 					return;
