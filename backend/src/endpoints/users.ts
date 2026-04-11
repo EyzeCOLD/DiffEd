@@ -11,7 +11,8 @@ const limiter = rateLimit({
 	limit: 5, // 5 attempts per 15 min
 	message: "Too many login attempts, please try again later.",
 });
-const signupUser = (app: Express, db: Pool) => {
+
+function signupUser(app: Express, db: Pool) {
 	app.post("/api/signup", async (req, res) => {
 		const {username, email, password} = req.body;
 
@@ -42,9 +43,9 @@ const signupUser = (app: Express, db: Pool) => {
 			}
 		}
 	});
-};
+}
 
-const loginUser = (app: Express, db: Pool) => {
+function loginUser(app: Express, db: Pool) {
 	app.post("/api/session", limiter, async (req, res) => {
 		const {loginIdentifier, password} = req.body;
 
@@ -82,9 +83,9 @@ const loginUser = (app: Express, db: Pool) => {
 			res.status(500).json({error: "Internal server error"});
 		}
 	});
-};
+}
 
-const logoutUser = (app: Express) => {
+function logoutUser(app: Express) {
 	app.delete("/api/session", (req, res) => {
 		req.session.destroy((err) => {
 			if (err) return res.status(500).json({error: "Logout failed"});
@@ -92,10 +93,10 @@ const logoutUser = (app: Express) => {
 			res.status(200).send();
 		});
 	});
-};
+}
 
 // TODO: This function could query and return the user data
-const getSession = (app: Express) => {
+function getSession(app: Express) {
 	app.get("/api/session", (req, res) => {
 		if (req.session.userId) {
 			res.status(200).send();
@@ -103,6 +104,6 @@ const getSession = (app: Express) => {
 			res.status(404).send();
 		}
 	});
-};
+}
 
 export default {signupUser, loginUser, logoutUser, getSession};

@@ -7,7 +7,12 @@ import multer from "multer";
 const storage = multer.memoryStorage();
 const upload = multer({storage: storage});
 
-const getFiles = (app: Express, db: Pool) => {
+// Type guard. Makes a type assertion for the error for TS.
+function isDbError(error: unknown): error is {code: string; detail?: string; constraint?: string} {
+	return typeof error === "object" && error !== null && "code" in error;
+}
+
+function getFiles(app: Express, db: Pool) {
 	app.get("/api/files", async (req, res) => {
 		timestampedLog("Received request to " + req.baseUrl);
 		// console.log(`getFiles req ${req} res ${res}`);
@@ -17,7 +22,7 @@ const getFiles = (app: Express, db: Pool) => {
 			timestampedLog("Sent SELECT query to DB: all files");
 			const result = await db.query(`SELECT * FROM files`);
 			// console.log(result.rows);
-			return res.status(200).send(result.rows);
+			return res.status(200).json(result.rows);
 		} catch (error) {
 			console.log(`Error: ${error}`);
 			return res.status(500).send();
@@ -25,9 +30,9 @@ const getFiles = (app: Express, db: Pool) => {
 
 		// @TODO get auth stuff
 	});
-};
+}
 
-const getFileById = (app: Express, db: Pool) => {
+function getFileById(app: Express, db: Pool) {
 	app.get("/api/files/:fileId", async (req, res) => {
 		// try {
 		timestampedLog("Received request to " + req.baseUrl);
@@ -35,7 +40,7 @@ const getFileById = (app: Express, db: Pool) => {
 		// @TODO get auth stuff
 		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
 		if (!fileId.success) {
-			return res.status(400).send("Invalid file ID");
+			return res.status(400).json({error: "Invalid file ID"});
 		}
 
 		try {
@@ -47,24 +52,23 @@ const getFileById = (app: Express, db: Pool) => {
 				return res.status(403).send();
 			} else {
 				console.log(result.rows);
-				return res.status(200).send(result.rows[0]);
+				return res.status(200).json(result.rows[0]);
 			}
 		} catch (error) {
 			console.log(`Error: ${error}`);
 			return res.status(500).send();
 		}
 	});
-};
+}
 
-// should maybe be called uploaFiles if we do that functionality
-const uploadFile = (app: Express, db: Pool) => {
+function uploadNewFile(app: Express, db: Pool) {
 	app.post("/api/files", async (req, res) => {
 		// the front end could possibly check if a filename is valid (no repeats for a user/project)
 
 		const parsedBody = UserFileSchema.pick({name: true}).strict().safeParse(req.body);
 		if (!parsedBody.success) {
-			console.log("bad POST request", parsedBody.error);
-			return res.status(400).send("Bad request");
+			console.error("bad POST request", parsedBody.error);
+			return res.status(400).json({error: "Bad request"});
 		}
 
 		try {
@@ -78,20 +82,26 @@ const uploadFile = (app: Express, db: Pool) => {
 			]);
 			console.log(`result of INSERT query to DB: id:[${uuid}] name: '${fileName}'`, result.rows);
 			if (result.rowCount != 1) {
-				console.log("Not found");
+				console.error("Not found");
 				return res.status(403).send();
 			} else {
 				console.log(result.rows);
-				return res.status(201).send(result.rows[0]);
+				return res.status(201).json(result.rows[0]);
 			}
-		} catch (error) {
-			console.log("Query failed:", error);
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				if (error.constraint === "files_name_key") {
+					console.error({error: `${error.detail}`});
+					return res.status(409).json({error: `${error.detail}`});
+				}
+			}
+			console.error("Query failed:", error);
 			return res.status(500).send();
 		}
 	});
-};
+}
 
-const uploadMultipleFiles = (app: Express, db: Pool) => {
+function uploadMultipleFiles(app: Express, db: Pool) {
 	app.post("/api/upload", upload.array("file", 2000), async (req, res) => {
 		console.log(req.body);
 		console.log(req.files);
@@ -122,19 +132,25 @@ const uploadMultipleFiles = (app: Express, db: Pool) => {
 		try {
 			const result = await db.query(query_string, argumentArray);
 			console.log("result rows", result.rows);
-			return res.status(201).send(result.rows);
-		} catch (error) {
+			return res.status(201).json(result.rows);
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				if (error.constraint === "files_name_key") {
+					console.error(`${error.detail}`);
+					return res.status(409).json({error});
+				}
+			}
 			console.log("Query failed:", error);
 			return res.status(500).send();
 		}
 	});
-};
+}
 
-const editFile = (app: Express, db: Pool) => {
+function editFile(app: Express, db: Pool) {
 	app.put("/api/files/:fileId", async (req, res) => {
 		const fileId = z.uuidv4().safeParse(req.params.fileId);
 		if (!fileId.success) {
-			return res.status(400).send("Invalid file ID");
+			return res.status(400).json({error: "Invalid file ID"});
 		}
 		const parsedBody = UserFileSchema.safeParse(req.body);
 		if (!parsedBody.success) {
@@ -143,7 +159,7 @@ const editFile = (app: Express, db: Pool) => {
 		}
 		if (parsedBody.data.id != fileId.data) {
 			console.log("bad PUT request Error: File id mismatch");
-			return res.status(400).send("File id mismatch");
+			return res.status(400).json({error: "File id mismatch"});
 		}
 
 		try {
@@ -157,19 +173,19 @@ const editFile = (app: Express, db: Pool) => {
 				return res.status(403).send();
 			}
 			console.log(`result of UPDATE query to DB: id:[${fileId.data}] name: '${parsedBody.data.name}'`, result.rows);
-			return res.status(200).send(result.rows[0]);
+			return res.status(200).json(result.rows[0]);
 		} catch (error) {
 			console.log("Query failed:", error);
 			return res.status(500).send();
 		}
 	});
-};
+}
 
-const deleteFile = (app: Express, db: Pool) => {
+function deleteFile(app: Express, db: Pool) {
 	app.delete("/api/files/:fileId", async (req, res) => {
 		const fileId = z.uuidv4().safeParse(req.params.fileId);
 		if (!fileId.success) {
-			return res.status(400).send("Invalid file ID");
+			return res.status(400).json({error: "Invalid file ID"});
 		}
 
 		try {
@@ -185,14 +201,14 @@ const deleteFile = (app: Express, db: Pool) => {
 			return res.status(500).send();
 		}
 	});
-};
+}
 
 function downloadFile(app: Express, db: Pool) {
 	app.get("/api/download/:fileId", async (req, res) => {
 		timestampedLog("Received request to " + req.baseUrl);
 
 		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
-		if (!fileId.success) return res.status(400).send("Invalid file ID");
+		if (!fileId.success) return res.status(400).json({error: "Invalid file ID"});
 
 		try {
 			const id = fileId.data;
@@ -215,4 +231,4 @@ function downloadFile(app: Express, db: Pool) {
 	});
 }
 
-export default {getFiles, getFileById, uploadFile, uploadMultipleFiles, editFile, deleteFile, downloadFile};
+export default {getFiles, getFileById, uploadNewFile, uploadMultipleFiles, editFile, deleteFile, downloadFile};
