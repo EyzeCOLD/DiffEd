@@ -19,7 +19,8 @@
 		"auditFix": "npm audit fix && cd shared && npm audit fix && cd ../backend && npm audit fix && cd ../frontend && npm audit fix && cd ../testing && npm audit fix",
 		"prettier": "npx prettier --write .",
 		"eslint": "npx eslint .",
-		"githook": "chmod +x scripts/pre-push-hook && cp scripts/pre-push-hook .git/hooks/pre-push"
+		"githook": "chmod +x scripts/pre-push-hook && cp scripts/pre-push-hook .git/hooks/pre-push",
+		"cloneWiki": "git clone \"$(git remote get-url origin | sed 's/\\.git$//')\".wiki.git wiki"
 	},
 	"type": "module",
 	"private": true,
