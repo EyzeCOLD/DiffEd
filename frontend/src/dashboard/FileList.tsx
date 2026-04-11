@@ -2,6 +2,7 @@ import type {UserFile} from "#shared/src/types";
 import {Link} from "react-router";
 import type {JSX} from "react";
 import {Button} from "../components/Button";
+import type {ApiResponse} from "#shared/src/types.js";
 
 function FileList({
 	fileList,
@@ -14,16 +15,15 @@ function FileList({
 	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
 
 	async function handleDownload(file: UserFile) {
-		const res = await fetch(`/api/download/${file.id}`);
-		// This whole function could just be a link, but if we do auth with
-		// tokens, apparently this workaround is necessary to be able to check
-		// the header as per Claude
-		//
-		// const res = await fetch(`/api/download/${id}`, {
-		// 	headers: {Authorization: `Bearer ${token}`},
-		// });
+		const response: ApiResponse<string> = await fetch(`/api/files/${file.id}/download`).then((r) => r.json());
 
-		const blob = await res.blob();
+		if (!response.ok) {
+			console.error(response.error);
+			return;
+		}
+		console.log(`Downloading file...`);
+
+		const blob = new Blob([response.data], {type: "text/plain"});
 		const url = URL.createObjectURL(blob);
 
 		const a = document.createElement("a");
@@ -37,15 +37,16 @@ function FileList({
 	async function handleDelete(id: string) {
 		if (!window.confirm("Are you sure you want to delete this file?")) return;
 		try {
-			const result = await fetch(`/api/files/${id}`, {
+			const response: ApiResponse<string> = await fetch(`/api/files/${id}`, {
 				method: "DELETE",
-			});
-			if (!result.ok) {
-				console.error("something wrong :(");
-				return;
+			}).then((r) => r.json());
+
+			if (!response.ok) {
+				console.error(response.error);
+			} else {
+				console.log("Delete succesful");
 			}
 			refreshFileList();
-			console.log("Delete succesful");
 		} catch (error) {
 			console.error(error);
 		}

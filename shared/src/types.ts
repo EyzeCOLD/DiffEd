@@ -3,6 +3,7 @@ export type UserFile = {
 	id: string;
 	name: string;
 	content: string;
+	owner_id: string;
 };
 
 export type SigningUser = {
@@ -55,3 +56,7 @@ export type NameUpdateResponse =
 			name: string;
 	  }
 	| ErrorResponse;
+
+export type ApiSuccess<T> = {ok: true; data: T};
+export type ApiError = {ok: false; error: string};
+export type ApiResponse<T> = ApiSuccess<T> | ApiError;

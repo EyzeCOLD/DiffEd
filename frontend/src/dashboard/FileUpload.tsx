@@ -33,24 +33,24 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 			});
 
 			try {
-				const result = await fetch("/api/upload", {
+				const result = await fetch("/api/files/upload", {
 					method: "POST",
 					body: formData,
-				});
+				} satisfies RequestInit);
 
-				if (result.status === 409) {
-					const res = await result.json();
-					console.error(`${res.error.detail}`);
-					showToast("error", `${res.error.detail}`);
+				const res = await result.json();
+
+				if (!res.ok) {
+					console.error(`${res.error}`);
+					showToast("Error", `${res.error}`);
 					setFileUploads(null);
 					return;
 				}
 
-				const data = await result.json();
 				refreshFileList();
 				setFileUploads(null);
 				if (fileInputRef.current) fileInputRef.current.value = "";
-				console.log(data);
+				console.log(res.data);
 			} catch (error) {
 				console.error(error);
 			}
