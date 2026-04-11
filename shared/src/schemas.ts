@@ -1,4 +1,4 @@
-import {type UserFile, type SigningUser} from "../src/types.js"; // huh???
+import {type UserFile, type SigningUser} from "../src/types.js";
 import {z, type ZodType} from "zod";
 
 export const passwordSchema = z
@@ -36,5 +36,7 @@ export const UserFileSchema = z.object({
 		.refine((val) => !val.startsWith("/"), "Path must be relative")
 		.refine((val) => !val.includes("/\/"), "Invalid path")
 		.refine((val) => !val.endsWith("/"), "Path cannot end with a slash"),
-	content: z.string().refine((val) => Buffer.byteLength(val, "utf8") <= 1000000, {message: "File content exceeds 1MB"}),
+	content: z
+		.string()
+		.refine((val) => new TextEncoder().encode(val).length <= 1000000, {message: "File content exceeds 1MB"}),
 }) satisfies ZodType<UserFile>;

@@ -12,7 +12,7 @@ import multer from "multer";
 
 // doing #shared does not work for some reason
 // having is text or binary package only in shard is not enought for some reason, also need in backend
-import {fileTypeIsValid} from "../../../shared/src/fileTypeCheck.js";
+import {fileNotValid} from "../../../shared/src/fileTypeCheck.js";
 
 // Type guard. Makes a type assertion for the error for TS.
 function isDbError(error: unknown): error is {code: string; detail?: string; constraint?: string} {
@@ -67,22 +67,10 @@ function getFileById(app: Express, db: Pool) {
 	});
 }
 
-const storage = multer.memoryStorage();
+// const storage = multer.memoryStorage();
 const upload = multer({
-	storage: storage,
-	limits: {
-		fileSize: 1 * 1024 * 1024,
-	},
-	fileFilter: (req, file, callback) => {
-		if (!fileTypeIsValid(file.mimetype, file.buffer)) {
-			callback(new Error(`Invalid mime-type(filetype): '${file.mimetype}' for file:'${file.originalname}'`));
-
-			return;
-		} else {
-			callback(null, true);
-			return;
-		}
-	},
+	storage: multer.memoryStorage(),
+	limits: {fileSize: 1 * 1024 * 1024},
 });
 
 const uploadFileArray = upload.array("file", 200);
@@ -117,7 +105,13 @@ function uploadFiles(app: Express, db: Pool) {
 			// @NOTE this is a mess
 			let query_string: string = "INSERT INTO files (id, name, content) VALUES ";
 			const argumentArray: (string | number)[] = [];
-			req.files.forEach((file, i) => {
+			for (let i = 0; i < req.files.length; i++) {
+				const file = req.files[i];
+				const err: string | null = fileNotValid(file.mimetype, undefined, file.buffer);
+				if (err) {
+					res.status(415).json({error: `file '${file.originalname}' is ${err}`});
+					return;
+				}
 				const uuid = crypto.randomUUID();
 				argumentArray.push(uuid);
 				argumentArray.push(file.originalname);
@@ -125,11 +119,11 @@ function uploadFiles(app: Express, db: Pool) {
 				argumentArray.push(req.session.userId!);
 				const index: number = i * 4; // i * number of fields, fields are one indexed so +1,+2,+3,+4
 				query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}, $${index + 4}), `;
-			});
+			}
 			query_string = query_string.substring(0, query_string.length - 2);
 			query_string += " RETURNING id;";
-			console.log(argumentArray);
-			console.log(query_string);
+			// console.log(argumentArray);
+			// console.log(query_string);
 
 			try {
 				const result = await db.query(query_string, argumentArray);

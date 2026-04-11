@@ -20,7 +20,7 @@ function NewFile() {
 			} satisfies RequestInit);
 
 			const res = await result.json();
-
+			console.log(res);
 			if (result.status === 409) {
 				console.error(`${res.error}`);
 				showToast("error", `${res.error}`);

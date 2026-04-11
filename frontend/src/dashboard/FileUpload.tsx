@@ -1,27 +1,29 @@
 import {useState, useRef} from "react";
 import {Button} from "../components/Button";
 import {useToastStore} from "../components/toastStore.ts";
-import {fileTypeIsValid} from "#shared/src/fileTypeCheck";
+import {fileNotValid} from "#shared/src/fileTypeCheck";
 
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const MAX_FILE_SIZE = 1000000; // 1meg
+
 	const showToast = useToastStore((s) => s.showToast);
 
-	function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+	function resetInput() {
+		setFileUploads(null);
+		if (fileInputRef.current) fileInputRef.current.value = "";
+	}
+
+	async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 		if (!e.target.files) return;
 
 		for (const f of e.target.files) {
-			if (f.size > MAX_FILE_SIZE) {
-				showToast("error", `File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
-				console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
-				setFileUploads(null);
-				return;
-			} else if (!fileTypeIsValid(f.type)) {
-				window.alert(`File '${f.name}' is of unaccepted filetype '${f.type}'`);
-				console.error(`File '${f.name}' is of unaccepted filetype '${f.type}'`);
-				setFileUploads(null);
+			const err = fileNotValid(f.type, f.size, Buffer.from(await f.arrayBuffer())); // does not work!!
+			if (err) {
+				showToast("error", `File '${f.name}' is ${err}`);
+				window.alert(`File '${f.name}' is ${err}`);
+				console.error(`File '${f.name}' is ${err}'`);
+				resetInput();
 				return;
 			}
 		}
@@ -48,20 +50,19 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 					const res = await result.json();
 					console.error(`${res.error.detail}`);
 					showToast("error", `${res.error.detail}`);
-					setFileUploads(null);
+					resetInput();
 					return;
 				}
 
 				if (!result.ok) {
 					window.alert("File creation failed!");
 					console.error("File creation failed!");
-					setFileUploads(null);
+					resetInput();
 					return;
 				}
 				const data = await result.json();
 				refreshFileList();
-				setFileUploads(null);
-				if (fileInputRef.current) fileInputRef.current.value = "";
+				resetInput();
 				console.log(data);
 			} catch (error) {
 				console.error(error);

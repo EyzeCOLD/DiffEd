@@ -16,20 +16,19 @@ function FileList({
 	// just tested how would it look like if there was no explicit file download endpoint,
 	//  and if the content was locally available how would it work to not even fetch anything
 	async function handleDownload(file: UserFile) {
+		console.log(file);
 		if (file.content === null || file.content === undefined) {
 			const res = await fetch(`/api/files/${file.id}`);
 
-			console.log(res);
-			const json_data = await res.json();
-			const parse_result = UserFileSchema.safeParse(json_data);
-			if (!parse_result.success) {
+			const jsonData = await res.json();
+			const parseResult = UserFileSchema.safeParse(jsonData); // validation not really needed but wanted it for testing
+			if (!parseResult.success) {
 				console.error(`could not get content for file '${file.name}' id[${file.id}]`);
 				return;
 			}
-			console.log("\n\n\n\n", json_data);
-			const file_data: UserFile = json_data;
-			file.name = file_data.name;
-			file.content = file_data.content;
+			const newFileData: UserFile = parseResult.data;
+			file.name = newFileData.name;
+			file.content = newFileData.content;
 		}
 		// This whole function could just be a link, but if we do auth with
 		// tokens, apparently this workaround is necessary to be able to check
