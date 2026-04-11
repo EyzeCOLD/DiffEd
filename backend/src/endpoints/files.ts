@@ -1,9 +1,9 @@
-import {type Express} from "express";
+import type {Express, Request, Response} from "express";
 import {type Pool} from "pg";
 import {timestampedLog} from "#/src/logging.js";
 import {UserFileSchema} from "#/src/validation/schemas.js";
 import {requireAuth} from "#/src/middleware.js";
-import z from "zod";
+import type {UserFile, ApiResponse} from "#shared/src/types.js";
 import multer from "multer";
 const storage = multer.memoryStorage();
 const upload = multer({storage: storage});
@@ -14,219 +14,190 @@ function isDbError(error: unknown): error is {code: string; detail?: string; con
 }
 
 function getFiles(app: Express, db: Pool) {
-	app.get("/api/files", requireAuth, async (req, res) => {
-		timestampedLog("Received request to " + req.baseUrl);
-
+	app.get("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile[]>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 		try {
-			timestampedLog("Sent SELECT query to DB: all files for user " + req.session.userId);
-			const result = await db.query(`SELECT * FROM files WHERE owner_id = $1`, [req.session.userId]);
-			return res.status(200).json(result.rows);
+			const query = "SELECT * FROM files WHERE owner_id = $1";
+			timestampedLog(`DB QUERY >>> ${query}`);
+			timestampedLog(`DB VALUES >>> ${req.session.userId}`);
+			const result = await db.query(query, [req.session.userId]);
+
+			return res.status(200).json({ok: true, data: result.rows});
 		} catch (error) {
-			console.log(`Error: ${error}`);
-			return res.status(500).send();
+			timestampedLog(`ERROR <<< ${error}`);
+			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
 }
 
 function getFileById(app: Express, db: Pool) {
-	app.get("/api/files/:fileId", requireAuth, async (req, res) => {
-		timestampedLog("Received request to " + req.baseUrl);
+	app.get("/api/files/:fileId", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
 		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
-		if (!fileId.success) {
-			return res.status(400).json({error: "Invalid file ID"});
+		if (fileId.error) {
+			return res.status(400).json({ok: false, error: "Invalid file id"});
 		}
 
 		try {
-			const id = fileId.data;
-			timestampedLog(`Sent SELECT query to DB: id:[${id}]`);
-			const result = await db.query("SELECT * FROM files WHERE id = $1 AND owner_id = $2", [id, req.session.userId]);
-			if (result.rowCount != 1) {
-				console.log("Not found");
-				return res.status(403).send();
-			} else {
-				console.log(result.rows);
-				return res.status(200).json(result.rows[0]);
+			const query = "SELECT * FROM files WHERE id = $1 AND owner_id = $2";
+			const values = [fileId.data, req.session.userId];
+
+			timestampedLog(`DB QUERY >>> ${query}`);
+			timestampedLog(`DB VALUES >>> ${values}`);
+			const result = await db.query(query, values);
+
+			if (!result.rowCount) {
+				return res.status(403).json({ok: false, error: "Forbidden"});
 			}
+
+			return res.status(200).json({ok: true, data: result.rows[0]});
 		} catch (error) {
-			console.log(`Error: ${error}`);
-			return res.status(500).send();
+			timestampedLog(`ERROR <<< ${error}`);
+			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
 }
 
-function uploadNewFile(app: Express, db: Pool) {
-	app.post("/api/files", requireAuth, async (req, res) => {
-		// the front end could possibly check if a filename is valid (no repeats for a user/project)
-
-		const parsedBody = UserFileSchema.pick({name: true}).strict().safeParse(req.body);
-		if (!parsedBody.success) {
-			console.error("bad POST request", parsedBody.error);
-			return res.status(400).json({error: "Bad request"});
+function createNewFile(app: Express, db: Pool) {
+	app.post("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<Pick<UserFile, "id">>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+		const body = UserFileSchema.pick({name: true}).strict().safeParse(req.body);
+		if (body.error) {
+			return res.status(400).json({ok: false, error: "Bad request"});
 		}
 
+		const newFile: UserFile = {
+			id: crypto.randomUUID(),
+			name: body.data.name,
+			content: "",
+			owner_id: req.session.id,
+		};
+
 		try {
-			const fileName = parsedBody.data.name;
-			const uuid = crypto.randomUUID();
-			timestampedLog(`Sent INSERT query to DB: id:[${uuid}] name: '${fileName}'`);
-			const result = await db.query(
-				"INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id",
-				[uuid, fileName, "", req.session.userId],
-			);
-			console.log(`result of INSERT query to DB: id:[${uuid}] name: '${fileName}'`, result.rows);
-			if (result.rowCount != 1) {
-				console.error("Not found");
-				return res.status(403).send();
-			} else {
-				console.log(result.rows);
-				return res.status(201).json(result.rows[0]);
-			}
+			const query = `INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id`;
+			timestampedLog(`DB QUERY >>> ${query}`);
+			timestampedLog(`DB VALUES >>> ${JSON.stringify(newFile)}`);
+			const result = await db.query(query, Object.values(newFile));
+
+			return res.status(201).json({ok: true, data: result.rows[0]});
 		} catch (error: unknown) {
 			if (isDbError(error)) {
+				timestampedLog(`DB ERROR <<< ${error.code}: ${error.detail}`);
 				if (error.constraint === "files_name_owner_id_key") {
-					console.error({error: `${error.detail}`});
-					return res.status(409).json({error: `${error.detail}`});
+					return res.status(409).json({ok: false, error: `A file with name '${newFile.name}' already exists`});
 				}
 			}
-			console.error("Query failed:", error);
-			return res.status(500).send();
+			timestampedLog(`ERROR <<< ${error}`);
+			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
 }
 
-function uploadMultipleFiles(app: Express, db: Pool) {
-	app.post("/api/upload", requireAuth, upload.array("file", 2000), async (req, res) => {
-		console.log(req.body);
-		console.log(req.files);
-		if (!req.files) {
-			console.log("How did we get here? Where are the files?");
-			return res.status(400).send();
-		}
-		if (!Array.isArray(req.files) || !req.files.length) {
-			console.log("How did we get here? Where is the array?");
-			return res.status(400).send();
-		}
-		// @NOTE this is a mess
-		let query_string: string = "INSERT INTO files (id, name, content, owner_id) VALUES ";
-		const argumentArray: (string | number)[] = [];
-		req.files.forEach((file, i) => {
-			const uuid = crypto.randomUUID();
-			argumentArray.push(uuid);
-			argumentArray.push(file.originalname);
-			argumentArray.push(file.buffer.toString());
-			argumentArray.push(req.session.userId!);
-			const index: number = i * 4; // i * number of fields, fields are one indexed so +1,+2,+3,+4
-			query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}, $${index + 4}), `;
-		});
-		query_string = query_string.substring(0, query_string.length - 2);
-		query_string += " RETURNING id;";
-		console.log(argumentArray);
-		console.log(query_string);
+function uploadFiles(app: Express, db: Pool) {
+	app.post(
+		"/api/files/upload",
+		requireAuth,
+		upload.array("file", 100),
+		async (req: Request, res: Response<ApiResponse<null>>) => {
+			timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
-		try {
-			const result = await db.query(query_string, argumentArray);
-			console.log("result rows", result.rows);
-			return res.status(201).json(result.rows);
-		} catch (error: unknown) {
-			if (isDbError(error)) {
-				if (error.constraint === "files_name_owner_id_key") {
-					console.error(`${error.detail}`);
-					return res.status(409).json({error});
+			if (!Array.isArray(req.files) || !req.files.length) {
+				return res.status(400).json({ok: false, error: "No files provided"});
+			}
+
+			// build the parameterized sql query
+			const rows = req.files.map((_, i) => {
+				const offset = 4 * i;
+				return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`;
+			});
+
+			const query = `INSERT INTO files (id, name, content, owner_id) VALUES ${rows.join(", ")}`;
+			const values = req.files.flatMap((file) => {
+				return [crypto.randomUUID(), file.originalname, file.buffer.toString(), req.session.userId];
+			});
+			timestampedLog(`DB QUERY >>> ${query}`);
+			timestampedLog(`DB VALUES >>> ${JSON.stringify(values)}`);
+
+			try {
+				await db.query(query, values);
+
+				return res.status(201).json({ok: true, data: null});
+			} catch (error: unknown) {
+				if (!isDbError(error)) {
+					timestampedLog(`ERROR <<< ${error}`);
+					return res.status(500).json({ok: false, error: "Internal server error"});
 				}
-			}
-			console.log("Query failed:", error);
-			return res.status(500).send();
-		}
-	});
-}
 
-function editFile(app: Express, db: Pool) {
-	app.put("/api/files/:fileId", requireAuth, async (req, res) => {
-		const fileId = z.uuidv4().safeParse(req.params.fileId);
-		if (!fileId.success) {
-			return res.status(400).json({error: "Invalid file ID"});
-		}
-		const parsedBody = UserFileSchema.safeParse(req.body);
-		if (!parsedBody.success) {
-			console.log("bad PUT request", parsedBody.error);
-			return res.status(400).send();
-		}
-		if (parsedBody.data.id != fileId.data) {
-			console.log("bad PUT request Error: File id mismatch");
-			return res.status(400).json({error: "File id mismatch"});
-		}
-
-		try {
-			timestampedLog(`Sent UPDATE query to DB: id:[${fileId.data}] name: '${parsedBody.data.name}'`);
-			const result = await db.query("UPDATE files SET name = $1, content = $2 WHERE id = $3 AND owner_id = $4", [
-				parsedBody.data.name,
-				parsedBody.data.content,
-				fileId.data,
-				req.session.userId,
-			]);
-			if (!result.rowCount || result.rowCount < 1) {
-				return res.status(403).send();
+				timestampedLog(`DB ERROR <<< ${error.code}: ${error.detail}`);
+				if (error.constraint === "files_name_owner_id_key") {
+					const msg =
+						req.files.length === 1
+							? `A file with name '${req.files[0].originalname}' already exists`
+							: "One or more of the filenames already exist";
+					return res.status(409).json({ok: false, error: msg});
+				}
+				return res.status(500).json({ok: false, error: "Internal server error"});
 			}
-			console.log(`result of UPDATE query to DB: id:[${fileId.data}] name: '${parsedBody.data.name}'`, result.rows);
-			return res.status(200).json(result.rows[0]);
-		} catch (error) {
-			console.log("Query failed:", error);
-			return res.status(500).send();
-		}
-	});
+		},
+	);
 }
 
 function deleteFile(app: Express, db: Pool) {
-	app.delete("/api/files/:fileId", requireAuth, async (req, res) => {
-		const fileId = z.uuidv4().safeParse(req.params.fileId);
-		if (!fileId.success) {
-			return res.status(400).json({error: "Invalid file ID"});
+	app.delete("/api/files/:fileId", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+
+		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
+		if (fileId.error) {
+			return res.status(400).json({ok: false, error: "Invalid file id"});
 		}
 
+		const query = "DELETE FROM files WHERE id = $1 AND owner_id = $2";
+		const values = [fileId.data, req.session.id];
+		timestampedLog(`DB QUERY >>> ${query}`);
+		timestampedLog(`DB VALUES >>> ${values}`);
 		try {
-			timestampedLog(`Sent DELETE query to DB: id:[${fileId.data}]`);
-			const result = await db.query("DELETE FROM files WHERE id = $1 AND owner_id = $2", [
-				fileId.data,
-				req.session.userId,
-			]);
-			console.log(`result of DELETE query to DB: id:[${fileId.data}], deleted rows count:`, result.rowCount);
-			if (!result.rowCount || result.rowCount < 1) {
-				return res.status(403).send();
+			const result = await db.query(query, values);
+
+			if (!result.rowCount) {
+				return res.status(403).json({ok: false, error: "Forbidden"});
 			}
-			return res.status(200).send();
+
+			return res.status(200).json({ok: true, data: null});
 		} catch (error) {
-			console.log("Query failed:", error);
-			return res.status(500).send();
+			timestampedLog(`ERROR <<< ${error}`);
+			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
 }
 
 function downloadFile(app: Express, db: Pool) {
-	app.get("/api/download/:fileId", requireAuth, async (req, res) => {
-		timestampedLog("Received request to " + req.baseUrl);
+	app.get("/api/files/:fileId/download", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
 		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
-		if (!fileId.success) return res.status(400).json({error: "Invalid file ID"});
+		if (fileId.error) {
+			return res.status(400).json({ok: false, error: "Invalid file id"});
+		}
+
+		const query = "SELECT * FROM files WHERE id = $1 AND owner_id = $2";
+		const values = [fileId.data, req.session.id];
+		timestampedLog(`DB QUERY >>> ${query}`);
+		timestampedLog(`DB VALUES >>> ${values}`);
 
 		try {
-			const id = fileId.data;
-			timestampedLog(`Sent SELECT query to DB: id:[${id}]`);
-			const result = await db.query("SELECT * FROM files WHERE id = $1 AND owner_id = $2", [id, req.session.userId]);
-			if (result.rowCount != 1) {
-				console.error("Invalid file ID");
-				return res.status(403).send();
-			} else {
-				const file = result.rows[0];
-				console.log(file);
-				res.setHeader("Content-Disposition", `attachment; filename="${file.name}"`);
-				res.setHeader("Content-Type", "text/plain");
-				return res.status(200).send(file.content);
+			const result = await db.query(query, values);
+
+			if (!result.rowCount) {
+				return res.status(403).json({ok: false, error: "Forbidden"});
 			}
+			const file = result.rows[0];
+			return res.status(200).json({ok: true, data: file.content});
 		} catch (error) {
-			console.error(`Error: ${error}`);
-			return res.status(500).send();
+			timestampedLog(`ERROR <<< ${error}`);
+			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
 }
 
-export default {getFiles, getFileById, uploadNewFile, uploadMultipleFiles, editFile, deleteFile, downloadFile};
+export default {getFiles, getFileById, createNewFile, uploadFiles, deleteFile, downloadFile};
