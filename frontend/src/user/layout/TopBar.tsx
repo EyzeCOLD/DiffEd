@@ -26,6 +26,12 @@ export default function TopBar() {
 
 	return (
 		<nav className="flex items-center justify-between bg-surface px-4 py-2">
+			<a
+				href="#main"
+				className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:px-4 focus:py-2 focus:bg-surface focus:text-foreground focus:underline"
+			>
+				Skip to content
+			</a>
 			<div className="flex gap-4">
 				<Link to="/dashboard" className="text-foreground hover:text-accent">
 					Dashboard

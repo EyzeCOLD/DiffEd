@@ -15,7 +15,9 @@ export default function UserLayout() {
 	return (
 		<>
 			<TopBar />
-			<Outlet />
+			<main id="main">
+				<Outlet />
+			</main>
 		</>
 	);
 }
