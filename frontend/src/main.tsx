@@ -8,7 +8,7 @@ import SignupPage from "./user/signup.page.tsx";
 import EditorPage from "./codeEditor/Editor.page.tsx";
 import FileBrowserPage from "./dashboard/FileBrowser.page.tsx";
 import Dashboard from "./user/dashboard.page.tsx";
-import UserLayout from "./components/UserLayout.tsx";
+import UserLayout from "./user/layout/UserLayout.tsx";
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>

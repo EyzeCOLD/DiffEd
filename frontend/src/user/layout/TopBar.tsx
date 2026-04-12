@@ -1,5 +1,5 @@
 import {Link, useNavigate} from "react-router";
-import {Button} from "./Button";
+import {Button} from "../../components/Button";
 import type {MouseEvent} from "react";
 
 export default function TopBar() {
