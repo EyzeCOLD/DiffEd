@@ -18,11 +18,11 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 		if (!e.target.files) return;
 
 		for (const f of e.target.files) {
-			const err = fileNotValid(f.type, f.size, Buffer.from(await f.arrayBuffer())); // does not work!!
+			const err = fileNotValid(f.type, f.size, await f.text());
 			if (err) {
 				showToast("error", `File '${f.name}' is ${err}`);
 				window.alert(`File '${f.name}' is ${err}`);
-				console.error(`File '${f.name}' is ${err}'`);
+				console.error(`File '${f.name}' is ${err}`);
 				resetInput();
 				return;
 			}

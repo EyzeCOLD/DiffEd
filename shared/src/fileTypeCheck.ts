@@ -1,7 +1,6 @@
-import {isBinary} from "istextorbinary";
 const MAX_FILE_SIZE = 1000000; // 1meg
 
-export function fileNotValid(fileType: string, size?: number, buffer?: Buffer<ArrayBufferLike>): string | null {
+export function fileNotValid(fileType: string, size?: number, buffer?: string): string | null {
 	if (size !== undefined) {
 		if (size > MAX_FILE_SIZE) return `too large at ${size} (max. ${MAX_FILE_SIZE})`;
 	}
@@ -12,9 +11,13 @@ export function fileNotValid(fileType: string, size?: number, buffer?: Buffer<Ar
 		}
 	}
 	if (buffer) {
-		if (isBinary(null, buffer)) {
-			console.log("file is binary");
-			return "binary";
+		for (let i = 0; i < buffer.length; i++) {
+			const charCode = buffer.charCodeAt(i);
+			if (charCode === 65533 || charCode <= 8) {
+				console.log("file is binary");
+				console.log(`${2 + 1}`);
+				return "binary";
+			}
 		}
 	}
 	return null;

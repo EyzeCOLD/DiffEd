@@ -1,12 +1,8 @@
 import {type Express} from "express";
 import {Pool} from "pg";
 import {timestampedLog} from "#/src/logging.js";
-<<<<<<< HEAD
-import {UserFileSchema} from "#/src/validation/schemas.js";
-import {requireAuth} from "#/src/middleware.js";
-=======
 import {UserFileSchema} from "../../../shared/src/schemas.js";
->>>>>>> 0407f6f (testing with removing file download endpoint and having getfiles endpoint just return id and filename)
+import {requireAuth} from "#/src/middleware.js";
 import z from "zod";
 import multer from "multer";
 
@@ -107,11 +103,13 @@ function uploadFiles(app: Express, db: Pool) {
 			const argumentArray: (string | number)[] = [];
 			for (let i = 0; i < req.files.length; i++) {
 				const file = req.files[i];
-				const err: string | null = fileNotValid(file.mimetype, undefined, file.buffer);
+				const buffer_utf8 = file.buffer.toString("utf8");
+				const err: string | null = fileNotValid(file.mimetype, undefined, buffer_utf8);
 				if (err) {
 					res.status(415).json({error: `file '${file.originalname}' is ${err}`});
 					return;
 				}
+				argumentArray.push(buffer_utf8);
 				const uuid = crypto.randomUUID();
 				argumentArray.push(uuid);
 				argumentArray.push(file.originalname);
