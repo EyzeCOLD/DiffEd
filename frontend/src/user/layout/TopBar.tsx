@@ -40,7 +40,7 @@ export default function TopBar() {
 					Files
 				</Link>
 			</div>
-			<Button type="button" onClick={logout}>
+			<Button type="button" className="text-foreground hover:text-accent cursor-pointer" onClick={logout}>
 				Logout
 			</Button>
 		</nav>
