@@ -32,10 +32,8 @@ export default function LoginPage() {
 			});
 			if (!response.ok) {
 				const data = await response.json();
-				console.log(data.error);
 				throw new Error(data.error || "Login failed");
 			}
-			console.log("login successful");
 			navigate("/dashboard");
 		} catch (e) {
 			// TODO! Add the toast

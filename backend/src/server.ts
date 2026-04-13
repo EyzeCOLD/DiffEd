@@ -31,6 +31,7 @@ Endpoints.deleteFile(api, postgres);
 Endpoints.downloadFile(api, postgres);
 
 UserEndpoints.signupUser(api, postgres);
+UserEndpoints.modifyUser(api, postgres);
 UserEndpoints.deleteUser(api, postgres);
 UserEndpoints.getUser(api, postgres);
 SessionEndpoints.loginUser(api, postgres);
