@@ -162,11 +162,101 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 	);
 }
 
+function Password() {
+	const [isLoading, setIsLoading] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
+	const [newPassword, setNewPassword] = useState("");
+	const [newPassword2, setNewPassword2] = useState("");
+	const [oldPassword, setOldPassword] = useState("");
+
+	async function handleSubmitClick() {
+		setIsLoading(true);
+		try {
+			if (!oldPassword || !newPassword) {
+				throw new Error("Please fill all the fields!");
+			}
+
+			if (newPassword !== newPassword2) {
+				throw new Error("The passwords do not match!");
+			}
+
+			const response = await fetch("/api/user", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({oldPassword, newPassword}),
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.error || "Unexpected error");
+			}
+
+			//TODO: Add toast "Password changed successfully"
+			setNewPassword("");
+			setNewPassword2("");
+			setOldPassword("");
+			setIsEditing(false);
+		} catch (e) {
+			console.log("Error updating password:", e);
+			window.alert(e);
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	function handleCancelClick() {
+		setIsEditing(false);
+		setNewPassword("");
+		setNewPassword2("");
+		setOldPassword("");
+	}
+
+	return (
+		<div>
+			{isEditing ? (
+				<div>
+					<input placeholder="old password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
+					<div>
+						<input placeholder="new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+					</div>
+					<div>
+						<input
+							placeholder="type new password again"
+							value={newPassword2}
+							onChange={(e) => setNewPassword2(e.target.value)}
+						/>
+					</div>
+					<div>
+						<button
+							onClick={handleSubmitClick}
+							disabled={isLoading}
+							style={{cursor: "pointer"}}
+							aria-label="Submit password change"
+						>
+							Submit
+						</button>
+						&nbsp;
+						<button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel password change">
+							Cancel
+						</button>
+					</div>
+				</div>
+			) : (
+				<div>
+					<button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change password">
+						Change Password
+					</button>
+				</div>
+			)}
+		</div>
+	);
+}
+
 export default function UserManagementPage() {
 	const [user, setUser] = useState("");
 	const [email, setEmail] = useState("");
 	//const [bio, setBio] = useState("");
-	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(true);
 	const navigate = useNavigate();
 
@@ -198,10 +288,6 @@ export default function UserManagementPage() {
 
 	function handleUsernameUpdate(newUsername: string) {
 		setUser(newUsername);
-	}
-
-	function handlePasswordUpdate(newPassword: string) {
-		setPassword(newPassword);
 	}
 
 	async function deleteAccount() {
@@ -237,6 +323,9 @@ export default function UserManagementPage() {
 			</div>
 			<div>
 				<Email initialValue={email} onUpdate={handleEmailUpdate} />
+			</div>
+			<div>
+				<Password />
 			</div>
 			<div>
 				<button

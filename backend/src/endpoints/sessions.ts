@@ -28,7 +28,6 @@ function loginUser(app: Express, db: Pool) {
 				console.log("Invalid password for existing user");
 				return res.status(401).json({error: "Incorrect username or password"});
 			}
-			console.log("Authentication success!");
 			// Generate a session and add requesting users id and username to the session
 			req.session.regenerate((err) => {
 				if (err) return res.status(500).json({error: "Session error"});

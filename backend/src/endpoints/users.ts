@@ -43,10 +43,10 @@ const modifyUser = (app: Express, db: Pool) => {
 			return res.status(401).json({error: "Unauthorized"});
 		}
 
-		const {username, email, password} = req.body;
+		const {username, email, oldPassword, newPassword} = req.body;
 		const id = req.session.userId;
 
-		if (!username && !email && !password) {
+		if (!username && !email && !newPassword) {
 			return res.status(400).json({error: "Nothing to update"});
 		}
 
@@ -64,17 +64,28 @@ const modifyUser = (app: Express, db: Pool) => {
 				emailSchema.parse(email);
 				const isEmailTaken = await db.query("SELECT 1 FROM users WHERE email = $1 AND id != $2", [email, id]);
 				if (isEmailTaken.rows.length > 0) {
-					throw new Error("Email already taken");
+					return res.status(409).json({error: "Email already taken"});
 				}
 				await db.query("UPDATE users SET email = $1 WHERE id = $2", [email, id]);
 			}
 
-			if (password) {
-				passwordSchema.parse({password});
-				const hash = await argon2.hash(password, {
+			if (newPassword) {
+				console.log(newPassword);
+				passwordSchema.parse(newPassword);
+				const result = await db.query("SELECT hashed_password FROM users WHERE id = $1", [id]);
+				if (result.rows.length === 0) {
+					return res.status(500).json({error: "database error"});
+				}
+
+				const match = await argon2.verify(result.rows[0].hashed_password, oldPassword);
+
+				if (!match) {
+					return res.status(401).json({error: "Incorrect password"});
+				}
+
+				const hash = await argon2.hash(newPassword, {
 					type: argon2.argon2id,
 				});
-
 				await db.query("UPDATE users SET hashed_password = $1 WHERE id = $2", [hash, id]);
 			}
 

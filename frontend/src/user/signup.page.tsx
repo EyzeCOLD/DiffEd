@@ -35,7 +35,7 @@ export default function SignupPage() {
 				throw new Error("Invalid email");
 			}
 
-			if (password != password2) {
+			if (password !== password2) {
 				throw new Error("The passwords do not match!");
 			}
 
