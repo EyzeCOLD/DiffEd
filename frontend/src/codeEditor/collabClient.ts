@@ -43,14 +43,14 @@ export class CollabConnection {
 			return this.socket;
 		}
 
-		const socket = io(COLLAB_URL, {
+		this.socket = io(COLLAB_URL, {
 			path: "/socket.io",
 			autoConnect: false,
 			forceNew: true,
 			transports: ["websocket", "polling"],
 		});
 
-		socket.on("collabResponse", (data: CollabResponse) => {
+		this.socket.on("collabResponse", (data: CollabResponse) => {
 			if ("error" in data) {
 				this.rejectAllPending(new Error(`Collab server error: ${data.error}`));
 				console.error("Received error response from collab server:", data.error);
@@ -66,16 +66,15 @@ export class CollabConnection {
 			}
 		});
 
-		socket.on("connect_error", (error) => {
+		this.socket.on("connect_error", (error) => {
 			this.rejectAllPending(error);
 		});
 
-		socket.on("disconnect", (reason) => {
+		this.socket.on("disconnect", (reason) => {
 			this.rejectAllPending(new Error(`Collab socket disconnected: ${reason}`));
 		});
 
-		this.socket = socket;
-		return socket;
+		return this.socket;
 	}
 
 	private rejectAllPending(reason: unknown): void {
