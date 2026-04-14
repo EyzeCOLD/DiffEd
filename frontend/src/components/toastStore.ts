@@ -22,7 +22,7 @@ export const useToastStore = create<ToastStore>((set) => ({
 	assertiveToasts: [],
 	showToast: (variant: ToastVariant, message: string) => {
 		const id = nextId++;
-		if (variant == "error") set((state) => ({assertiveToasts: [...state.assertiveToasts, {id, message, variant}]}));
+		if (variant === "error") set((state) => ({assertiveToasts: [...state.assertiveToasts, {id, message, variant}]}));
 		else set((state) => ({politeToasts: [...state.politeToasts, {id, message, variant}]}));
 	},
 	dismiss: (variant: ToastVariant, id: number) => {
