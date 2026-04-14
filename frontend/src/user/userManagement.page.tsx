@@ -1,7 +1,8 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
-//import type {MouseEvent, SubmitEvent} from "react";
 import {z} from "zod";
+import {Button} from "../components/Button";
+import { useToastStore } from "../components/toastStore";
 
 const emailSchema = z.email();
 
@@ -14,6 +15,7 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [newUsername, setNewUsername] = useState(initialValue);
+    const showToast = useToastStore((s) => s.showToast);
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -35,9 +37,8 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 
 			onUpdate(newUsername);
 		} catch (e) {
-			console.log("Error updating username:", e);
 			setNewUsername(initialValue);
-			window.alert(e);
+            showToast("error", e instanceof Error ? e.message : String(e));
 		} finally {
 			setIsEditing(false);
 			setIsLoading(false);
@@ -55,26 +56,26 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 				<div>
 					<input placeholder="username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
 					&nbsp;
-					<button
+					<Button
 						onClick={handleSubmitClick}
 						disabled={isLoading}
 						style={{cursor: "pointer"}}
 						aria-label="Submit new username"
 					>
 						{isLoading ? "Saving..." : "Submit"}
-					</button>
+					</Button>
 					&nbsp;
-					<button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel username change">
+					<Button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel username change">
 						Cancel
-					</button>
+					</Button>
 				</div>
 			) : (
 				<div>
 					<span>USERNAME: {initialValue}</span>
 					&nbsp;
-					<button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change username">
+					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change username">
 						Change
-					</button>
+					</Button>
 				</div>
 			)}
 		</div>
@@ -136,26 +137,26 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 						onChange={(e) => setNewEmail(e.target.value)}
 					/>
 					&nbsp;
-					<button
+					<Button
 						onClick={handleSubmitClick}
 						disabled={isLoading}
 						style={{cursor: "pointer"}}
 						aria-label="Submit new email address"
 					>
 						{isLoading ? "Saving..." : "Submit"}
-					</button>
+					</Button>
 					&nbsp;
-					<button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel email address change">
+					<Button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel email address change">
 						Cancel
-					</button>
+					</Button>
 				</div>
 			) : (
 				<div>
 					<span>EMAIL: {initialValue}</span>
 					&nbsp;
-					<button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change email address">
+					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change email address">
 						Change
-					</button>
+					</Button>
 				</div>
 			)}
 		</div>
@@ -216,37 +217,38 @@ function Password() {
 		<div>
 			{isEditing ? (
 				<div>
-					<input placeholder="old password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
+					<input placeholder="old password" className="m-1" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
 					<div>
-						<input placeholder="new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+						<input placeholder="new password" className="m-1" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
 					</div>
 					<div>
 						<input
 							placeholder="type new password again"
 							value={newPassword2}
+                            className="m-1"
 							onChange={(e) => setNewPassword2(e.target.value)}
 						/>
 					</div>
 					<div>
-						<button
+						<Button
 							onClick={handleSubmitClick}
 							disabled={isLoading}
 							style={{cursor: "pointer"}}
 							aria-label="Submit password change"
 						>
 							Submit
-						</button>
+						</Button>
 						&nbsp;
-						<button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel password change">
+						<Button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel password change">
 							Cancel
-						</button>
+						</Button>
 					</div>
 				</div>
 			) : (
 				<div>
-					<button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change password">
+					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change password">
 						Change Password
-					</button>
+					</Button>
 				</div>
 			)}
 		</div>
@@ -256,7 +258,6 @@ function Password() {
 export default function UserManagementPage() {
 	const [user, setUser] = useState("");
 	const [email, setEmail] = useState("");
-	//const [bio, setBio] = useState("");
 	const [loading, setLoading] = useState(true);
 	const navigate = useNavigate();
 
@@ -273,7 +274,6 @@ export default function UserManagementPage() {
 			.then((data) => {
 				setUser(data.username);
 				setEmail(data.email);
-				//setBio(data.bio);
 				setLoading(false);
 			})
 			.catch((error) => {
@@ -328,13 +328,13 @@ export default function UserManagementPage() {
 				<Password />
 			</div>
 			<div>
-				<button
+				<Button
 					onClick={deleteAccount}
-					style={{background: "none", cursor: "pointer", padding: 0}}
+					style={{cursor: "pointer"}}
 					aria-label="Delete account"
 				>
 					Delete account
-				</button>
+				</Button>
 			</div>
 		</div>
 	);

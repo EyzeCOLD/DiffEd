@@ -1,3 +1,4 @@
+import {Button} from "../components/Button";
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import type {SubmitEvent} from "react";
@@ -57,8 +58,7 @@ export default function SignupPage() {
 				const data = await response.json();
 				throw new Error(data.error);
 			}
-			//TODO: Let the user briefly know about successful registration and then navigate to login page
-			console.log("Signup successful");
+			showToast("info", "Signup successful");
 			navigate("/login");
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
@@ -83,17 +83,17 @@ export default function SignupPage() {
 					<input placeholder="repeat password" value={password2} onChange={(e) => setUserPassword2(e.target.value)} />
 				</div>
 				<div>
-					<button type="submit">signup</button>
+					<Button type="submit">signup</Button>
 				</div>
 			</form>
 			<div>
 				Already have an account? Go to&nbsp;
-				<button
+				<Button
 					onClick={() => navigate("/login")}
 					style={{background: "none", border: "none", cursor: "pointer", padding: 0}}
 				>
 					login page
-				</button>
+				</Button>
 			</div>
 		</div>
 	);
