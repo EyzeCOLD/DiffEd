@@ -103,17 +103,18 @@ function uploadFiles(app: Express, db: Pool) {
 			const argumentArray: (string | number)[] = [];
 			for (let i = 0; i < req.files.length; i++) {
 				const file = req.files[i];
+				// file validations
 				const buffer_utf8 = file.buffer.toString("utf8");
 				const err: string | null = fileNotValid(file.mimetype, undefined, buffer_utf8);
 				if (err) {
 					res.status(415).json({error: `file '${file.originalname}' is ${err}`});
 					return;
 				}
-				argumentArray.push(buffer_utf8);
+
 				const uuid = crypto.randomUUID();
 				argumentArray.push(uuid);
 				argumentArray.push(file.originalname);
-				argumentArray.push(file.buffer.toString("utf8"));
+				argumentArray.push(buffer_utf8);
 				argumentArray.push(req.session.userId!);
 				const index: number = i * 4; // i * number of fields, fields are one indexed so +1,+2,+3,+4
 				query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}, $${index + 4}), `;
