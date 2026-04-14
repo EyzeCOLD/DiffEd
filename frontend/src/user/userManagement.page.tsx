@@ -5,99 +5,168 @@ import {z} from "zod";
 
 const emailSchema = z.email();
 
-function Email({email, onEmailUpdate}) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [newEmail, setNewEmail] = useState(email);
+type UpdateProps = {
+	initialValue: string;
+	onUpdate: (newValue: string) => void;
+};
 
-    async function handleSubmitClick() {
-        setIsLoading(true);
-        try {
-            // NOTE: We need the email validity checks here as well
-            if (!newEmail) {
-                throw new Error("The field cannot be empty");
-            }
+function Username({initialValue, onUpdate}: UpdateProps) {
+	const [isEditing, setIsEditing] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
+	const [newUsername, setNewUsername] = useState(initialValue);
 
-            const result = emailSchema.safeParse(newEmail);
-            if (!result.success) {
-                throw new Error("Invalid email");
-            }
+	async function handleSubmitClick() {
+		setIsLoading(true);
+		try {
+			if (!newUsername) {
+				throw new Error("The field cannot be empty");
+			}
 
-            const response = await fetch("/api/user", {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                credentials: "include",
-                body: JSON.stringify({email: newEmail}),
-            })
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || "Unexpected error");
-            }
-            onEmailUpdate(newEmail);
-        } catch (e) {
-            console.log("Error updating email:", e.message);
-        } finally {
-            //TODO: For some reason doesn't go back to original state (the input field still shows
-            setIsEditing(false);
-            setIsLoading(false);
-        }
-    }
+			const response = await fetch("/api/user", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({username: newUsername}),
+			});
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.error || "Unexpected error");
+			}
 
-    function handleCancelClick() {
-        setIsEditing(false);
-        setNewEmail(email);
-    }
+			onUpdate(newUsername);
+		} catch (e) {
+			console.log("Error updating username:", e);
+			setNewUsername(initialValue);
+			window.alert(e);
+		} finally {
+			setIsEditing(false);
+			setIsLoading(false);
+		}
+	}
 
-    return (
-        <div>
-            {isEditing ? (
-                <div>
-                    <input
-                        type="email"
-                        placeholder="example@email.com"
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                    />
-                    &nbsp;
-                    <button
-                        onClick={handleSubmitClick}
-                        disabled={isLoading}
-                        style={{cursor: "pointer"}}
-                        aria-label="Submit new email address"
-                    >
-                        {isLoading ? "Saving..." : "Submit"}
-                    </button>
-                    &nbsp;
-                    <button
-                        onClick={handleCancelClick}
-                        style={{cursor: "pointer"}}
-                        aria-label="Cancel email address change"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            ) : (
-                <div>
-                    <span>email: {email}</span>
-                    &nbsp;
-                    <button
-                        onClick={() => setIsEditing(true)}
-                        style={{cursor: "pointer"}}
-                        aria-label="Change email address"
-                    >
-                        Change
-                    </button>
-                </div>
-            )}
-        </div>
-    );
+	function handleCancelClick() {
+		setIsEditing(false);
+		setNewUsername(initialValue);
+	}
+
+	return (
+		<div>
+			{isEditing ? (
+				<div>
+					<input placeholder="username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
+					&nbsp;
+					<button
+						onClick={handleSubmitClick}
+						disabled={isLoading}
+						style={{cursor: "pointer"}}
+						aria-label="Submit new username"
+					>
+						{isLoading ? "Saving..." : "Submit"}
+					</button>
+					&nbsp;
+					<button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel username change">
+						Cancel
+					</button>
+				</div>
+			) : (
+				<div>
+					<span>USERNAME: {initialValue}</span>
+					&nbsp;
+					<button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change username">
+						Change
+					</button>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function Email({initialValue, onUpdate}: UpdateProps) {
+	const [isEditing, setIsEditing] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
+	const [newEmail, setNewEmail] = useState(initialValue);
+
+	async function handleSubmitClick() {
+		setIsLoading(true);
+		try {
+			if (!newEmail) {
+				throw new Error("The field cannot be empty");
+			}
+
+			const result = emailSchema.safeParse(newEmail);
+			if (!result.success) {
+				throw new Error("Invalid email");
+			}
+
+			const response = await fetch("/api/user", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({email: newEmail}),
+			});
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.error || "Unexpected error");
+			}
+
+			onUpdate(newEmail);
+		} catch (e) {
+			console.log("Error updating email:", e);
+			setNewEmail(initialValue);
+			window.alert(e);
+		} finally {
+			setIsEditing(false);
+			setIsLoading(false);
+		}
+	}
+
+	function handleCancelClick() {
+		setIsEditing(false);
+		setNewEmail(initialValue);
+	}
+
+	return (
+		<div>
+			{isEditing ? (
+				<div>
+					<input
+						type="email"
+						placeholder="example@email.com"
+						value={newEmail}
+						onChange={(e) => setNewEmail(e.target.value)}
+					/>
+					&nbsp;
+					<button
+						onClick={handleSubmitClick}
+						disabled={isLoading}
+						style={{cursor: "pointer"}}
+						aria-label="Submit new email address"
+					>
+						{isLoading ? "Saving..." : "Submit"}
+					</button>
+					&nbsp;
+					<button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel email address change">
+						Cancel
+					</button>
+				</div>
+			) : (
+				<div>
+					<span>EMAIL: {initialValue}</span>
+					&nbsp;
+					<button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change email address">
+						Change
+					</button>
+				</div>
+			)}
+		</div>
+	);
 }
 
 export default function UserManagementPage() {
 	const [user, setUser] = useState("");
 	const [email, setEmail] = useState("");
-    //const [bio, setBio] = useState("");
-    const [password, setPassword] = useState("");
+	//const [bio, setBio] = useState("");
+	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(true);
 	const navigate = useNavigate();
 
@@ -114,7 +183,7 @@ export default function UserManagementPage() {
 			.then((data) => {
 				setUser(data.username);
 				setEmail(data.email);
-                //setBio(data.bio);
+				//setBio(data.bio);
 				setLoading(false);
 			})
 			.catch((error) => {
@@ -123,17 +192,17 @@ export default function UserManagementPage() {
 			});
 	}, [navigate]);
 
-	function handleEmailUpdate(newEmail) {
+	function handleEmailUpdate(newEmail: string) {
 		setEmail(newEmail);
 	}
 
-	function handleUsernameUpdate(newUsername) {
+	function handleUsernameUpdate(newUsername: string) {
 		setUser(newUsername);
 	}
 
-    function handlePasswordUpdate(newPassword) {
-        setPassword(newPassword);
-    }
+	function handlePasswordUpdate(newPassword: string) {
+		setPassword(newPassword);
+	}
 
 	async function deleteAccount() {
 		if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
@@ -163,9 +232,11 @@ export default function UserManagementPage() {
 	) : (
 		<div>
 			<div>User Management</div>
-			<div>username: {user}</div>
 			<div>
-				<Email email={email} onEmailUpdate={handleEmailUpdate} />
+				<Username initialValue={user} onUpdate={handleUsernameUpdate} />
+			</div>
+			<div>
+				<Email initialValue={email} onUpdate={handleEmailUpdate} />
 			</div>
 			<div>
 				<button

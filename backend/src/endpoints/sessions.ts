@@ -34,7 +34,6 @@ function loginUser(app: Express, db: Pool) {
 				if (err) return res.status(500).json({error: "Session error"});
 
 				req.session.userId = user.id;
-				req.session.username = user.username;
 
 				req.session.save((err) => {
 					if (err) return res.status(500).json({error: "Session save failed"});
