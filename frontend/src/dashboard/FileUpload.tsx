@@ -1,17 +1,19 @@
 import {useState, useRef} from "react";
 import {Button} from "../components/Button";
+import {useToastStore} from "../components/toastStore.ts";
 
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const MAX_FILE_SIZE = 1000000; // 1meg
+	const showToast = useToastStore((s) => s.showToast);
 
 	function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 		if (!e.target.files) return;
 
 		for (const f of e.target.files) {
 			if (f.size > MAX_FILE_SIZE) {
-				window.alert(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
+				showToast("error", `File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 				console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 				setFileUploads(null);
 				return;
@@ -39,7 +41,7 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 				if (result.status === 409) {
 					const res = await result.json();
 					console.error(`${res.error.detail}`);
-					window.alert(`${res.error.detail}`);
+					showToast("error", `${res.error.detail}`);
 					setFileUploads(null);
 					return;
 				}
