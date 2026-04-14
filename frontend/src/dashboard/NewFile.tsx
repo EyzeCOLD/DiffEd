@@ -1,11 +1,13 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
 import {Button} from "../components/Button";
+import {useToastStore} from "../components/toastStore.ts";
 
 function NewFile() {
 	const [newFilename, setNewFilename] = useState<string>();
 	const [showFilenamePrompt, setShowFilenamePrompt] = useState(false);
 	const navigate = useNavigate();
+	const showToast = useToastStore((s) => s.showToast);
 
 	async function openNewFile() {
 		try {
@@ -19,7 +21,7 @@ function NewFile() {
 
 			if (result.status === 409) {
 				console.error(`${res.error}`);
-				window.alert(`${res.error}`);
+				showToast("error", `${res.error}`);
 				return;
 			} else if (!result.ok) {
 				console.error("File creation failed!");

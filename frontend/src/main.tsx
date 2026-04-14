@@ -10,9 +10,11 @@ import FileBrowserPage from "./dashboard/FileBrowser.page.tsx";
 import Dashboard from "./user/dashboard.page.tsx";
 import UserLayout from "./user/layout/UserLayout.tsx";
 import UserManagementPage from "./user/userManagement.page.tsx";
+import {ToastContainer} from "./components/Toast.tsx";
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
+		<ToastContainer />
 		<BrowserRouter>
 			<Routes>
 				<Route path="/" element={<App />} />

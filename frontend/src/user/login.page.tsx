@@ -2,11 +2,13 @@ import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
 import {getSession} from "../utils.ts";
+import {useToastStore} from "../components/toastStore.ts";
 
 export default function LoginPage() {
 	const [loginIdentifier, setLoginIdentifier] = useState("");
 	const [loginPassword, setLoginPassword] = useState("");
 	const navigate = useNavigate();
+	const showToast = useToastStore((s) => s.showToast);
 
 	useEffect(() => {
 		getSession().then((isLoggedIn) => {
@@ -36,8 +38,7 @@ export default function LoginPage() {
 			}
 			navigate("/dashboard");
 		} catch (e) {
-			// TODO! Add the toast
-			window.alert(`Login failed. ${e}`);
+			showToast("error", `Login failed. ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
 

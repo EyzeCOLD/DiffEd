@@ -1,9 +1,11 @@
 import {Link, useNavigate} from "react-router";
 import {Button} from "../../components/Button";
+import {useToastStore} from "../../components/toastStore.ts";
 import type {MouseEvent} from "react";
 
 export default function TopBar() {
 	const navigate = useNavigate();
+	const showToast = useToastStore((s) => s.showToast);
 
 	async function logout(event: MouseEvent<HTMLButtonElement>) {
 		event.preventDefault();
@@ -16,11 +18,11 @@ export default function TopBar() {
 				navigate("/login");
 			} else {
 				const data = await response.json();
-				window.alert(data.error || "Logout failed");
+				showToast("error", data.error || "Logout failed");
 			}
 		} catch (e) {
 			console.error("Logout error:", e);
-			window.alert("Network error. Please try again.");
+			showToast("error", "Network error. Please try again.");
 		}
 	}
 

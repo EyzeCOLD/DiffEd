@@ -9,6 +9,18 @@
 	--font-family-sans: Arial, sans-serif;
 }
 
+@layer toasts {
+	.toast-error {
+		@apply bg-red-700 border-red-500 text-white;
+	}
+	.toast-success {
+		@apply bg-green-700 border-green-500 text-white;
+	}
+	.toast-info {
+		@apply bg-surface border-accent text-white;
+	}
+}
+
 @layer base {
 	:root {
 		background-color: var(--color-canvas);
