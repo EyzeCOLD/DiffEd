@@ -1,11 +1,11 @@
 import {Link, useNavigate} from "react-router";
 import {Button} from "../../components/Button";
-import {useToastStore} from "../../components/toastStore.ts";
+import {useShowToast} from "../../components/toastStore.ts";
 import type {MouseEvent} from "react";
 
 export default function TopBar() {
 	const navigate = useNavigate();
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function logout(event: MouseEvent<HTMLButtonElement>) {
 		event.preventDefault();

@@ -1,13 +1,13 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
 import {Button} from "../components/Button";
-import {useToastStore} from "../components/toastStore.ts";
+import {useShowToast} from "../components/toastStore.ts";
 
 function NewFile() {
 	const [newFilename, setNewFilename] = useState<string>();
 	const [showFilenamePrompt, setShowFilenamePrompt] = useState(false);
 	const navigate = useNavigate();
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function openNewFile() {
 		try {

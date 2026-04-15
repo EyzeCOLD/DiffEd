@@ -5,7 +5,7 @@ import type {SubmitEvent} from "react";
 import type {SigningUser} from "#shared/src/types";
 import {getSession} from "../utils.ts";
 import {z} from "zod";
-import {useToastStore} from "../components/toastStore.ts";
+import {useShowToast} from "../components/toastStore.ts";
 
 const emailSchema = z.email();
 
@@ -15,7 +15,7 @@ export default function SignupPage() {
 	const [password, setUserPassword] = useState("");
 	const [password2, setUserPassword2] = useState("");
 	const navigate = useNavigate();
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	useEffect(() => {
 		getSession().then((isLoggedIn) => {

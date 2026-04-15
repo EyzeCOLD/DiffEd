@@ -1,12 +1,12 @@
 import {useState, useRef} from "react";
 import {Button} from "../components/Button";
-import {useToastStore} from "../components/toastStore.ts";
+import {useShowToast} from "../components/toastStore.ts";
 
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const MAX_FILE_SIZE = 1000000; // 1meg
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 		if (!e.target.files) return;
