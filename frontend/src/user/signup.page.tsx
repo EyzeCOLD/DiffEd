@@ -58,7 +58,7 @@ export default function SignupPage() {
 				const data = await response.json();
 				throw new Error(data.error);
 			}
-			showToast("info", "Signup successful");
+			showToast("success", "Signup successful");
 			navigate("/login");
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
@@ -71,16 +71,31 @@ export default function SignupPage() {
 			<div>Welcome to the signup page</div>
 			<form onSubmit={signup}>
 				<div>
-					<input placeholder="username" value={username} onChange={(e) => setUserName(e.target.value)} />
+					<input
+						placeholder="username"
+						className="m-1"
+						value={username}
+						onChange={(e) => setUserName(e.target.value)}
+					/>
 				</div>
 				<div>
-					<input placeholder="email" value={email} onChange={(e) => setUserEmail(e.target.value)} />
+					<input placeholder="email" className="m-1" value={email} onChange={(e) => setUserEmail(e.target.value)} />
 				</div>
 				<div>
-					<input placeholder="password" value={password} onChange={(e) => setUserPassword(e.target.value)} />
+					<input
+						placeholder="password"
+						className="m-1"
+						value={password}
+						onChange={(e) => setUserPassword(e.target.value)}
+					/>
 				</div>
 				<div>
-					<input placeholder="repeat password" value={password2} onChange={(e) => setUserPassword2(e.target.value)} />
+					<input
+						placeholder="repeat password"
+						className="m-1"
+						value={password2}
+						onChange={(e) => setUserPassword2(e.target.value)}
+					/>
 				</div>
 				<div>
 					<Button type="submit">signup</Button>
@@ -88,12 +103,9 @@ export default function SignupPage() {
 			</form>
 			<div>
 				Already have an account? Go to&nbsp;
-				<Button
-					onClick={() => navigate("/login")}
-					style={{background: "none", border: "none", cursor: "pointer", padding: 0}}
-				>
+				<button onClick={() => navigate("/login")} className="font-bold underline cursor-pointer">
 					login page
-				</Button>
+				</button>
 			</div>
 		</div>
 	);

@@ -2,7 +2,7 @@ import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import {z} from "zod";
 import {Button} from "../components/Button";
-import { useToastStore } from "../components/toastStore";
+import {useToastStore} from "../components/toastStore";
 
 const emailSchema = z.email();
 
@@ -15,7 +15,7 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [newUsername, setNewUsername] = useState(initialValue);
-    const showToast = useToastStore((s) => s.showToast);
+	const showToast = useToastStore((s) => s.showToast);
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -36,9 +36,10 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 			}
 
 			onUpdate(newUsername);
+			showToast("success", "Successfully changed username");
 		} catch (e) {
 			setNewUsername(initialValue);
-            showToast("error", e instanceof Error ? e.message : String(e));
+			showToast("error", e instanceof Error ? e.message : String(e));
 		} finally {
 			setIsEditing(false);
 			setIsLoading(false);
@@ -54,7 +55,12 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 		<div>
 			{isEditing ? (
 				<div>
-					<input placeholder="username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
+					<input
+						placeholder="username"
+						className="m-1"
+						value={newUsername}
+						onChange={(e) => setNewUsername(e.target.value)}
+					/>
 					&nbsp;
 					<Button
 						onClick={handleSubmitClick}
@@ -86,6 +92,7 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [newEmail, setNewEmail] = useState(initialValue);
+	const showToast = useToastStore((s) => s.showToast);
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -111,10 +118,10 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 			}
 
 			onUpdate(newEmail);
+			showToast("success", "Successfully changed email");
 		} catch (e) {
-			console.log("Error updating email:", e);
 			setNewEmail(initialValue);
-			window.alert(e);
+			showToast("error", e instanceof Error ? e.message : String(e));
 		} finally {
 			setIsEditing(false);
 			setIsLoading(false);
@@ -132,6 +139,7 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 				<div>
 					<input
 						type="email"
+						className="m-1"
 						placeholder="example@email.com"
 						value={newEmail}
 						onChange={(e) => setNewEmail(e.target.value)}
@@ -169,6 +177,7 @@ function Password() {
 	const [newPassword, setNewPassword] = useState("");
 	const [newPassword2, setNewPassword2] = useState("");
 	const [oldPassword, setOldPassword] = useState("");
+	const showToast = useToastStore((s) => s.showToast);
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -193,14 +202,13 @@ function Password() {
 				throw new Error(data.error || "Unexpected error");
 			}
 
-			//TODO: Add toast "Password changed successfully"
 			setNewPassword("");
 			setNewPassword2("");
 			setOldPassword("");
 			setIsEditing(false);
+			showToast("success", "Successfully changed password");
 		} catch (e) {
-			console.log("Error updating password:", e);
-			window.alert(e);
+			showToast("error", e instanceof Error ? e.message : String(e));
 		} finally {
 			setIsLoading(false);
 		}
@@ -217,15 +225,25 @@ function Password() {
 		<div>
 			{isEditing ? (
 				<div>
-					<input placeholder="old password" className="m-1" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
+					<input
+						placeholder="old password"
+						className="m-1"
+						value={oldPassword}
+						onChange={(e) => setOldPassword(e.target.value)}
+					/>
 					<div>
-						<input placeholder="new password" className="m-1" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+						<input
+							placeholder="new password"
+							className="m-1"
+							value={newPassword}
+							onChange={(e) => setNewPassword(e.target.value)}
+						/>
 					</div>
 					<div>
 						<input
 							placeholder="type new password again"
 							value={newPassword2}
-                            className="m-1"
+							className="m-1"
 							onChange={(e) => setNewPassword2(e.target.value)}
 						/>
 					</div>
@@ -251,6 +269,42 @@ function Password() {
 					</Button>
 				</div>
 			)}
+		</div>
+	);
+}
+
+function Delete() {
+	const navigate = useNavigate();
+	const showToast = useToastStore((s) => s.showToast);
+
+	async function deleteAccount() {
+		if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+			return;
+		}
+		try {
+			const response = await fetch("/api/user", {
+				method: "DELETE",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+			});
+
+			if (!response.ok) {
+				const msg = await response.json();
+				window.alert(msg.error || "Failed to delete account");
+			}
+
+			showToast("success", "Successfully deleted user");
+			navigate("/login");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		}
+	}
+
+	return (
+		<div>
+			<Button onClick={deleteAccount} style={{cursor: "pointer"}} aria-label="Delete account">
+				Delete account
+			</Button>
 		</div>
 	);
 }
@@ -290,29 +344,6 @@ export default function UserManagementPage() {
 		setUser(newUsername);
 	}
 
-	async function deleteAccount() {
-		if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-			return;
-		}
-		try {
-			const response = await fetch("/api/user", {
-				method: "DELETE",
-				//headers: {"Content-Type": "application/json"},
-				credentials: "include",
-			});
-
-			if (!response.ok) {
-				const msg = await response.json();
-				window.alert(msg.error || "Failed to delete account");
-			}
-
-			console.log("Successfully deleted user");
-			navigate("/login");
-		} catch (e) {
-			window.alert(e);
-		}
-	}
-
 	return loading ? (
 		<div>Loading...</div>
 	) : (
@@ -328,13 +359,7 @@ export default function UserManagementPage() {
 				<Password />
 			</div>
 			<div>
-				<Button
-					onClick={deleteAccount}
-					style={{cursor: "pointer"}}
-					aria-label="Delete account"
-				>
-					Delete account
-				</Button>
+				<Delete />
 			</div>
 		</div>
 	);

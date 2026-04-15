@@ -1,3 +1,4 @@
+import {Button} from "../components/Button";
 import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
@@ -36,6 +37,7 @@ export default function LoginPage() {
 				const data = await response.json();
 				throw new Error(data.error || "Login failed");
 			}
+			showToast("success", "Login successful");
 			navigate("/dashboard");
 		} catch (e) {
 			showToast("error", `Login failed. ${e instanceof Error ? e.message : String(e)}`);
@@ -50,32 +52,35 @@ export default function LoginPage() {
 				<div>
 					<input
 						placeholder="username or email"
+						className="m-1"
 						value={loginIdentifier}
 						onChange={(e) => setLoginIdentifier(e.target.value)}
 					/>
 				</div>
 				<div>
-					<input placeholder="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+					<input
+						placeholder="password"
+						className="m-1"
+						value={loginPassword}
+						onChange={(e) => setLoginPassword(e.target.value)}
+					/>
 				</div>
 				<div>
-					<button type="submit">login</button>
+					<Button type="submit">login</Button>
 				</div>
 			</form>
 			<div>
 				<button
 					//TODO! Link to forgot password page
 					onClick={() => navigate("/signup")}
-					style={{background: "none", border: "none", cursor: "pointer", padding: 0}}
+					className="font-bold underline cursor-pointer"
 				>
 					Forgot Password?
 				</button>
 			</div>
 			<div>
 				Don't have an account? Create one&nbsp;
-				<button
-					onClick={() => navigate("/signup")}
-					style={{background: "none", border: "none", cursor: "pointer", padding: 0}}
-				>
+				<button onClick={() => navigate("/signup")} className="font-bold underline cursor-pointer">
 					here
 				</button>
 			</div>
