@@ -6,7 +6,7 @@ import {SignupSchema, usernameSchema, emailSchema, passwordSchema} from "../vali
 import {z} from "zod";
 
 function signupUser(app: Express, db: Pool) {
-	app.post("/api/signup", async (req, res) => {
+	app.post("/api/user", async (req, res) => {
 		const {username, email, password} = req.body;
 
 		try {
@@ -37,7 +37,7 @@ function signupUser(app: Express, db: Pool) {
 	});
 }
 
-const modifyUser = (app: Express, db: Pool) => {
+function modifyUser(app: Express, db: Pool) {
 	app.patch("/api/user", async (req, res) => {
 		if (!req.session.userId) {
 			return res.status(401).json({error: "Unauthorized"});

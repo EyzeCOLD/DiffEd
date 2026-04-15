@@ -48,7 +48,7 @@ export default function SignupPage() {
 				password: password,
 			};
 
-			const response = await fetch("/api/signup", {
+			const response = await fetch("/api/user", {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
