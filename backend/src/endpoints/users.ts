@@ -99,7 +99,7 @@ function modifyUser(app: Express, db: Pool) {
 			}
 		}
 	});
-};
+}
 
 function deleteUser(app: Express, db: Pool) {
 	app.delete("/api/user", async (req, res) => {
