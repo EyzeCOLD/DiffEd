@@ -6,19 +6,12 @@
 	--color-canvas: #2c2a4a;
 	--color-surface: #4f518c;
 
-	--font-family-sans: Arial, sans-serif;
-}
+	--color-error-bg: #b91c1c;
+	--color-error-border: #ef4444;
+	--color-success-bg: #15803d;
+	--color-success-border: #22c55e;
 
-@layer toasts {
-	.toast-error {
-		@apply bg-red-700 border-red-500 text-white;
-	}
-	.toast-success {
-		@apply bg-green-700 border-green-500 text-white;
-	}
-	.toast-info {
-		@apply bg-surface border-accent text-white;
-	}
+	--font-family-sans: Arial, sans-serif;
 }
 
 @layer base {
