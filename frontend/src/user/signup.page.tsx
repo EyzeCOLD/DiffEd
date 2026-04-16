@@ -94,6 +94,7 @@ export default function SignupPage() {
 					<input
 						placeholder="repeat password"
 						className="m-1"
+						type="password"
 						value={password2}
 						onChange={(e) => setUserPassword2(e.target.value)}
 					/>
