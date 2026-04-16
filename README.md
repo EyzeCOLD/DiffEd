@@ -59,7 +59,6 @@ The root `npm run` scripts are thin wrappers around `docker compose` commands. I
    POSTGRES_USER=<db username>
    POSTGRES_PASSWORD=<db password>
    POSTGRES_DB=<db name>
-   SESSION_SECRET=<long random string>
    ```
 
 3. Build and start all services:
@@ -84,8 +83,8 @@ The root `npm run` scripts are thin wrappers around `docker compose` commands. I
 
 **Collaborative editing**
 
-- [CodeMirror collaborative editing example](https://codemirror.net/examples/collab/): Reference implementation our Operationl Transformation implementation
-- [Operational Transformation (Wikipedia)](https://en.wikipedia.org/wiki/Operational_transformation): Additional reading material
+- [CodeMirror collaborative editing example](https://codemirror.net/examples/collab/): Reference implementation our Operational Transformation implementation
+- [Operational Transformation (Wikipedia)](https://en.wikipedia.org/wiki/Operational_transformation): Extra reading material
 
 **Accessibility**
 
@@ -116,7 +115,7 @@ All AI code was thoroughly reviewed and tested before being merged.
 
 **Work organisation**
 
-The team works in 2-week sprints, aiming towards release-based version milestones (Cherry → Pineapple → Cactus). Each version added a defined scope of features agreed on upfront, and the team checks in regularly (remotely and in person) to track progress and blockers.
+The team works in 2-week sprints, aiming towards code-named release-based version milestones (e.g. Cherry, Pineapple, Cactus). Each version added a defined scope of features agreed on upfront, and the team checks in regularly (remotely and in person) to track progress and resolve blockers.
 
 **Tools**
 
@@ -155,7 +154,7 @@ The team works in 2-week sprints, aiming towards release-based version milestone
 - Docker Compose: Multi-container orchestration manager
 - Nginx: Reverse proxy and SSL handler
 
-**Tooling**
+**Development Tooling**
 
 - ESLint: Linting / Static analysis
 - Prettier: Code formatting
@@ -169,10 +168,5 @@ TODO -->
 <!-- ## Modules
 TODO, see wiki -->
 
-## Individual Contributions
-
-<!-- TODO: Each team member should fill in their section below. Include:
-  - Specific features and components you built
-  - Modules you were mainly responsible for
-  - Any significant technical challenges you had and how you overcame them
--->
+<!-- ## Individual Contributions
+TODO -->
