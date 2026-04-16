@@ -5,6 +5,11 @@ import argon2 from "argon2";
 import {SignupSchema, usernameSchema, emailSchema, passwordSchema} from "../validation/schemas.js";
 import {z} from "zod";
 
+// Type guard. This will be deleted with ticket #
+function isDbError(error: unknown): error is {code: string; detail?: string; constraint?: string} {
+	return typeof error === "object" && error !== null && "code" in error;
+}
+
 function signupUser(app: Express, db: Pool) {
 	app.post("/api/user", async (req, res) => {
 		const {username, email, password} = req.body;
@@ -94,6 +99,9 @@ function modifyUser(app: Express, db: Pool) {
 			if (err instanceof z.ZodError) {
 				const msg = err.issues[0].message;
 				res.status(400).json({error: msg});
+			} else if (isDbError(err)) {
+				console.error({error: `${err.detail}`});
+				return res.status(500).json({error: `${err.detail}`});
 			} else {
 				res.status(400).json({error: err});
 			}
@@ -115,7 +123,7 @@ function deleteUser(app: Express, db: Pool) {
 			res.status(200).send();
 		} catch (err: unknown) {
 			console.log("Error deleting user: ", err);
-			res.status(400).json({error: "Couldn't delete use at this time"});
+			res.status(500).json({error: "Internal Server error"});
 		}
 	});
 }

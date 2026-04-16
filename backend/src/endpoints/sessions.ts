@@ -28,7 +28,7 @@ function loginUser(app: Express, db: Pool) {
 				console.log("Invalid password for existing user");
 				return res.status(401).json({error: "Incorrect username or password"});
 			}
-			// Generate a session and add requesting users id and username to the session
+			// Generate a session and add requesting users id to the session
 			req.session.regenerate((err) => {
 				if (err) return res.status(500).json({error: "Session error"});
 
@@ -52,7 +52,7 @@ function logoutUser(app: Express) {
 		req.session.destroy((err) => {
 			if (err) return res.status(500).json({error: "Logout failed"});
 			res.clearCookie("connect.sid");
-			res.json({message: "Logged out"});
+			res.status(200);
 		});
 	});
 }
