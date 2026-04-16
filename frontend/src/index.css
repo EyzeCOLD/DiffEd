@@ -6,10 +6,10 @@
 	--color-canvas: #2c2a4a;
 	--color-surface: #4f518c;
 
-	--color-error-bg: #b91c1c;
-	--color-error-border: #ef4444;
-	--color-success-bg: #15803d;
-	--color-success-border: #22c55e;
+	--color-error: #b91c1c;
+	--color-error-accent: #ef4444;
+	--color-success: #15803d;
+	--color-success-accent: #22c55e;
 
 	--font-family-sans: Arial, sans-serif;
 }

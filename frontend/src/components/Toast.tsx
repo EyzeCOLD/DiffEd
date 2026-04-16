@@ -12,8 +12,8 @@ function toastDuration(message: string): number {
 const ICONS = {error: "⊘", success: "✓", info: "ℹ"} as const;
 
 const TOAST_COLOR_CLASSES: Record<"error" | "success" | "info", string> = {
-	error: "bg-error-bg border-error-border text-white",
-	success: "bg-success-bg border-success-border text-white",
+	error: "bg-error border-error-accent text-white",
+	success: "bg-success border-success-accent text-white",
 	info: "bg-surface border-accent text-white",
 };
 
