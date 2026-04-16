@@ -10,7 +10,7 @@ export default function TopBar() {
 	async function logout(event: MouseEvent<HTMLButtonElement>) {
 		event.preventDefault();
 		try {
-			const response = await fetch("api/session", {
+			const response = await fetch("/api/session", {
 				method: "DELETE",
 				credentials: "include",
 			});

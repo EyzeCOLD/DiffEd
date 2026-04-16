@@ -1,9 +1,11 @@
 import {ChangeSet, Text} from "@codemirror/state";
-import {Update, rebaseUpdates} from "@codemirror/collab";
-import {Server} from "socket.io";
+import {type Update, rebaseUpdates} from "@codemirror/collab";
+import type {Server, Socket} from "socket.io";
 import type {Pool} from "pg";
+import type {Request, Response, NextFunction} from "express";
 import {timestampedLog} from "../logging.js";
-import {
+import sessionConfig from "../sessionConfig.js";
+import type {
 	CollabRequest,
 	DocumentResponse,
 	ErrorResponse,
@@ -40,7 +42,26 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 function collabSocket(sockets: Server, db: Pool) {
 	const sessions = new Map<string, CollabSession>();
 
-	async function getSession(fileId: string): Promise<CollabSession | undefined> {
+	// After this runs, socket.request.session is populated from the session store exactly as it would be for an HTTP request.
+	function middlewareAdapter(expressMiddleware: (req: Request, res: Response, next: NextFunction) => void) {
+		return function socketMiddleware(socket: Socket, next: (err?: Error) => void) {
+			return expressMiddleware(socket.request as Request, {} as Response, next as NextFunction);
+		};
+	}
+	sockets.use(middlewareAdapter(sessionConfig));
+
+	// Populates socket.data.userId for authentication, or rejects the connection if there is no authenticated user. This runs after the session Express middleware,
+	sockets.use((socket, next) => {
+		const userId = (socket.request as Request).session?.userId;
+		if (!userId) {
+			next(new Error("Unauthorized"));
+		} else {
+			socket.data.userId = userId;
+			next();
+		}
+	});
+
+	async function getSession(fileId: string, userId: number): Promise<CollabSession | undefined> {
 		const session = sessions.get(fileId);
 		if (session) {
 			return session;
@@ -50,8 +71,8 @@ function collabSocket(sockets: Server, db: Pool) {
 		let fileName = "";
 		try {
 			const result = await db.query<Pick<UserFile, "name" | "content">>(
-				"SELECT name, content FROM files WHERE id = $1",
-				[fileId],
+				"SELECT name, content FROM files WHERE id = $1 AND owner_id = $2",
+				[fileId, userId],
 			);
 			if (!result.rowCount) {
 				sessions.delete(fileId);
@@ -148,6 +169,8 @@ function collabSocket(sockets: Server, db: Pool) {
 
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
+		// userId is guaranteed to be set — the auth middleware above rejects unauthenticated connections
+		const userId: number = socket.data.userId;
 
 		socket.on("collabRequest", async (data: CollabRequest) => {
 			const {id, type, fileId} = data;
@@ -162,7 +185,7 @@ function collabSocket(sockets: Server, db: Pool) {
 					return;
 				}
 
-				const session = await getSession(fileId);
+				const session = await getSession(fileId, userId);
 				if (!session) {
 					sendResponse({error: "File does not exist"} satisfies ErrorResponse);
 					return;

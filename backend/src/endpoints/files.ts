@@ -2,6 +2,7 @@ import {type Express} from "express";
 import {type Pool} from "pg";
 import {timestampedLog} from "#/src/logging.js";
 import {UserFileSchema} from "#/src/validation/schemas.js";
+import {requireAuth} from "#/src/middleware.js";
 import z from "zod";
 import multer from "multer";
 const storage = multer.memoryStorage();
@@ -13,31 +14,24 @@ function isDbError(error: unknown): error is {code: string; detail?: string; con
 }
 
 function getFiles(app: Express, db: Pool) {
-	app.get("/api/files", async (req, res) => {
+	app.get("/api/files", requireAuth, async (req, res) => {
 		timestampedLog("Received request to " + req.baseUrl);
-		// console.log(`getFiles req ${req} res ${res}`);
 
 		try {
-			// @TODO validate user who wants files and send only the ones they have access to
-			timestampedLog("Sent SELECT query to DB: all files");
-			const result = await db.query(`SELECT * FROM files`);
-			// console.log(result.rows);
+			timestampedLog("Sent SELECT query to DB: all files for user " + req.session.userId);
+			const result = await db.query(`SELECT * FROM files WHERE owner_id = $1`, [req.session.userId]);
 			return res.status(200).json(result.rows);
 		} catch (error) {
 			console.log(`Error: ${error}`);
 			return res.status(500).send();
 		}
-
-		// @TODO get auth stuff
 	});
 }
 
 function getFileById(app: Express, db: Pool) {
-	app.get("/api/files/:fileId", async (req, res) => {
-		// try {
+	app.get("/api/files/:fileId", requireAuth, async (req, res) => {
 		timestampedLog("Received request to " + req.baseUrl);
 
-		// @TODO get auth stuff
 		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
 		if (!fileId.success) {
 			return res.status(400).json({error: "Invalid file ID"});
@@ -46,7 +40,7 @@ function getFileById(app: Express, db: Pool) {
 		try {
 			const id = fileId.data;
 			timestampedLog(`Sent SELECT query to DB: id:[${id}]`);
-			const result = await db.query("SELECT * FROM files WHERE id = $1", [id]);
+			const result = await db.query("SELECT * FROM files WHERE id = $1 AND owner_id = $2", [id, req.session.userId]);
 			if (result.rowCount != 1) {
 				console.log("Not found");
 				return res.status(403).send();
@@ -62,7 +56,7 @@ function getFileById(app: Express, db: Pool) {
 }
 
 function uploadNewFile(app: Express, db: Pool) {
-	app.post("/api/files", async (req, res) => {
+	app.post("/api/files", requireAuth, async (req, res) => {
 		// the front end could possibly check if a filename is valid (no repeats for a user/project)
 
 		const parsedBody = UserFileSchema.pick({name: true}).strict().safeParse(req.body);
@@ -75,11 +69,10 @@ function uploadNewFile(app: Express, db: Pool) {
 			const fileName = parsedBody.data.name;
 			const uuid = crypto.randomUUID();
 			timestampedLog(`Sent INSERT query to DB: id:[${uuid}] name: '${fileName}'`);
-			const result = await db.query("INSERT INTO files (id, name, content) VALUES ($1, $2, $3) RETURNING id", [
-				uuid,
-				fileName,
-				"",
-			]);
+			const result = await db.query(
+				"INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id",
+				[uuid, fileName, "", req.session.userId],
+			);
 			console.log(`result of INSERT query to DB: id:[${uuid}] name: '${fileName}'`, result.rows);
 			if (result.rowCount != 1) {
 				console.error("Not found");
@@ -90,7 +83,7 @@ function uploadNewFile(app: Express, db: Pool) {
 			}
 		} catch (error: unknown) {
 			if (isDbError(error)) {
-				if (error.constraint === "files_name_key") {
+				if (error.constraint === "files_name_owner_id_key") {
 					console.error({error: `${error.detail}`});
 					return res.status(409).json({error: `${error.detail}`});
 				}
@@ -102,7 +95,7 @@ function uploadNewFile(app: Express, db: Pool) {
 }
 
 function uploadMultipleFiles(app: Express, db: Pool) {
-	app.post("/api/upload", upload.array("file", 2000), async (req, res) => {
+	app.post("/api/upload", requireAuth, upload.array("file", 2000), async (req, res) => {
 		console.log(req.body);
 		console.log(req.files);
 		if (!req.files) {
@@ -114,15 +107,16 @@ function uploadMultipleFiles(app: Express, db: Pool) {
 			return res.status(400).send();
 		}
 		// @NOTE this is a mess
-		let query_string: string = "INSERT INTO files (id, name, content) VALUES ";
-		const argumentArray: string[] = [];
+		let query_string: string = "INSERT INTO files (id, name, content, owner_id) VALUES ";
+		const argumentArray: (string | number)[] = [];
 		req.files.forEach((file, i) => {
 			const uuid = crypto.randomUUID();
 			argumentArray.push(uuid);
 			argumentArray.push(file.originalname);
 			argumentArray.push(file.buffer.toString());
-			const index: number = i * 3; // i * number of fields, fields are one indexed so +1,+2,+3
-			query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}), `;
+			argumentArray.push(req.session.userId!);
+			const index: number = i * 4; // i * number of fields, fields are one indexed so +1,+2,+3,+4
+			query_string += ` ($${index + 1}, $${index + 2}, $${index + 3}, $${index + 4}), `;
 		});
 		query_string = query_string.substring(0, query_string.length - 2);
 		query_string += " RETURNING id;";
@@ -135,7 +129,7 @@ function uploadMultipleFiles(app: Express, db: Pool) {
 			return res.status(201).json(result.rows);
 		} catch (error: unknown) {
 			if (isDbError(error)) {
-				if (error.constraint === "files_name_key") {
+				if (error.constraint === "files_name_owner_id_key") {
 					console.error(`${error.detail}`);
 					return res.status(409).json({error});
 				}
@@ -147,7 +141,7 @@ function uploadMultipleFiles(app: Express, db: Pool) {
 }
 
 function editFile(app: Express, db: Pool) {
-	app.put("/api/files/:fileId", async (req, res) => {
+	app.put("/api/files/:fileId", requireAuth, async (req, res) => {
 		const fileId = z.uuidv4().safeParse(req.params.fileId);
 		if (!fileId.success) {
 			return res.status(400).json({error: "Invalid file ID"});
@@ -164,10 +158,11 @@ function editFile(app: Express, db: Pool) {
 
 		try {
 			timestampedLog(`Sent UPDATE query to DB: id:[${fileId.data}] name: '${parsedBody.data.name}'`);
-			const result = await db.query("UPDATE files SET name = $1, content = $2 WHERE id = $3", [
+			const result = await db.query("UPDATE files SET name = $1, content = $2 WHERE id = $3 AND owner_id = $4", [
 				parsedBody.data.name,
 				parsedBody.data.content,
 				fileId.data,
+				req.session.userId,
 			]);
 			if (!result.rowCount || result.rowCount < 1) {
 				return res.status(403).send();
@@ -182,7 +177,7 @@ function editFile(app: Express, db: Pool) {
 }
 
 function deleteFile(app: Express, db: Pool) {
-	app.delete("/api/files/:fileId", async (req, res) => {
+	app.delete("/api/files/:fileId", requireAuth, async (req, res) => {
 		const fileId = z.uuidv4().safeParse(req.params.fileId);
 		if (!fileId.success) {
 			return res.status(400).json({error: "Invalid file ID"});
@@ -190,7 +185,10 @@ function deleteFile(app: Express, db: Pool) {
 
 		try {
 			timestampedLog(`Sent DELETE query to DB: id:[${fileId.data}]`);
-			const result = await db.query("DELETE FROM files WHERE id = $1", [fileId.data]);
+			const result = await db.query("DELETE FROM files WHERE id = $1 AND owner_id = $2", [
+				fileId.data,
+				req.session.userId,
+			]);
 			console.log(`result of DELETE query to DB: id:[${fileId.data}], deleted rows count:`, result.rowCount);
 			if (!result.rowCount || result.rowCount < 1) {
 				return res.status(403).send();
@@ -204,7 +202,7 @@ function deleteFile(app: Express, db: Pool) {
 }
 
 function downloadFile(app: Express, db: Pool) {
-	app.get("/api/download/:fileId", async (req, res) => {
+	app.get("/api/download/:fileId", requireAuth, async (req, res) => {
 		timestampedLog("Received request to " + req.baseUrl);
 
 		const fileId = UserFileSchema.shape.id.safeParse(req.params.fileId);
@@ -213,7 +211,7 @@ function downloadFile(app: Express, db: Pool) {
 		try {
 			const id = fileId.data;
 			timestampedLog(`Sent SELECT query to DB: id:[${id}]`);
-			const result = await db.query("Select * FROM files WHERE id = $1", [id]);
+			const result = await db.query("SELECT * FROM files WHERE id = $1 AND owner_id = $2", [id, req.session.userId]);
 			if (result.rowCount != 1) {
 				console.error("Invalid file ID");
 				return res.status(403).send();
