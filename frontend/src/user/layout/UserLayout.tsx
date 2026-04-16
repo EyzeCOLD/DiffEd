@@ -9,7 +9,7 @@ export default function UserLayout() {
 
 	useEffect(() => {
 		getSession().then((isLoggedIn) => {
-			if (!isLoggedIn) navigate("/login");
+			if (!isLoggedIn) navigate("/login", {replace: true});
 			else setAuthed(true);
 		});
 	}, [navigate]);
