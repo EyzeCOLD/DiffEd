@@ -44,7 +44,7 @@ if (process.env.NODE_ENV === "developement") {
 		email: "test@mail.no",
 		hashed_password: await argon2.hash("testb"),
 	};
-	const values: Object[] = [];
+	const values: string[] = [];
 	Object.values(testUserA).forEach((v) => values.push(v));
 	Object.values(testUserB).forEach((v) => values.push(v));
 	console.log("VALUES", values);

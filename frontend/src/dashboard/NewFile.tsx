@@ -1,7 +1,8 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
-import {Button} from "../components/Button";
-import {useShowToast} from "../layout/toastStore.ts";
+import {Button} from "#/src/components/Button";
+import {useShowToast} from "#/src/layout/toastStore.ts";
+import {apiFetch} from "#/src/utils.ts";
 
 function NewFile() {
 	const [newFilename, setNewFilename] = useState<string>();
@@ -11,27 +12,23 @@ function NewFile() {
 
 	async function openNewFile() {
 		try {
-			const result = await fetch("/api/files", {
+			const result = await apiFetch("/api/files", {
 				method: "POST",
 				body: JSON.stringify({name: newFilename}),
 				headers: [["Content-Type", "application/json"] as [string, string]],
-			} satisfies RequestInit);
+			});
 
-			const res = await result.json();
-
-			if (result.status === 409) {
-				console.error(`${res.error}`);
-				showToast("error", `${res.error}`);
-				return;
-			} else if (!result.ok) {
+			if (!result.ok) {
 				console.error("File creation failed!");
+				showToast("error", "File creation failed!");
 				return;
 			}
 
 			console.log("New file created!");
-			if (res) navigate(`/edit/${res.id}`);
+			if (result) navigate(`/edit/${result.data}`);
 		} catch (error) {
 			console.error(error);
+			showToast("error", `${error}`);
 		}
 	}
 
