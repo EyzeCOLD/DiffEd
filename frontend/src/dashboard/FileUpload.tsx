@@ -21,21 +21,31 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 			if (f.size > MAX_FILE_SIZE) {
 				showToast("error", `File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 				console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
-				setFileUploads(null);
-				return;
 			}
-			newFileArray.push(f);
+			const index = newFileArray.findIndex(
+				(value: File) =>
+					value.name === f.name && value.webkitRelativePath === f.webkitRelativePath && value.size === f.size,
+			);
+			if (index === -1) {
+				newFileArray.push(f);
+			} else if (f.lastModified > newFileArray[index].lastModified) {
+				newFileArray[index] = f;
+				showToast("info", `Updated file ${f.name}`);
+			} else {
+				showToast("error", `Duplicate file ${f.name}`);
+				console.error(`Duplicate file ${f.name}`);
+			}
 		}
 
 		setFileUploads(newFileArray);
-		console.log(fileUploads);
+		if (fileInputRef.current) fileInputRef.current.value = "";
 	}
 
 	async function handleRemove(name: string) {
 		if (fileUploads === null) return;
 		const newFileArray = fileUploads.filter((value: File) => value.name !== name);
 		if (newFileArray.length) setFileUploads(newFileArray);
-		else setFileUploads(null);
+		else resetInput();
 		// else console.log("trying to remove nonexistent file", name);
 	}
 
@@ -61,17 +71,12 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 					return;
 				}
 
-				if (!result.ok) {
-					showToast("error", `File creation failed! UNKNOWN REASON`);
-					console.error(`File creation failed! UNKNOWN REASON`);
-					resetInput();
-					return;
-				}
 				const data = await result.json();
 				refreshFileList();
 				resetInput();
 				console.log(data);
 			} catch (error) {
+				showToast("error", `${error}`);
 				console.error(error);
 			}
 		}
