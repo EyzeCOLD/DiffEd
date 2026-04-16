@@ -8,6 +8,14 @@ import keybinds from "./keybinds";
 import langServer from "./langExtensions";
 import {CollabConnection, pushUpdates, pullUpdates, getInitialDocument} from "./collabClient";
 
+const INITIAL_DOC_MAX_ATTEMPTS = 2;
+const INITIAL_DOC_RETRY_DELAY_MS = 250;
+const RETRYABLE_INITIAL_DOC_MESSAGES = [
+	"Timed out connecting to collaboration server",
+	"Timed out waiting for collab response",
+	"Collab connection closed",
+];
+
 const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
 
@@ -80,6 +88,7 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 	const editorRef = useRef<HTMLDivElement>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [retryCount, setRetryCount] = useState(0);
 	const onChangeRef = useRef<(value: string) => void>(onChange);
 	const tabUsageHintId = `tab-usage-hint-${fileId}`;
 	const tabUsageHintText =
@@ -93,10 +102,39 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		const editorElement = editorRef.current;
 		if (!editorElement) return;
 		let view: EditorView | null = null;
+		let hasUnmounted = false;
+
+		// Rapid back/forward navigation can interrupt the first collab request,
+		// so retry once before showing an initialization error.
+		async function getInitialDocumentWithRetry() {
+			for (let attempt = 1; attempt <= INITIAL_DOC_MAX_ATTEMPTS; attempt += 1) {
+				try {
+					return await getInitialDocument(connection);
+				} catch (error) {
+					if (hasUnmounted) {
+						throw error;
+					}
+
+					const message = error instanceof Error ? error.message : "";
+					const isRetryable = RETRYABLE_INITIAL_DOC_MESSAGES.some((entry) => message.includes(entry));
+					if (!isRetryable || attempt === INITIAL_DOC_MAX_ATTEMPTS) {
+						throw error;
+					}
+
+					await new Promise((resolve) => setTimeout(resolve, INITIAL_DOC_RETRY_DELAY_MS));
+				}
+			}
+
+			throw new Error("Failed to get initial document");
+		}
 
 		async function initializeEditor(): Promise<void> {
 			try {
-				const {doc, version} = await getInitialDocument(connection);
+				const {doc, version} = await getInitialDocumentWithRetry();
+				if (hasUnmounted) {
+					return;
+				}
+
 				const state = EditorState.create({
 					doc,
 					extensions: [basicSetup, keybinds, langServer.markdown(), ...peerExtension(version, connection)],
@@ -115,8 +153,20 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 				});
 				view = editorView;
 
+				// If the page was left while the editor was initializing, discard the
+				// editor instance instead of mounting stale UI.
+				if (hasUnmounted) {
+					view.destroy();
+					view = null;
+					return;
+				}
+
 				setIsLoading(false);
 			} catch (err) {
+				if (hasUnmounted) {
+					return;
+				}
+
 				const message = err instanceof Error ? err.message : "Unknown error";
 				setError(message);
 				setIsLoading(false);
@@ -127,19 +177,32 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		void initializeEditor();
 
 		return function cleanup() {
+			// Prevent async startup work from updating state after navigation away.
+			hasUnmounted = true;
 			if (view) {
 				view.destroy();
 				view = null;
 			}
 		};
-	}, [fileId, connection]);
+	}, [fileId, connection, retryCount]);
+
+	function retryInitialization(): void {
+		setError(null);
+		setIsLoading(true);
+		setRetryCount((count) => count + 1);
+	}
 
 	return (
 		<div className="h-full w-full">
 			<div className="relative h-full w-full" aria-describedby={tabUsageHintId}>
 				<div ref={editorRef} className={"h-full w-full" + (error ? " hidden" : "")} />
 				{error ? (
-					<div className="border border-red-500 p-2 text-red-500">Error initializing editor: {error}</div>
+					<div className="border border-red-500 p-2 text-red-500">
+						<div>Error initializing editor: {error}</div>
+						<button className="mt-2 border px-2 py-1" onClick={retryInitialization} type="button">
+							Retry
+						</button>
+					</div>
 				) : isLoading ? (
 					<div className="p-2">Initializing collaborative editor...</div>
 				) : null}

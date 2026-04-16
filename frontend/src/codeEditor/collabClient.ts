@@ -29,23 +29,30 @@ type PendingRequest = {
 
 /** Wrapper for socket.io connection to communicate with our collab server */
 export class CollabConnection {
-	private socket: Socket;
+	private socket: Socket | null = null;
 	private fileId: string;
 	private requestId = 0;
-	private pendingRequests: Map<number, PendingRequest>;
+	private pendingRequests = new Map<number, PendingRequest>();
 
 	constructor(fileId: string) {
 		this.fileId = fileId;
+	}
+
+	private getOrCreateSocket(): Socket {
+		if (this.socket) {
+			return this.socket;
+		}
 
 		this.socket = io(COLLAB_URL, {
 			path: "/socket.io",
-			autoConnect: true,
+			autoConnect: false,
+			forceNew: true,
 			transports: ["websocket", "polling"],
 		});
-		this.pendingRequests = new Map();
 
 		this.socket.on("collabResponse", (data: CollabResponse) => {
 			if ("error" in data) {
+				this.rejectAllPending(new Error(`Collab server error: ${data.error}`));
 				console.error("Received error response from collab server:", data.error);
 				return;
 			}
@@ -62,6 +69,12 @@ export class CollabConnection {
 		this.socket.on("connect_error", (error) => {
 			this.rejectAllPending(error);
 		});
+
+		this.socket.on("disconnect", (reason) => {
+			this.rejectAllPending(new Error(`Collab socket disconnected: ${reason}`));
+		});
+
+		return this.socket;
 	}
 
 	private rejectAllPending(reason: unknown): void {
@@ -73,7 +86,8 @@ export class CollabConnection {
 	}
 
 	private async ensureConnected(): Promise<void> {
-		if (this.socket.connected) {
+		const socket = this.getOrCreateSocket();
+		if (socket.connected) {
 			return;
 		}
 
@@ -96,18 +110,19 @@ export class CollabConnection {
 			// Declared in arrow syntax to maintain class' `this` context
 			const cleanup = () => {
 				clearTimeout(timeoutId);
-				this.socket.off("connect", onConnect);
-				this.socket.off("connect_error", onError);
+				socket.off("connect", onConnect);
+				socket.off("connect_error", onError);
 			};
 
-			this.socket.on("connect", onConnect);
-			this.socket.on("connect_error", onError);
-			this.socket.connect();
+			socket.on("connect", onConnect);
+			socket.on("connect_error", onError);
+			socket.connect();
 		});
 	}
 
 	async request(data: CollabRequestPayload): Promise<unknown> {
 		await this.ensureConnected();
+		const socket = this.getOrCreateSocket();
 
 		const id = this.requestId++;
 		return new Promise((resolve, reject) => {
@@ -118,17 +133,18 @@ export class CollabConnection {
 
 			this.pendingRequests.set(id, {resolve, reject, timeoutId});
 			const request: CollabRequest = {id, fileId: this.fileId, ...data};
-			this.socket.emit("collabRequest", request);
+			socket.emit("collabRequest", request);
 		});
 	}
 
 	isConnected(): boolean {
-		return this.socket.connected;
+		return this.socket?.connected ?? false;
 	}
 
 	disconnect(): void {
 		this.rejectAllPending(new Error("Collab connection closed"));
-		this.socket.disconnect();
+		this.socket?.disconnect();
+		this.socket = null;
 	}
 }
 

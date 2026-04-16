@@ -21,6 +21,7 @@ type CollabSession = {
 	doc: Text;
 	pending: ((value: SerializedUpdate[]) => void)[];
 	fileName: string;
+	connectedSockets: Set<string>;
 	hasUnsavedChanges: boolean;
 	isFlushInProgress: boolean;
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
@@ -96,6 +97,7 @@ function collabSocket(sockets: Server, db: Pool) {
 			doc,
 			pending: [],
 			fileName,
+			connectedSockets: new Set(),
 			hasUnsavedChanges: false,
 			isFlushInProgress: false,
 			dbSaveDebounceTimer: null,
@@ -149,11 +151,23 @@ function collabSocket(sockets: Server, db: Pool) {
 
 		session.isFlushInProgress = false;
 
-		// If new changes arrived while we were awaiting the DB, or a stale timer already fired, queue a follow-up flush
-		if (session.hasUnsavedChanges && !session.dbSaveDebounceTimer) {
-			session.dbSaveDebounceTimer = setTimeout(() => {
-				void flushSession(fileId);
-			}, DATABASE_SAVE_DEBOUNCE_TIME);
+		// If new changes arrived while we were awaiting the DB, keep the session alive until that work is persisted;
+		// otherwise, a stale timer can be cleared and the empty session deleted once no clients remain.
+		if (session.hasUnsavedChanges) {
+			if (!session.dbSaveDebounceTimer) {
+				session.dbSaveDebounceTimer = setTimeout(() => {
+					void flushSession(fileId);
+				}, DATABASE_SAVE_DEBOUNCE_TIME);
+			}
+			return;
+		}
+
+		if (session.connectedSockets.size === 0) {
+			if (session.dbSaveDebounceTimer) {
+				clearTimeout(session.dbSaveDebounceTimer);
+				session.dbSaveDebounceTimer = null;
+			}
+			sessions.delete(fileId);
 		}
 	}
 
@@ -167,17 +181,50 @@ function collabSocket(sockets: Server, db: Pool) {
 		}, DATABASE_SAVE_DEBOUNCE_TIME);
 	}
 
+	function attachSocketToSession(socketId: string, session: CollabSession) {
+		session.connectedSockets.add(socketId);
+	}
+
+	function detachSocketFromSession(fileId: string, session: CollabSession, socketId: string) {
+		session.connectedSockets.delete(socketId);
+
+		if (session.connectedSockets.size > 0) {
+			return;
+		}
+
+		if (session.dbSaveDebounceTimer) {
+			clearTimeout(session.dbSaveDebounceTimer);
+			session.dbSaveDebounceTimer = null;
+		}
+
+		if (session.isFlushInProgress || session.hasUnsavedChanges) {
+			void flushSession(fileId);
+			return;
+		}
+
+		sessions.delete(fileId);
+	}
+
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
 		// userId is guaranteed to be set — the auth middleware above rejects unauthenticated connections
 		const userId: number = socket.data.userId;
 
+		socket.on("disconnect", () => {
+			for (const [fileId, session] of sessions.entries()) {
+				if (session.connectedSockets.has(socket.id)) {
+					detachSocketFromSession(fileId, session, socket.id);
+					break;
+				}
+			}
+		});
+
 		socket.on("collabRequest", async (data: CollabRequest) => {
 			const {id, type, fileId} = data;
 
-			const sendResponse = (result: unknown) => {
+			function sendResponse(result: unknown) {
 				socket.emit("collabResponse", {id, result});
-			};
+			}
 
 			try {
 				if (!fileId || fileId.length === 0) {
@@ -191,6 +238,12 @@ function collabSocket(sockets: Server, db: Pool) {
 					return;
 				}
 
+				if (!socket.connected) {
+					return;
+				}
+
+				attachSocketToSession(socket.id, session);
+
 				switch (type) {
 					case "pullUpdates": {
 						console.log(`Client ${socket.id} requested updates for file ${fileId} since version ${data.version}`);
@@ -202,10 +255,10 @@ function collabSocket(sockets: Server, db: Pool) {
 							sendResponse(serializeUpdates(session.updates.slice(data.version)));
 						} else if (data.version === session.updates.length) {
 							session.pending.push((newUpdates: SerializedUpdate[]) => {
-								sendResponse(newUpdates);
+								sendResponse(newUpdates satisfies SerializedUpdate[]);
 							});
 						} else {
-							sendResponse([]);
+							sendResponse([] satisfies SerializedUpdate[]);
 						}
 						break;
 					}
@@ -242,7 +295,7 @@ function collabSocket(sockets: Server, db: Pool) {
 					case "pushFileName": {
 						const nextNameRaw = data.name;
 						if (typeof nextNameRaw !== "string") {
-							sendResponse({error: "Invalid file name"});
+							sendResponse({error: "Invalid file name"} satisfies ErrorResponse);
 							return;
 						}
 
@@ -259,7 +312,7 @@ function collabSocket(sockets: Server, db: Pool) {
 				}
 			} catch (error) {
 				timestampedLog(`Error handling collab request (${type}): ${error}`);
-				sendResponse({error: String(error)});
+				sendResponse({error: String(error)} satisfies ErrorResponse);
 			}
 		});
 	});
