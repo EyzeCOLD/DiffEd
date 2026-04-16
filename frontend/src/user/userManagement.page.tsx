@@ -227,6 +227,7 @@ function Password() {
 				<div>
 					<input
 						placeholder="old password"
+						type="password"
 						className="m-1"
 						value={oldPassword}
 						onChange={(e) => setOldPassword(e.target.value)}
@@ -234,6 +235,7 @@ function Password() {
 					<div>
 						<input
 							placeholder="new password"
+							type="password"
 							className="m-1"
 							value={newPassword}
 							onChange={(e) => setNewPassword(e.target.value)}
@@ -242,6 +244,7 @@ function Password() {
 					<div>
 						<input
 							placeholder="type new password again"
+							type="password"
 							value={newPassword2}
 							className="m-1"
 							onChange={(e) => setNewPassword2(e.target.value)}
