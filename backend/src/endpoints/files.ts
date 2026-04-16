@@ -71,7 +71,7 @@ function createNewFile(app: Express, db: Pool) {
 			id: crypto.randomUUID(),
 			name: body.data.name,
 			content: "",
-			owner_id: req.session.id,
+			owner_id: req.session.userId!,
 		};
 
 		try {
@@ -153,7 +153,7 @@ function deleteFile(app: Express, db: Pool) {
 		}
 
 		const query = "DELETE FROM files WHERE id = $1 AND owner_id = $2";
-		const values = [fileId.data, req.session.id];
+		const values = [fileId.data, req.session.userId];
 		timestampedLog(`DB QUERY >>> ${query}`);
 		timestampedLog(`DB VALUES >>> ${values}`);
 		try {
@@ -181,7 +181,7 @@ function downloadFile(app: Express, db: Pool) {
 		}
 
 		const query = "SELECT * FROM files WHERE id = $1 AND owner_id = $2";
-		const values = [fileId.data, req.session.id];
+		const values = [fileId.data, req.session.userId];
 		timestampedLog(`DB QUERY >>> ${query}`);
 		timestampedLog(`DB VALUES >>> ${values}`);
 

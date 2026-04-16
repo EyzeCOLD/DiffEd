@@ -3,7 +3,7 @@ export type UserFile = {
 	id: string;
 	name: string;
 	content: string;
-	owner_id: string;
+	owner_id: number;
 };
 
 export type SigningUser = {
