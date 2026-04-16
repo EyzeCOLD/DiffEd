@@ -1,3 +1,4 @@
+import {Button} from "../components/Button";
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import type {SubmitEvent} from "react";
@@ -24,7 +25,7 @@ export default function SignupPage() {
 		});
 	}, [navigate]);
 
-	const signup = async (event: SubmitEvent<HTMLFormElement>) => {
+	async function signup(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 
 		try {
@@ -37,7 +38,7 @@ export default function SignupPage() {
 				throw new Error("Invalid email");
 			}
 
-			if (password != password2) {
+			if (password !== password2) {
 				throw new Error("The passwords do not match!");
 			}
 
@@ -47,7 +48,7 @@ export default function SignupPage() {
 				password: password,
 			};
 
-			const response = await fetch("/api/signup", {
+			const response = await fetch("/api/user", {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
@@ -57,13 +58,12 @@ export default function SignupPage() {
 				const data = await response.json();
 				throw new Error(data.error);
 			}
-			//TODO: Let the user briefly know about successful registration and then navigate to login page
-			console.log("Signup successful");
+			showToast("success", "Signup successful");
 			navigate("/login");
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
 		}
-	};
+	}
 
 	// TODO: should we use maxlength for the input fields?
 	return (
@@ -71,27 +71,39 @@ export default function SignupPage() {
 			<div>Welcome to the signup page</div>
 			<form onSubmit={signup}>
 				<div>
-					<input placeholder="username" value={username} onChange={(e) => setUserName(e.target.value)} />
+					<input
+						placeholder="username"
+						className="m-1"
+						value={username}
+						onChange={(e) => setUserName(e.target.value)}
+					/>
 				</div>
 				<div>
-					<input placeholder="email" value={email} onChange={(e) => setUserEmail(e.target.value)} />
+					<input placeholder="email" className="m-1" value={email} onChange={(e) => setUserEmail(e.target.value)} />
 				</div>
 				<div>
-					<input placeholder="password" value={password} onChange={(e) => setUserPassword(e.target.value)} />
+					<input
+						placeholder="password"
+						className="m-1"
+						value={password}
+						onChange={(e) => setUserPassword(e.target.value)}
+					/>
 				</div>
 				<div>
-					<input placeholder="repeat password" value={password2} onChange={(e) => setUserPassword2(e.target.value)} />
+					<input
+						placeholder="repeat password"
+						className="m-1"
+						value={password2}
+						onChange={(e) => setUserPassword2(e.target.value)}
+					/>
 				</div>
 				<div>
-					<button type="submit">signup</button>
+					<Button type="submit">signup</Button>
 				</div>
 			</form>
 			<div>
 				Already have an account? Go to&nbsp;
-				<button
-					onClick={() => navigate("/login")}
-					style={{background: "none", border: "none", cursor: "pointer", padding: 0}}
-				>
+				<button onClick={() => navigate("/login")} className="font-bold underline cursor-pointer">
 					login page
 				</button>
 			</div>

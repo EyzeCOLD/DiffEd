@@ -8,6 +8,7 @@ import sessionConfig from "./sessionConfig.js";
 import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import UserEndpoints from "./endpoints/users.js";
+import SessionEndpoints from "./endpoints/sessions.js";
 
 import {collabSocket} from "./endpoints/collabSocket.js";
 
@@ -30,9 +31,12 @@ Endpoints.deleteFile(api, postgres);
 Endpoints.downloadFile(api, postgres);
 
 UserEndpoints.signupUser(api, postgres);
-UserEndpoints.loginUser(api, postgres);
-UserEndpoints.logoutUser(api);
-UserEndpoints.getSession(api);
+UserEndpoints.modifyUser(api, postgres);
+UserEndpoints.deleteUser(api, postgres);
+UserEndpoints.getUser(api, postgres);
+SessionEndpoints.loginUser(api, postgres);
+SessionEndpoints.logoutUser(api);
+SessionEndpoints.getSession(api);
 
 // Catch-all to serve the frontend, needed for subroutes.
 api.get("/*splat", function (request, response) {

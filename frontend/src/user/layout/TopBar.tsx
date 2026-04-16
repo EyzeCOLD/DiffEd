@@ -41,6 +41,9 @@ export default function TopBar() {
 				<Link to="/filebrowser" className="text-foreground hover:text-accent">
 					Files
 				</Link>
+				<Link to="/usermanagement" className="text-foreground hover:text-accent">
+					User Management
+				</Link>
 			</div>
 			<Button type="button" className="text-foreground hover:text-accent cursor-pointer" onClick={logout}>
 				Logout
