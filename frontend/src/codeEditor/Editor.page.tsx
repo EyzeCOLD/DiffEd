@@ -1,5 +1,5 @@
 import CodeEditor from "./CodeEditor";
-import {useNavigate, useParams, Link} from "react-router";
+import {useNavigate, useParams} from "react-router";
 import type {UserFile} from "#shared/src/types";
 import {useEffect, useMemo, useState} from "react";
 import {CollabConnection, pushFileName} from "./collabClient";
@@ -66,7 +66,6 @@ export default function EditorPage() {
 					}}
 				/>
 			</label>
-			<Link to="/filebrowser">File Browser</Link>
 			{errorMessage && <div className="text-red-500">{errorMessage}</div>}
 			<CodeEditor
 				fileId={fileId}
