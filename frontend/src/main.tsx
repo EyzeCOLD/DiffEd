@@ -2,13 +2,14 @@ import {StrictMode} from "react";
 import {createRoot} from "react-dom/client";
 import {BrowserRouter, Routes, Route} from "react-router";
 import "./index.css";
-import App from "./App.tsx";
+import HomePage from "./home.page.tsx";
 import LoginPage from "./user/login.page.tsx";
 import SignupPage from "./user/signup.page.tsx";
 import EditorPage from "./codeEditor/Editor.page.tsx";
 import FileBrowserPage from "./dashboard/FileBrowser.page.tsx";
 import Dashboard from "./user/dashboard.page.tsx";
-import UserLayout from "./user/layout/UserLayout.tsx";
+import UserLayout from "./layout/UserLayout.tsx";
+import PublicLayout from "./layout/PublicLayout.tsx";
 import UserManagementPage from "./user/userManagement.page.tsx";
 import {ToastContainer} from "./components/Toast.tsx";
 
@@ -17,14 +18,16 @@ createRoot(document.getElementById("root")!).render(
 		<ToastContainer />
 		<BrowserRouter>
 			<Routes>
-				<Route path="/" element={<App />} />
-				<Route path="/signup" element={<SignupPage />} />
-				<Route path="/login" element={<LoginPage />} />
+				<Route element={<PublicLayout />}>
+					<Route path="/" element={<HomePage />} />
+					<Route path="/signup" element={<SignupPage />} />
+					<Route path="/login" element={<LoginPage />} />
+				</Route>
 				<Route element={<UserLayout />}>
 					<Route path="/dashboard" element={<Dashboard />} />
 					<Route path="/filebrowser" element={<FileBrowserPage />} />
 					<Route path="/edit/:fileId" element={<EditorPage />} />
-					<Route path="/usermanagement" element={<UserManagementPage />} />
+					<Route path="/account" element={<UserManagementPage />} />
 				</Route>
 			</Routes>
 		</BrowserRouter>
