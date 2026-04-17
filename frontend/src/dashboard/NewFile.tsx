@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
 import {Button} from "../components/Button";
-import {useShowToast} from "../components/toastStore.ts";
+import {useShowToast} from "../layout/toastStore.ts";
 
 function NewFile() {
 	const [newFilename, setNewFilename] = useState<string>();
