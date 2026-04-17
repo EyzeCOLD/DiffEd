@@ -10,7 +10,7 @@ import FileBrowserPage from "./dashboard/FileBrowser.page.tsx";
 import Dashboard from "./user/dashboard.page.tsx";
 import {UserLayout, PublicLayout} from "./layout/Layouts.tsx";
 import UserManagementPage from "./user/userManagement.page.tsx";
-import {ToastContainer} from "./components/Toast.tsx";
+import {ToastContainer} from "./layout/Toast.tsx";
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>

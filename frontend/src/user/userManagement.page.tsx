@@ -2,7 +2,7 @@ import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import {z} from "zod";
 import {Button} from "../components/Button";
-import {useShowToast} from "../components/toastStore";
+import {useShowToast} from "../layout/toastStore";
 
 const emailSchema = z.email();
 

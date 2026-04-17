@@ -1,5 +1,5 @@
 import {NavLink, useNavigate} from "react-router";
-import {useShowToast} from "../components/toastStore.ts";
+import {useShowToast} from "./toastStore.ts";
 import {getSession} from "../utils.ts";
 import {useState, useEffect} from "react";
 import type {MouseEvent} from "react";
