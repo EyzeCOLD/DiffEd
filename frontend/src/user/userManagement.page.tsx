@@ -1,11 +1,9 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import {z} from "zod";
-import {Button} from "../components/Button";
-import {Input} from "../components/Input";
-import {useToastStore} from "../components/toastStore";
-
-const emailSchema = z.email();
+import {Button} from "#/src/components/Button";
+import {Input} from "#/src/components/Input";
+import {useShowToast} from "#/src/components/toastStore.ts";
 
 type UpdateProps = {
 	initialValue: string;
@@ -16,7 +14,7 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [newUsername, setNewUsername] = useState(initialValue);
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -56,23 +54,13 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 		<div>
 			{isEditing ? (
 				<div>
-					<Input
-						placeholder="username"
-						className="m-1"
-						value={newUsername}
-						onChange={(e) => setNewUsername(e.target.value)}
-					/>
+					<Input placeholder="username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
 					&nbsp;
-					<Button
-						onClick={handleSubmitClick}
-						disabled={isLoading}
-						style={{cursor: "pointer"}}
-						aria-label="Submit new username"
-					>
+					<Button onClick={handleSubmitClick} disabled={isLoading} aria-label="Submit new username">
 						{isLoading ? "Saving..." : "Submit"}
 					</Button>
 					&nbsp;
-					<Button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel username change">
+					<Button onClick={handleCancelClick} aria-label="Cancel username change">
 						Cancel
 					</Button>
 				</div>
@@ -80,7 +68,7 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 				<div>
 					<span>USERNAME: {initialValue}</span>
 					&nbsp;
-					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change username">
+					<Button onClick={() => setIsEditing(true)} aria-label="Change username">
 						Change
 					</Button>
 				</div>
@@ -93,7 +81,7 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [newEmail, setNewEmail] = useState(initialValue);
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -102,7 +90,7 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 				throw new Error("The field cannot be empty");
 			}
 
-			const result = emailSchema.safeParse(newEmail);
+			const result = z.email().safeParse(newEmail);
 			if (!result.success) {
 				throw new Error("Invalid email");
 			}
@@ -140,22 +128,16 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 				<div>
 					<Input
 						type="email"
-						className="m-1"
 						placeholder="example@email.com"
 						value={newEmail}
 						onChange={(e) => setNewEmail(e.target.value)}
 					/>
 					&nbsp;
-					<Button
-						onClick={handleSubmitClick}
-						disabled={isLoading}
-						style={{cursor: "pointer"}}
-						aria-label="Submit new email address"
-					>
+					<Button onClick={handleSubmitClick} disabled={isLoading} aria-label="Submit new email address">
 						{isLoading ? "Saving..." : "Submit"}
 					</Button>
 					&nbsp;
-					<Button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel email address change">
+					<Button onClick={handleCancelClick} aria-label="Cancel email address change">
 						Cancel
 					</Button>
 				</div>
@@ -163,7 +145,7 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 				<div>
 					<span>EMAIL: {initialValue}</span>
 					&nbsp;
-					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change email address">
+					<Button onClick={() => setIsEditing(true)} aria-label="Change email address">
 						Change
 					</Button>
 				</div>
@@ -178,7 +160,7 @@ function Password() {
 	const [newPassword, setNewPassword] = useState("");
 	const [newPassword2, setNewPassword2] = useState("");
 	const [oldPassword, setOldPassword] = useState("");
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -271,7 +253,7 @@ function Password() {
 
 function Delete() {
 	const navigate = useNavigate();
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function deleteAccount() {
 		if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {

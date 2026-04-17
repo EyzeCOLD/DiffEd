@@ -1,10 +1,10 @@
-import {Button} from "../components/Button";
-import {Input} from "../components/Input";
+import {Button} from "#/src/components/Button";
+import {Input} from "#/src/components/Input";
 import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
-import {getSession} from "../utils.ts";
-import {useShowToast} from "../components/toastStore.ts";
+import {getSession} from "#/src/utils.ts";
+import {useShowToast} from "#/src/components/toastStore.ts";
 
 export default function LoginPage() {
 	const [loginIdentifier, setLoginIdentifier] = useState("");

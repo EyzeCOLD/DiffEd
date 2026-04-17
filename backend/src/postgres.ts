@@ -3,7 +3,7 @@ import pg from "pg";
 import {timestampedLog} from "./logging.js";
 import argon2 from "argon2";
 
-const maxConnectionAttempts = 3;
+const maxConnectionAttempts = 5;
 const pgConfig = {
 	host: "postgres",
 	database: process.env.POSTGRES_DB,

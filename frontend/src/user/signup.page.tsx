@@ -4,9 +4,9 @@ import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import type {SubmitEvent} from "react";
 import type {SigningUser} from "#shared/src/types";
-import {getSession} from "../utils.ts";
+import {getSession} from "#/src/utils.ts";
 import {z} from "zod";
-import {useShowToast} from "../components/toastStore.ts";
+import {useShowToast} from "#/src/components/toastStore.ts";
 
 const emailSchema = z.email();
 
