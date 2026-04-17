@@ -37,3 +37,7 @@ export const useToastStore = create<ToastStore>((set) => ({
 		}
 	},
 }));
+
+export function useShowToast() {
+	return useToastStore((s) => s.showToast);
+}

@@ -3,13 +3,13 @@ import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
 import {getSession} from "../utils.ts";
-import {useToastStore} from "../components/toastStore.ts";
+import {useShowToast} from "../components/toastStore.ts";
 
 export default function LoginPage() {
 	const [loginIdentifier, setLoginIdentifier] = useState("");
 	const [loginPassword, setLoginPassword] = useState("");
 	const navigate = useNavigate();
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	useEffect(() => {
 		getSession().then((isLoggedIn) => {
@@ -61,6 +61,7 @@ export default function LoginPage() {
 					<input
 						placeholder="password"
 						className="m-1"
+						type="password"
 						value={loginPassword}
 						onChange={(e) => setLoginPassword(e.target.value)}
 					/>

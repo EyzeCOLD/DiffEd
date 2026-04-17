@@ -11,6 +11,12 @@ function toastDuration(message: string): number {
 // WCAG 1.4.1 (A) / 1.3.1 (A): variant conveyed by icon + sr-only text, not colour alone
 const ICONS = {error: "⊘", success: "✓", info: "ℹ"} as const;
 
+const TOAST_COLOR_CLASSES: Record<"error" | "success" | "info", string> = {
+	error: "bg-error border-error-accent text-white",
+	success: "bg-success border-success-accent text-white",
+	info: "bg-surface border-accent text-white",
+};
+
 function ToastItem({toast}: {toast: {id: number; message: string; variant: "error" | "success" | "info"}}) {
 	const dismiss = useToastStore((s) => s.dismiss);
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,7 +45,7 @@ function ToastItem({toast}: {toast: {id: number; message: string; variant: "erro
 	return (
 		<div
 			// WCAG 1.4.10 (AA): max-w-sm + w-full + wrap-break-words allows reflow at 320 CSS px (400% zoom)
-			className={`toast-${toast.variant} flex items-center gap-2 min-w-70 max-w-sm w-full rounded border px-4 py-3 shadow-lg`}
+			className={`${TOAST_COLOR_CLASSES[toast.variant]} flex items-center gap-2 min-w-70 max-w-sm w-full rounded border px-4 py-3 shadow-lg`}
 			onMouseEnter={pauseTimer}
 			onMouseLeave={resumeTimer}
 			onFocus={pauseTimer}
