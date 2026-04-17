@@ -2,7 +2,7 @@ import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import {z} from "zod";
 import {Button} from "../components/Button";
-import {useToastStore} from "../components/toastStore";
+import {useShowToast} from "../components/toastStore";
 
 const emailSchema = z.email();
 
@@ -15,7 +15,7 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [newUsername, setNewUsername] = useState(initialValue);
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -92,7 +92,7 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [newEmail, setNewEmail] = useState(initialValue);
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -177,7 +177,7 @@ function Password() {
 	const [newPassword, setNewPassword] = useState("");
 	const [newPassword2, setNewPassword2] = useState("");
 	const [oldPassword, setOldPassword] = useState("");
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function handleSubmitClick() {
 		setIsLoading(true);
@@ -278,7 +278,7 @@ function Password() {
 
 function Delete() {
 	const navigate = useNavigate();
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function deleteAccount() {
 		if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {

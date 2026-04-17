@@ -1,5 +1,5 @@
 import {NavLink, useNavigate} from "react-router";
-import {useToastStore} from "../components/toastStore.ts";
+import {useShowToast} from "../components/toastStore.ts";
 import {getSession} from "../utils.ts";
 import {useState, useEffect} from "react";
 import type {MouseEvent} from "react";
@@ -47,7 +47,7 @@ export function PublicTopBar() {
 
 export function UserTopBar() {
 	const navigate = useNavigate();
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function logout(event: MouseEvent<HTMLButtonElement>) {
 		event.preventDefault();
