@@ -1,6 +1,9 @@
 import {useState, useRef} from "react";
 import {Button} from "../components/Button";
-import {useShowToast} from "../layout/toastStore.ts";
+import {useShowToast} from "#/src/layout/toastStore.ts";
+import {Input} from "../components/Input";
+import {apiFetch} from "#/src/utils.js";
+import type {ApiResponse} from "#shared/src/types.ts";
 
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<FileList | null>(null);
@@ -13,8 +16,8 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 
 		for (const f of e.target.files) {
 			if (f.size > MAX_FILE_SIZE) {
-				showToast("error", `File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 				console.error(`File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
+				showToast("error", `File '${f.name}' too large at ${f.size} (max. ${MAX_FILE_SIZE})`);
 				setFileUploads(null);
 				return;
 			}
@@ -26,41 +29,37 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	async function handleUpload() {
 		if (fileUploads) {
 			console.log("Uploading file(s)...", fileUploads);
+			showToast("info", "Uploading file(s)...");
 
 			const formData = new FormData();
 			[...fileUploads].forEach(function (file: File) {
 				formData.append("file", file);
 			});
 
-			try {
-				const result = await fetch("/api/files/upload", {
-					method: "POST",
-					body: formData,
-				} satisfies RequestInit);
+			const response: ApiResponse<null> = await apiFetch("/api/files/upload", {
+				method: "POST",
+				body: formData,
+			});
 
-				const res = await result.json();
-
-				if (!res.ok) {
-					console.error(`${res.error}`);
-					showToast("Error", `${res.error}`);
-					setFileUploads(null);
-					return;
-				}
-
-				refreshFileList();
+			if (!response.ok) {
+				console.error(`${response.error}`);
+				showToast("error", `${response.error}`);
 				setFileUploads(null);
-				if (fileInputRef.current) fileInputRef.current.value = "";
-				console.log(res.data);
-			} catch (error) {
-				console.error(error);
+				return;
 			}
+
+			refreshFileList();
+			setFileUploads(null);
+			if (fileInputRef.current) fileInputRef.current.value = "";
+			console.log("File(s) uploaded");
+			showToast("success", "File(s) uploaded");
 		}
 	}
 
 	return (
 		<>
 			<div className="input-group">
-				<input
+				<Input
 					ref={fileInputRef}
 					style={{display: "none"}}
 					id="file"

@@ -2,7 +2,9 @@ import {useState} from "react";
 import {useNavigate} from "react-router";
 import {Button} from "#/src/components/Button";
 import {useShowToast} from "#/src/layout/toastStore.ts";
+import {Input} from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
+import type {ApiResponse} from "#shared/src/types.ts";
 
 function NewFile() {
 	const [newFilename, setNewFilename] = useState<string>();
@@ -11,25 +13,21 @@ function NewFile() {
 	const showToast = useShowToast();
 
 	async function openNewFile() {
-		try {
-			const result = await apiFetch("/api/files", {
-				method: "POST",
-				body: JSON.stringify({name: newFilename}),
-				headers: [["Content-Type", "application/json"] as [string, string]],
-			});
+		const result: ApiResponse<string> = await apiFetch("/api/files", {
+			method: "POST",
+			body: JSON.stringify({name: newFilename}),
+			headers: [["Content-Type", "application/json"] as [string, string]],
+		});
 
-			if (!result.ok) {
-				console.error("File creation failed!");
-				showToast("error", "File creation failed!");
-				return;
-			}
-
-			console.log("New file created!");
-			if (result) navigate(`/edit/${result.data}`);
-		} catch (error) {
-			console.error(error);
-			showToast("error", `${error}`);
+		if (!result.ok) {
+			console.error("File creation failed!");
+			showToast("error", "File creation failed!");
+			return;
 		}
+
+		console.log("New file created!");
+		showToast("success", "New file created!");
+		if (result) navigate(`/edit/${result.data}`);
 	}
 
 	return (
@@ -42,7 +40,7 @@ function NewFile() {
 						openNewFile();
 					}}
 				>
-					<input id="fileNameInput" value={newFilename} onChange={(event) => setNewFilename(event.target.value)} />
+					<Input id="fileNameInput" value={newFilename} onChange={(event) => setNewFilename(event.target.value)} />
 					<Button type="submit">Submit</Button>
 				</form>
 			) : null}

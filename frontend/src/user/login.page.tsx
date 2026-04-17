@@ -1,4 +1,5 @@
 import {Button} from "../components/Button";
+import {Input} from "../components/Input";
 import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
@@ -50,17 +51,15 @@ export default function LoginPage() {
 			<div>Welcome to the login page</div>
 			<form onSubmit={login}>
 				<div>
-					<input
+					<Input
 						placeholder="username or email"
-						className="m-1"
 						value={loginIdentifier}
 						onChange={(e) => setLoginIdentifier(e.target.value)}
 					/>
 				</div>
 				<div>
-					<input
+					<Input
 						placeholder="password"
-						className="m-1"
 						type="password"
 						value={loginPassword}
 						onChange={(e) => setLoginPassword(e.target.value)}

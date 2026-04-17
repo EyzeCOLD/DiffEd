@@ -1,8 +1,10 @@
 import type {UserFile} from "#shared/src/types";
 import {Link} from "react-router";
 import type {JSX} from "react";
-import {Button} from "../components/Button";
+import {Button} from "#/src/components/Button";
 import type {ApiResponse} from "#shared/src/types.js";
+import {apiFetch} from "#/src/utils.js";
+import {useToastStore} from "#/src/components/toastStore.ts";
 
 function FileList({
 	fileList,
@@ -13,15 +15,18 @@ function FileList({
 }): JSX.Element {
 	if (!fileList) return <p>Loading really slow...</p>;
 	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
+	const showToast = useToastStore((s) => s.showToast);
 
 	async function handleDownload(file: UserFile) {
-		const response: ApiResponse<string> = await fetch(`/api/files/${file.id}/download`).then((r) => r.json());
+		const response: ApiResponse<string> = await apiFetch(`/api/files/${file.id}/download`);
 
 		if (!response.ok) {
 			console.error(response.error);
+			showToast("error", `${response.error}`);
 			return;
 		}
 		console.log(`Downloading file...`);
+		showToast("info", "Downloading file...");
 
 		const blob = new Blob([response.data], {type: "text/plain"});
 		const url = URL.createObjectURL(blob);
@@ -36,20 +41,19 @@ function FileList({
 
 	async function handleDelete(id: string) {
 		if (!window.confirm("Are you sure you want to delete this file?")) return;
-		try {
-			const response: ApiResponse<string> = await fetch(`/api/files/${id}`, {
-				method: "DELETE",
-			}).then((r) => r.json());
 
-			if (!response.ok) {
-				console.error(response.error);
-			} else {
-				console.log("Delete succesful");
-			}
-			refreshFileList();
-		} catch (error) {
-			console.error(error);
+		const response: ApiResponse<string> = await apiFetch(`/api/files/${id}`, {
+			method: "DELETE",
+		});
+
+		if (!response.ok) {
+			console.error(response.error);
+			showToast("error", `${response.error}`);
+		} else {
+			console.log("Delete succesful");
+			showToast("info", "File deleted");
 		}
+		refreshFileList();
 	}
 
 	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: UserFile) => {

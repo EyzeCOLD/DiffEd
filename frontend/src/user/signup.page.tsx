@@ -1,4 +1,5 @@
-import {Button} from "../components/Button";
+import {Button} from "#/src/components/Button";
+import {Input} from "#/src/components/Input";
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import type {SubmitEvent} from "react";
@@ -71,29 +72,22 @@ export default function SignupPage() {
 			<div>Welcome to the signup page</div>
 			<form onSubmit={signup}>
 				<div>
-					<input
-						placeholder="username"
-						className="m-1"
-						value={username}
-						onChange={(e) => setUserName(e.target.value)}
-					/>
+					<Input placeholder="username" value={username} onChange={(e) => setUserName(e.target.value)}></Input>
 				</div>
 				<div>
-					<input placeholder="email" className="m-1" value={email} onChange={(e) => setUserEmail(e.target.value)} />
+					<Input placeholder="email" className="m-1" value={email} onChange={(e) => setUserEmail(e.target.value)} />
 				</div>
 				<div>
-					<input
+					<Input
 						placeholder="password"
-						className="m-1"
 						type="password"
 						value={password}
 						onChange={(e) => setUserPassword(e.target.value)}
 					/>
 				</div>
 				<div>
-					<input
+					<Input
 						placeholder="repeat password"
-						className="m-1"
 						type="password"
 						value={password2}
 						onChange={(e) => setUserPassword2(e.target.value)}

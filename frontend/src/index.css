@@ -49,10 +49,6 @@
 		text-decoration: none;
 	}
 
-	input {
-		@apply border-2 border-surface;
-	}
-
 	table {
 		@apply border-collapse;
 	}
