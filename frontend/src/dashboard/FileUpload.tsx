@@ -32,7 +32,7 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 				newFileArray[index] = f;
 				showToast("info", `Updated file ${f.name}`);
 			} else {
-				showToast("error", `Duplicate file ${f.name}`);
+				showToast("info", `Duplicate file ${f.name}`);
 				console.error(`Duplicate file ${f.name}`);
 			}
 		}
@@ -70,13 +70,14 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 					showToast("error", `${res.error.detail}`);
 					return;
 				}
-
+				// @TODO: add proper error handling after the big refactor
 				const data = await result.json();
-				refreshFileList();
 				resetInput();
+				refreshFileList();
 				console.log(data);
 			} catch (error) {
-				showToast("error", `${error}`);
+				showToast("error", `Critial error, try reuploading`);
+				resetInput();
 				console.error(error);
 			}
 		}
