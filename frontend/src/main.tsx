@@ -8,8 +8,7 @@ import SignupPage from "./user/signup.page.tsx";
 import EditorPage from "./codeEditor/Editor.page.tsx";
 import FileBrowserPage from "./dashboard/FileBrowser.page.tsx";
 import Dashboard from "./user/dashboard.page.tsx";
-import UserLayout from "./layout/UserLayout.tsx";
-import PublicLayout from "./layout/PublicLayout.tsx";
+import {UserLayout, PublicLayout} from "./layout/Layouts.tsx";
 import UserManagementPage from "./user/userManagement.page.tsx";
 import {ToastContainer} from "./components/Toast.tsx";
 
