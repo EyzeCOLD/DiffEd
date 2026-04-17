@@ -6,7 +6,7 @@ import App from "./App.tsx";
 import LoginPage from "./user/login.page.tsx";
 import SignupPage from "./user/signup.page.tsx";
 import EditorPage from "./codeEditor/Editor.page.tsx";
-import FileBrowserPage from "./dashboard/FileBrowser.page.tsx";
+import FileBrowserPage from "./fileBrowser/FileBrowser.page.tsx";
 import Dashboard from "./user/dashboard.page.tsx";
 import UserLayout from "./user/layout/UserLayout.tsx";
 import UserManagementPage from "./user/userManagement.page.tsx";

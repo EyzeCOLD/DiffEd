@@ -3,6 +3,7 @@ import {useNavigate, useParams, Link} from "react-router";
 import type {UserFile} from "#shared/src/types";
 import {useEffect, useMemo, useState} from "react";
 import {CollabConnection, pushFileName} from "./collabClient";
+import {Input} from "#/src/components/Input";
 
 export default function EditorPage() {
 	const [fileData, setFileData] = useState<UserFile | null>(null);
@@ -46,7 +47,7 @@ export default function EditorPage() {
 		<>
 			<label>
 				{"File Name: "}
-				<input
+				<Input
 					aria-label="File name"
 					type="text"
 					value={fileData.name}

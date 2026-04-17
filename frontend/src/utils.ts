@@ -13,24 +13,30 @@ export async function getSession(): Promise<boolean> {
 	}
 }
 
-// Handles all the weird cases when we don't get out own beautiful ApiResponse from the server
+// Wrapper for fetch() that handles all the weird cases when we don't get out
+// own beautiful ApiResponse from the server
 export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promise<ApiResponse<T>> {
 	let res: globalThis.Response;
 
 	try {
 		res = await fetch(input, init);
 	} catch {
-		throw new Error("Network error");
+		return {ok: false, error: "Network error"};
 	}
 
 	if (res.status === 401) {
-		window.location.href = "/login";
-		throw new Error("Unauthorized");
+		return {ok: false, error: "Unauthorized"};
 	}
 
 	try {
-		return (await res.json()) as ApiResponse<T>;
+		const json = await res.json();
+
+		if (typeof json !== "object" || json === null || typeof json.ok !== "boolean") {
+			return {ok: false, error: "Malformed response"};
+		}
+
+		return json as ApiResponse<T>;
 	} catch {
-		throw new Error(`Unexpected response (${res.status})`);
+		return {ok: false, error: `Unexpected response (${res.status})`};
 	}
 }

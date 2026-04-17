@@ -5,13 +5,9 @@ import {UserFileSchema} from "#/src/validation/schemas.js";
 import {requireAuth} from "#/src/middleware.js";
 import type {UserFile, ApiResponse} from "#shared/src/types.js";
 import multer from "multer";
+import {isDbError} from "#/src/utils.js";
 const storage = multer.memoryStorage();
 const upload = multer({storage: storage});
-
-// Type guard. Makes a type assertion for the error for TS.
-function isDbError(error: unknown): error is {code: string; detail?: string; constraint?: string} {
-	return typeof error === "object" && error !== null && "code" in error;
-}
 
 function getFiles(app: Express, db: Pool) {
 	app.get("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile[]>>) => {
@@ -60,7 +56,7 @@ function getFileById(app: Express, db: Pool) {
 }
 
 function createNewFile(app: Express, db: Pool) {
-	app.post("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<Pick<UserFile, "id">>>) => {
+	app.post("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile["id"]>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 		const body = UserFileSchema.pick({name: true}).strict().safeParse(req.body);
 		if (body.error) {
@@ -80,7 +76,7 @@ function createNewFile(app: Express, db: Pool) {
 			timestampedLog(`DB VALUES >>> ${JSON.stringify(newFile)}`);
 			const result = await db.query(query, Object.values(newFile));
 
-			return res.status(201).json({ok: true, data: result.rows[0]});
+			return res.status(201).json({ok: true, data: result.rows[0].id});
 		} catch (error: unknown) {
 			if (isDbError(error)) {
 				timestampedLog(`DB ERROR <<< ${error.code}: ${error.detail}`);

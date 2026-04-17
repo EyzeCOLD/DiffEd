@@ -4,20 +4,19 @@ import FileUploader from "./FileUpload";
 import type {UserFile, ApiResponse} from "#shared/src/types";
 import {useState, useEffect} from "react";
 import {apiFetch} from "#/src/utils";
+import {useToastStore} from "#/src/components/toastStore.ts";
 
 function FileBrowserPage() {
 	const [fileList, setFileList] = useState<UserFile[] | null>(null);
+	const showToast = useToastStore((s) => s.showToast);
 
 	async function refreshFileList() {
-		try {
-			const response: ApiResponse<UserFile[]> = await apiFetch("/api/files");
-			if (response.ok) {
-				setFileList(response.data);
-			} else {
-				console.error(response.error);
-			}
-		} catch (error: unknown) {
-			console.error("Error:", error);
+		const response: ApiResponse<UserFile[]> = await apiFetch("/api/files");
+		if (response.ok) {
+			setFileList(response.data);
+		} else {
+			console.error(response.error);
+			showToast("error", `${response.error}`);
 		}
 	}
 
