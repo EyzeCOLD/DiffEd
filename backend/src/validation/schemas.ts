@@ -28,4 +28,5 @@ export const UserFileSchema = z.object({
 	id: z.uuidv4(),
 	name: z.string(),
 	content: z.string(),
+	owner_id: z.number(),
 }) satisfies ZodType<UserFile>;

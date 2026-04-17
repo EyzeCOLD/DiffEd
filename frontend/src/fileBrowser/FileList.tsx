@@ -1,7 +1,10 @@
 import type {UserFile} from "#shared/src/types";
 import {Link} from "react-router";
 import type {JSX} from "react";
-import {Button} from "../components/Button";
+import {Button} from "#/src/components/Button";
+import type {ApiResponse} from "#shared/src/types.js";
+import {apiFetch} from "#/src/utils.js";
+import {useToastStore} from "#/src/components/toastStore.ts";
 
 function FileList({
 	fileList,
@@ -12,18 +15,20 @@ function FileList({
 }): JSX.Element {
 	if (!fileList) return <p>Loading really slow...</p>;
 	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
+	const showToast = useToastStore((s) => s.showToast);
 
 	async function handleDownload(file: UserFile) {
-		const res = await fetch(`/api/download/${file.id}`);
-		// This whole function could just be a link, but if we do auth with
-		// tokens, apparently this workaround is necessary to be able to check
-		// the header as per Claude
-		//
-		// const res = await fetch(`/api/download/${id}`, {
-		// 	headers: {Authorization: `Bearer ${token}`},
-		// });
+		const response: ApiResponse<string> = await apiFetch(`/api/files/${file.id}/download`);
 
-		const blob = await res.blob();
+		if (!response.ok) {
+			console.error(response.error);
+			showToast("error", `${response.error}`);
+			return;
+		}
+		console.log(`Downloading file...`);
+		showToast("info", "Downloading file...");
+
+		const blob = new Blob([response.data], {type: "text/plain"});
 		const url = URL.createObjectURL(blob);
 
 		const a = document.createElement("a");
@@ -36,19 +41,19 @@ function FileList({
 
 	async function handleDelete(id: string) {
 		if (!window.confirm("Are you sure you want to delete this file?")) return;
-		try {
-			const result = await fetch(`/api/files/${id}`, {
-				method: "DELETE",
-			});
-			if (!result.ok) {
-				console.error("something wrong :(");
-				return;
-			}
-			refreshFileList();
+
+		const response: ApiResponse<string> = await apiFetch(`/api/files/${id}`, {
+			method: "DELETE",
+		});
+
+		if (!response.ok) {
+			console.error(response.error);
+			showToast("error", `${response.error}`);
+		} else {
 			console.log("Delete succesful");
-		} catch (error) {
-			console.error(error);
+			showToast("info", "File deleted");
 		}
+		refreshFileList();
 	}
 
 	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: UserFile) => {

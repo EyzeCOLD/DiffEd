@@ -35,17 +35,17 @@ export default function TopBar() {
 				Skip to content
 			</a>
 			<div className="flex gap-4">
-				<Link to="/dashboard" className="text-foreground hover:text-accent">
+				<Link to="/dashboard" className="hover:text-accent">
 					Dashboard
 				</Link>
-				<Link to="/filebrowser" className="text-foreground hover:text-accent">
+				<Link to="/filebrowser" className="hover:text-accent">
 					Files
 				</Link>
-				<Link to="/usermanagement" className="text-foreground hover:text-accent">
+				<Link to="/usermanagement" className="hover:text-accent">
 					User Management
 				</Link>
 			</div>
-			<Button type="button" className="text-foreground hover:text-accent cursor-pointer" onClick={logout}>
+			<Button type="button" className="hover:text-accent" onClick={logout}>
 				Logout
 			</Button>
 		</nav>
