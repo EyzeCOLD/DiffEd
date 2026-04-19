@@ -3,7 +3,7 @@ import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
 import {getSession} from "../utils.ts";
-import {useShowToast} from "../components/toastStore.ts";
+import {useShowToast} from "../layout/toastStore.ts";
 
 export default function LoginPage() {
 	const [loginIdentifier, setLoginIdentifier] = useState("");

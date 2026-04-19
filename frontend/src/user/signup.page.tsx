@@ -5,7 +5,7 @@ import type {SubmitEvent} from "react";
 import type {SigningUser} from "#shared/src/types";
 import {getSession} from "../utils.ts";
 import {z} from "zod";
-import {useShowToast} from "../components/toastStore.ts";
+import {useShowToast} from "../layout/toastStore.ts";
 
 const emailSchema = z.email();
 
