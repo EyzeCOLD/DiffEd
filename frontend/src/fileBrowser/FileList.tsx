@@ -4,7 +4,7 @@ import type {JSX} from "react";
 import {Button} from "#/src/components/Button";
 import type {ApiResponse} from "#shared/src/types.js";
 import {apiFetch} from "#/src/utils.js";
-import {useToastStore} from "#/src/components/toastStore.ts";
+import {useShowToast} from "#/src/layout/toastStore.ts";
 
 function FileList({
 	fileList,
@@ -15,7 +15,7 @@ function FileList({
 }): JSX.Element {
 	if (!fileList) return <p>Loading really slow...</p>;
 	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
-	const showToast = useToastStore((s) => s.showToast);
+	const showToast = useShowToast();
 
 	async function handleDownload(file: UserFile) {
 		const response: ApiResponse<string> = await apiFetch(`/api/files/${file.id}/download`);

@@ -5,7 +5,7 @@ import {useState, useEffect} from "react";
 import type {MouseEvent} from "react";
 
 function navLinkClass({isActive}: {isActive: boolean}) {
-	return `text-foreground px-3 py-2 hover:text-accent ${isActive ? "bg-canvas" : ""}`;
+	return `text-foreground px-3 py-2 hover:text-accent ${isActive ? "underline" : ""}`;
 }
 
 const contentSkipLink = (
