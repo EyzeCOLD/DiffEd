@@ -2,7 +2,7 @@
 
 @theme {
 	--color-foreground: #dabfff;
-	--color-accent: #7fdeff;
+	--color-accent: #c2f0ff;
 	--color-canvas: #2c2a4a;
 	--color-surface: #4f518c;
 
@@ -47,10 +47,6 @@
 
 	a {
 		text-decoration: none;
-	}
-
-	input {
-		@apply border-2 border-surface;
 	}
 
 	table {

@@ -24,9 +24,8 @@ api.use(helmetSecurity());
 
 Endpoints.getFiles(api, postgres);
 Endpoints.getFileById(api, postgres);
-Endpoints.uploadNewFile(api, postgres);
-Endpoints.editFile(api, postgres);
-Endpoints.uploadMultipleFiles(api, postgres);
+Endpoints.createNewFile(api, postgres);
+Endpoints.uploadFiles(api, postgres);
 Endpoints.deleteFile(api, postgres);
 Endpoints.downloadFile(api, postgres);
 
@@ -39,7 +38,7 @@ SessionEndpoints.logoutUser(api);
 SessionEndpoints.getSession(api);
 
 // Catch-all to serve the frontend, needed for subroutes.
-api.get("/*splat", function (request, response) {
+api.get("/*splat", function (_, response) {
 	response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));
 });
 

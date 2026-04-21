@@ -1,8 +1,9 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import {z} from "zod";
-import {Button} from "../components/Button";
-import {useShowToast} from "../layout/toastStore";
+import {Button} from "#/src/components/Button";
+import {Input} from "#/src/components/Input";
+import {useShowToast} from "#/src/layout/toastStore";
 
 const emailSchema = z.email();
 
@@ -55,12 +56,7 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 		<div>
 			{isEditing ? (
 				<div>
-					<input
-						placeholder="username"
-						className="m-1"
-						value={newUsername}
-						onChange={(e) => setNewUsername(e.target.value)}
-					/>
+					<Input placeholder="username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
 					&nbsp;
 					<Button
 						onClick={handleSubmitClick}
@@ -137,9 +133,8 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 		<div>
 			{isEditing ? (
 				<div>
-					<input
+					<Input
 						type="email"
-						className="m-1"
 						placeholder="example@email.com"
 						value={newEmail}
 						onChange={(e) => setNewEmail(e.target.value)}
@@ -225,49 +220,41 @@ function Password() {
 		<div>
 			{isEditing ? (
 				<div>
-					<input
+					<Input
 						placeholder="old password"
 						type="password"
-						className="m-1"
 						value={oldPassword}
 						onChange={(e) => setOldPassword(e.target.value)}
 					/>
 					<div>
-						<input
+						<Input
 							placeholder="new password"
 							type="password"
-							className="m-1"
 							value={newPassword}
 							onChange={(e) => setNewPassword(e.target.value)}
 						/>
 					</div>
 					<div>
-						<input
+						<Input
 							placeholder="type new password again"
 							type="password"
 							value={newPassword2}
-							className="m-1"
 							onChange={(e) => setNewPassword2(e.target.value)}
 						/>
 					</div>
 					<div>
-						<Button
-							onClick={handleSubmitClick}
-							disabled={isLoading}
-							style={{cursor: "pointer"}}
-							aria-label="Submit password change"
-						>
+						<Button onClick={handleSubmitClick} disabled={isLoading} aria-label="Submit password change">
 							Submit
 						</Button>
 						&nbsp;
-						<Button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel password change">
+						<Button onClick={handleCancelClick} aria-label="Cancel password change">
 							Cancel
 						</Button>
 					</div>
 				</div>
 			) : (
 				<div>
-					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change password">
+					<Button onClick={() => setIsEditing(true)} aria-label="Change password">
 						Change Password
 					</Button>
 				</div>
@@ -305,7 +292,7 @@ function Delete() {
 
 	return (
 		<div>
-			<Button onClick={deleteAccount} style={{cursor: "pointer"}} aria-label="Delete account">
+			<Button onClick={deleteAccount} aria-label="Delete account">
 				Delete account
 			</Button>
 		</div>
