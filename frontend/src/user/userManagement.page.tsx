@@ -56,12 +56,7 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 		<div>
 			{isEditing ? (
 				<div>
-					<Input
-						placeholder="username"
-						className="m-1"
-						value={newUsername}
-						onChange={(e) => setNewUsername(e.target.value)}
-					/>
+					<Input placeholder="username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
 					&nbsp;
 					<Button
 						onClick={handleSubmitClick}
@@ -140,7 +135,6 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 				<div>
 					<Input
 						type="email"
-						className="m-1"
 						placeholder="example@email.com"
 						value={newEmail}
 						onChange={(e) => setNewEmail(e.target.value)}

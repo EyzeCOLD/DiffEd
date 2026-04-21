@@ -9,7 +9,7 @@ services:
       - ./backend/src:/backend/src
       - ./backend/sql:/backend/sql
     environment:
-      NODE_ENV: developement
+      NODE_ENV: development
 
   frontend:
     image: frontend_dev

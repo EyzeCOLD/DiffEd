@@ -33,7 +33,7 @@ for (const fileName of ["users.sql", "files.sql", "sessions.sql"]) {
 	await postgres.query(fileContent).catch((error) => timestampedLog(error));
 }
 
-if (process.env.NODE_ENV === "developement") {
+if (process.env.NODE_ENV === "development") {
 	const testUserA = {
 		username: "testa",
 		email: "test@mail.fi",

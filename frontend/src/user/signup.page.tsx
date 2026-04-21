@@ -72,10 +72,10 @@ export default function SignupPage() {
 			<div>Welcome to the signup page</div>
 			<form onSubmit={signup}>
 				<div>
-					<Input placeholder="username" value={username} onChange={(e) => setUserName(e.target.value)}></Input>
+					<Input placeholder="username" value={username} onChange={(e) => setUserName(e.target.value)} />
 				</div>
 				<div>
-					<Input placeholder="email" className="m-1" value={email} onChange={(e) => setUserEmail(e.target.value)} />
+					<Input placeholder="email" value={email} onChange={(e) => setUserEmail(e.target.value)} />
 				</div>
 				<div>
 					<Input

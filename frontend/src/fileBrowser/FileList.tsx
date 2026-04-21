@@ -13,9 +13,10 @@ function FileList({
 	fileList: UserFile[] | null;
 	refreshFileList: () => void;
 }): JSX.Element {
+	const showToast = useShowToast();
+
 	if (!fileList) return <p>Loading really slow...</p>;
 	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
-	const showToast = useShowToast();
 
 	async function handleDownload(file: UserFile) {
 		const response: ApiResponse<string> = await apiFetch(`/api/files/${file.id}/download`);
@@ -25,8 +26,6 @@ function FileList({
 			showToast("error", `${response.error}`);
 			return;
 		}
-		console.log(`Downloading file...`);
-		showToast("info", "Downloading file...");
 
 		const blob = new Blob([response.data], {type: "text/plain"});
 		const url = URL.createObjectURL(blob);
@@ -42,7 +41,7 @@ function FileList({
 	async function handleDelete(id: string) {
 		if (!window.confirm("Are you sure you want to delete this file?")) return;
 
-		const response: ApiResponse<string> = await apiFetch(`/api/files/${id}`, {
+		const response: ApiResponse<null> = await apiFetch(`/api/files/${id}`, {
 			method: "DELETE",
 		});
 
