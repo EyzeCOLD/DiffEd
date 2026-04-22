@@ -6,6 +6,13 @@ export type UserFile = {
 	owner_id: number;
 };
 
+export type User = {
+	id: number;
+	username: string;
+	email: string;
+	password?: string | null;
+};
+
 export type GitHubProfile = {
 	id: string;
 	username: string;

@@ -1,23 +1,15 @@
 import passport from "passport";
 import {Strategy as GitHubStrategy} from "passport-github2";
-import type {GitHubProfile} from "#shared/src/types.js";
-import {getUserById, getUserByEmail} from "#/src/queries.js";
-
-declare global {
-	namespace Express {
-		interface Request {
-			user?: User;
-		}
-	}
-}
+import type {GitHubProfile, User} from "#shared/src/types.js";
+import {getUserById, getUserByEmail, createOAuthUser} from "#/src/queries.js";
 
 passport.serializeUser(function (user: Express.User, done) {
-	done(null, user.id);
+	done(null, (user as User).id);
 });
 
 passport.deserializeUser(function async(id: number, done) {
 	try {
-		const user = await getUserById(id);
+		const user = getUserById(id);
 		done(null, user || false);
 	} catch (err) {
 		done(err);
@@ -32,12 +24,12 @@ passport.use(
 			callbackURL: "http://127.0.0.1:8080/auth/github/callback",
 			scope: ["user:email"],
 		},
-		function async(
+		async (
 			accessToken: string,
 			refreshToken: string,
 			profile: GitHubProfile,
 			done: (error: any, user?: any) => void,
-		) {
+		) => {
 			try {
 				const email = profile.emails?.find((email) => email.primary)?.value;
 				if (!email) {
@@ -46,7 +38,7 @@ passport.use(
 
 				let user = await getUserByEmail(email);
 				if (!user) {
-					user = await createUser({
+					user = await createOAuthUser({
 						username: profile.username,
 						email: email,
 					});
