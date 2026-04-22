@@ -5,6 +5,7 @@ import {Server} from "socket.io";
 import helmetSecurity from "helmet";
 import {postgres} from "./postgres.js";
 import sessionConfig from "./sessionConfig.js";
+import {passport} from "passport";
 import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import UserEndpoints from "./endpoints/users.js";

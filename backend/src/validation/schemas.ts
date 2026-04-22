@@ -17,6 +17,15 @@ export const usernameSchema = z
 
 export const emailSchema = z.email();
 
+export const userSchema = z.object({
+	id: z.number(),
+	username: usernameSchema,
+	email: emailSchema,
+	password: passwordSchema,
+});
+
+export type User = z.infer<typeof userSchema>;
+
 export const SignupSchema = z.object({
 	username: usernameSchema,
 	email: z.email(),
