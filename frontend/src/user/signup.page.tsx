@@ -3,10 +3,10 @@ import {Input} from "#/src/components/Input";
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import type {SubmitEvent} from "react";
-import type {SigningUser} from "#shared/src/types";
-import {getSession} from "../utils.ts";
+import type {SigningUser, ApiResponse} from "#shared/src/types";
+import {apiFetch, getSession} from "#/src/utils.ts";
 import {z} from "zod";
-import {useShowToast} from "../layout/toastStore.ts";
+import {useShowToast} from "#/src/layout/toastStore.ts";
 
 const emailSchema = z.email();
 
@@ -49,16 +49,17 @@ export default function SignupPage() {
 				password: password,
 			};
 
-			const response = await fetch("/api/user", {
+			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
 				body: JSON.stringify(newUser),
 			});
+
 			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error);
+				throw new Error(response.error);
 			}
+
 			showToast("success", "Signup successful");
 			navigate("/login");
 		} catch (e) {
@@ -94,12 +95,12 @@ export default function SignupPage() {
 					/>
 				</div>
 				<div>
-					<Button type="submit">signup</Button>
+					<Button type="submit">Sign Up</Button>
 				</div>
 			</form>
 			<div>
 				Already have an account? Go to&nbsp;
-				<button onClick={() => navigate("/login")} className="font-bold underline cursor-pointer">
+				<button onClick={() => navigate("/login")} className="hover:text-accent font-bold underline cursor-pointer">
 					login page
 				</button>
 			</div>

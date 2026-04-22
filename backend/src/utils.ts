@@ -1,4 +1,10 @@
-// Returns true if the error looks like a database error
-export function isDbError(error: unknown): error is {code: string; detail?: string; constraint?: string} {
-	return typeof error === "object" && error !== null && "code" in error;
+import {DatabaseError} from "pg";
+
+export function isDbError(error: unknown): error is DatabaseError {
+	return error instanceof DatabaseError;
+}
+
+// call isDbError first to make sure the type is right
+export function isUniqueViolation(error: DatabaseError): boolean {
+	return error.code === "23505";
 }

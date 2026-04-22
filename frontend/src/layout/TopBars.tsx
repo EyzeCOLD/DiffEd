@@ -37,7 +37,7 @@ export function PublicTopBar() {
 					</NavLink>
 				) : (
 					<NavLink to="/login" className={navLinkClass}>
-						Sign In
+						Log In
 					</NavLink>
 				)}
 			</div>

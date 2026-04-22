@@ -3,8 +3,9 @@ import {Input} from "../components/Input";
 import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
-import {getSession} from "../utils.ts";
-import {useShowToast} from "../layout/toastStore.ts";
+import {getSession, apiFetch} from "#/src/utils.ts";
+import {useShowToast} from "#/src/layout/toastStore.ts";
+import type {ApiResponse} from "#shared/src/types.js";
 
 export default function LoginPage() {
 	const [loginIdentifier, setLoginIdentifier] = useState("");
@@ -23,26 +24,22 @@ export default function LoginPage() {
 	async function login(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 
-		try {
-			if (!loginIdentifier || !loginPassword) {
-				throw new Error("Please fill all the fields!");
-			}
-
-			const response = await fetch("/api/session", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				credentials: "include",
-				body: JSON.stringify({loginIdentifier, password: loginPassword}),
-			});
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error || "Login failed");
-			}
-			showToast("success", "Login successful");
-			navigate("/dashboard");
-		} catch (e) {
-			showToast("error", `Login failed. ${e instanceof Error ? e.message : String(e)}`);
+		if (!loginIdentifier || !loginPassword) {
+			throw new Error("Please fill all the fields!");
 		}
+
+		const response: ApiResponse<null> = await apiFetch("/api/session", {
+			method: "POST",
+			headers: {"Content-Type": "application/json"},
+			credentials: "include",
+			body: JSON.stringify({loginIdentifier, password: loginPassword}),
+		});
+		if (!response.ok) {
+			showToast("error", `Login failed. ${response.error}`);
+			return;
+		}
+		showToast("success", "Login successful");
+		navigate("/dashboard");
 	}
 
 	//should we use maxlength for the input fields?
@@ -66,21 +63,12 @@ export default function LoginPage() {
 					/>
 				</div>
 				<div>
-					<Button type="submit">login</Button>
+					<Button type="submit">Log In</Button>
 				</div>
 			</form>
 			<div>
-				<button
-					//TODO! Link to forgot password page
-					onClick={() => navigate("/signup")}
-					className="font-bold underline cursor-pointer"
-				>
-					Forgot Password?
-				</button>
-			</div>
-			<div>
 				Don't have an account? Create one&nbsp;
-				<button onClick={() => navigate("/signup")} className="font-bold underline cursor-pointer">
+				<button onClick={() => navigate("/signup")} className="hover:text-accent font-bold underline cursor-pointer">
 					here
 				</button>
 			</div>
