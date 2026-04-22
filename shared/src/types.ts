@@ -6,6 +6,15 @@ export type UserFile = {
 	owner_id: number;
 };
 
+export type GitHubProfile = {
+	id: string;
+	username: string;
+	displayName: string;
+	emails?: {value: string; primary: boolean}[];
+	photos?: {value: string}[];
+	provider: string;
+};
+
 export type SigningUser = {
 	username: string;
 	email: string;

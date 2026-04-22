@@ -1,14 +1,6 @@
 import {type UserFile, type SigningUser} from "#shared/src/types.js";
 import {z, type ZodType} from "zod";
 
-export const passwordSchema = z
-	.string()
-	.min(8, "Password must be at least 8 characters long")
-	.refine((password) => /[a-z]/.test(password), "Password must contain at least 1 small letter")
-	.refine((password) => /[A-Z]/.test(password), "Password must contain at least 1 capital letter")
-	.refine((password) => /[0-9]/.test(password), "password must contain at least 1 number")
-	.refine((password) => /[!@#$%^&*]/.test(password), "Password must contain at least 1 special character '!@#$%^&*'");
-
 export const usernameSchema = z
 	.string()
 	.min(3, "Username has to be at least 3 characters long")
@@ -21,7 +13,7 @@ export const userSchema = z.object({
 	id: z.number(),
 	username: usernameSchema,
 	email: emailSchema,
-	password: passwordSchema,
+	password: z.string().min(8, "Password must be at least 8 characters long"),
 });
 
 export type User = z.infer<typeof userSchema>;
@@ -29,7 +21,7 @@ export type User = z.infer<typeof userSchema>;
 export const SignupSchema = z.object({
 	username: usernameSchema,
 	email: z.email(),
-	password: passwordSchema,
+	password: z.string().min(8, "Password must be at least 8 characters long"),
 }) satisfies ZodType<SigningUser>;
 
 // id here for testing
