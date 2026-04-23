@@ -22,9 +22,11 @@ function getFiles(app: Express, db: Pool) {
 
 			return res.status(200).json({ok: true, data: result.rows});
 		} catch (error: unknown) {
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -53,9 +55,11 @@ function getFileById(app: Express, db: Pool) {
 
 			return res.status(200).json({ok: true, data: result.rows[0]});
 		} catch (error: unknown) {
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -89,9 +93,11 @@ function createNewFile(app: Express, db: Pool) {
 				return res.status(409).json({ok: false, error: `A file with name '${newFile.name}' already exists`});
 			}
 
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -135,9 +141,11 @@ function uploadFiles(app: Express, db: Pool) {
 					return res.status(409).json({ok: false, error: msg});
 				}
 
-				isDbError(error)
-					? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-					: timestampedLog(`ERROR <<< ${error}`);
+				if (isDbError(error)) {
+					timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+				} else {
+					timestampedLog(`ERROR <<< ${error}`);
+				}
 				return res.status(500).json({ok: false, error: "Internal server error"});
 			}
 		},
@@ -167,9 +175,11 @@ function deleteFile(app: Express, db: Pool) {
 
 			return res.status(200).json({ok: true, data: null});
 		} catch (error: unknown) {
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -198,9 +208,11 @@ function downloadFile(app: Express, db: Pool) {
 			const file = result.rows[0];
 			return res.status(200).json({ok: true, data: file.content});
 		} catch (error: unknown) {
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});

@@ -33,9 +33,11 @@ function signupUser(app: Express, db: Pool) {
 				const msg = error.issues[0].message;
 				res.status(400).json({ok: false, error: msg});
 			}
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -121,9 +123,11 @@ function modifyUser(app: Express, db: Pool) {
 				const msg = error.issues[0].message;
 				res.status(400).json({ok: false, error: `${msg}`});
 			}
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -143,9 +147,11 @@ function deleteUser(app: Express, db: Pool) {
 			res.clearCookie("connect.sid");
 			res.status(200).json({ok: true, data: null});
 		} catch (error: unknown) {
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -175,9 +181,11 @@ function getUser(app: Express, db: Pool) {
 
 				res.status(200).json({ok: true, data: user});
 			} catch (error: unknown) {
-				isDbError(error)
-					? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-					: timestampedLog(`ERROR <<< ${error}`);
+				if (isDbError(error)) {
+					timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+				} else {
+					timestampedLog(`ERROR <<< ${error}`);
+				}
 				return res.status(500).json({ok: false, error: "Internal server error"});
 			}
 		},

@@ -1,18 +1,5 @@
 import type {ApiResponse} from "#shared/src/types.js";
 
-export async function getSession(): Promise<boolean> {
-	try {
-		const res = await fetch("/api/session", {
-			method: "GET",
-			credentials: "include",
-		});
-		return res.ok;
-	} catch (err) {
-		console.error("Error:", err);
-		return false;
-	}
-}
-
 // Wrapper for fetch() that handles all the weird cases when we don't get out
 // own beautiful ApiResponse from the server
 export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promise<ApiResponse<T>> {
@@ -39,4 +26,13 @@ export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promi
 	} catch {
 		return {ok: false, error: `Unexpected response (${res.status})`};
 	}
+}
+
+export async function getSession(): Promise<boolean> {
+	const res: ApiResponse<boolean> = await apiFetch("/api/session", {
+		method: "GET",
+		credentials: "include",
+	});
+
+	return res.ok;
 }

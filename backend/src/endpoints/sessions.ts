@@ -50,9 +50,11 @@ function loginUser(app: Express, db: Pool) {
 				});
 			});
 		} catch (error: unknown) {
-			isDbError(error)
-				? timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`)
-				: timestampedLog(`ERROR <<< ${error}`);
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -60,6 +62,7 @@ function loginUser(app: Express, db: Pool) {
 
 function logoutUser(app: Express) {
 	app.delete("/api/session", requireAuth, (req: Request, res: Response<ApiResponse<null>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 		req.session.destroy((error) => {
 			if (error) {
 				return res.status(500).json({ok: false, error: "Logout failed"});
@@ -71,7 +74,8 @@ function logoutUser(app: Express) {
 }
 
 function getSession(app: Express) {
-	app.get("/api/session", requireAuth, (_: Request, res: Response<ApiResponse<null>>) => {
+	app.get("/api/session", requireAuth, (req: Request, res: Response<ApiResponse<null>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 		res.status(200).json({ok: true, data: null});
 	});
 }
