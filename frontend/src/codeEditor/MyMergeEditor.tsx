@@ -1,8 +1,9 @@
-import {useEffect, useRef, useState} from "react";
-import type {JSX} from "react";
-import {EditorState, Transaction} from "@codemirror/state";
+import {useEffect, useImperativeHandle, useRef, useState, forwardRef} from "react";
+import type {JSX, Ref} from "react";
+import {ChangeSet, EditorState, Text, Transaction} from "@codemirror/state";
 import {EditorView, ViewUpdate, ViewPlugin, type PluginValue} from "@codemirror/view";
 import {collab, getSyncedVersion, sendableUpdates, receiveUpdates} from "@codemirror/collab";
+import {unifiedMergeView, updateOriginalDoc} from "@codemirror/merge";
 import {basicSetup} from "codemirror";
 import keybinds from "./keybinds";
 import langServer from "./langExtensions";
@@ -19,7 +20,7 @@ const RETRYABLE_INITIAL_DOC_MESSAGES = [
 const PUSH_MS_INTERVAL = 100;
 const PULL_MS_INTERVAL = 1000;
 
-function peerExtension(startVersion: number, connection: CollabConnection) {
+function peerExtension(startVersion: number, connection: CollabConnection, ownerId: number) {
 	class LocalPeerPlugin implements PluginValue {
 		pushing = false;
 		done = false;
@@ -57,7 +58,8 @@ function peerExtension(startVersion: number, connection: CollabConnection) {
 			while (!this.done) {
 				const version = getSyncedVersion(this.view.state);
 				try {
-					const updates = await pullUpdates(connection, version);
+					const updates = await pullUpdates(connection, ownerId, version);
+					if (this.done) return;
 					this.view.dispatch(receiveUpdates(this.view.state, updates));
 				} catch (error) {
 					if (this.done) return;
@@ -78,25 +80,36 @@ function peerExtension(startVersion: number, connection: CollabConnection) {
 	return [collab({startVersion}), plugin];
 }
 
-type CodeEditorProps = {
-	fileId: string;
-	connection: CollabConnection;
-	onChange?: (value: string) => void;
+export type MyMergeEditorHandle = {
+	updateOriginal: (doc: Text, changes: ChangeSet) => void;
 };
 
-export default function CodeEditor({fileId, connection, onChange}: CodeEditorProps): JSX.Element {
+type MyMergeEditorProps = {
+	connection: CollabConnection;
+	myOwnerId: number;
+	/** The base peer's shadow doc at mount. When null, solo mode (no merge view). */
+	peerInitialDoc: Text | null;
+};
+
+function MyMergeEditorInner(
+	{connection, myOwnerId, peerInitialDoc}: MyMergeEditorProps,
+	ref: Ref<MyMergeEditorHandle>,
+): JSX.Element {
 	const editorRef = useRef<HTMLDivElement>(null);
+	const viewRef = useRef<EditorView | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [retryCount, setRetryCount] = useState(0);
-	const onChangeRef = useRef<(value: string) => void>(onChange);
-	const tabUsageHintId = `tab-usage-hint-${fileId}`;
 	const tabUsageHintText =
 		"Tab inserts indentation in the editor. To move keyboard focus away from the editor, first press Escape.";
 
-	useEffect(() => {
-		onChangeRef.current = onChange;
-	}, [onChange]);
+	useImperativeHandle(ref, () => ({
+		updateOriginal(doc: Text, changes: ChangeSet) {
+			const view = viewRef.current;
+			if (!view) return;
+			view.dispatch({effects: updateOriginalDoc.of({doc, changes})});
+		},
+	}));
 
 	useEffect(() => {
 		const editorElement = editorRef.current;
@@ -104,12 +117,10 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		let view: EditorView | null = null;
 		let hasUnmounted = false;
 
-		// Rapid back/forward navigation can interrupt the first collab request,
-		// so retry once before showing an initialization error.
 		async function getInitialDocumentWithRetry() {
 			for (let attempt = 1; attempt <= INITIAL_DOC_MAX_ATTEMPTS; attempt += 1) {
 				try {
-					return await getInitialDocument(connection);
+					return await getInitialDocument(connection, myOwnerId);
 				} catch (error) {
 					if (hasUnmounted) {
 						throw error;
@@ -131,41 +142,40 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		async function initializeEditor(): Promise<void> {
 			try {
 				const {doc, version} = await getInitialDocumentWithRetry();
-				if (hasUnmounted) {
-					return;
+				if (hasUnmounted) return;
+
+				const extensions = [
+					basicSetup,
+					keybinds,
+					langServer.markdown(),
+					...peerExtension(version, connection, myOwnerId),
+				];
+				if (peerInitialDoc !== null) {
+					extensions.push(...unifiedMergeView({original: peerInitialDoc, allowInlineDiffs: true}));
 				}
 
-				const state = EditorState.create({
-					doc,
-					extensions: [basicSetup, keybinds, langServer.markdown(), ...peerExtension(version, connection)],
-				});
+				const state = EditorState.create({doc, extensions});
 
 				const editorView = new EditorView({
 					state,
 					parent: editorElement ?? undefined,
 					dispatch: (tr: Transaction) => {
 						editorView.update([tr]);
-
-						if (tr.docChanged && onChangeRef.current) {
-							onChangeRef.current(editorView.state.doc.toString());
-						}
 					},
 				});
 				view = editorView;
+				viewRef.current = editorView;
 
-				// If the page was left while the editor was initializing, discard the
-				// editor instance instead of mounting stale UI.
 				if (hasUnmounted) {
 					view.destroy();
 					view = null;
+					viewRef.current = null;
 					return;
 				}
 
 				setIsLoading(false);
 			} catch (err) {
-				if (hasUnmounted) {
-					return;
-				}
+				if (hasUnmounted) return;
 
 				const message = err instanceof Error ? err.message : "Unknown error";
 				setError(message);
@@ -177,14 +187,14 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 		void initializeEditor();
 
 		return function cleanup() {
-			// Prevent async startup work from updating state after navigation away.
 			hasUnmounted = true;
 			if (view) {
 				view.destroy();
 				view = null;
+				viewRef.current = null;
 			}
 		};
-	}, [fileId, connection, retryCount]);
+	}, [connection, myOwnerId, peerInitialDoc, retryCount]);
 
 	function retryInitialization(): void {
 		setError(null);
@@ -194,8 +204,8 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 
 	return (
 		<div className="h-full w-full">
-			<div className="relative h-full w-full" aria-describedby={tabUsageHintId}>
-				<div ref={editorRef} className={"h-full w-full" + (error ? " hidden" : "")} />
+			<div className="relative h-full w-full">
+				<div ref={editorRef} className={`h-full w-full${error ? " hidden" : ""}`} />
 				{error ? (
 					<div className="border border-red-500 p-2 text-red-500">
 						<div>Error initializing editor: {error}</div>
@@ -207,9 +217,10 @@ export default function CodeEditor({fileId, connection, onChange}: CodeEditorPro
 					<div className="p-2">Initializing collaborative editor...</div>
 				) : null}
 			</div>
-			<p id={tabUsageHintId} className="m-0 text-sm text-(--text-secondary)">
-				{tabUsageHintText}
-			</p>
+			<p className="m-0 text-sm text-(--text-secondary)">{tabUsageHintText}</p>
 		</div>
 	);
 }
+
+const MyMergeEditor = forwardRef<MyMergeEditorHandle, MyMergeEditorProps>(MyMergeEditorInner);
+export default MyMergeEditor;

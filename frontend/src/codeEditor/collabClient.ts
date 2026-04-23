@@ -5,10 +5,11 @@ import type {
 	CollabRequest,
 	CollabRequestPayload,
 	DocumentResponse,
+	ErrorResponse,
+	MembersChangedEvent,
 	NameUpdateResponse,
 	SerializedUpdate,
 } from "#shared/src/types";
-import type {ErrorResponse} from "#shared/src/types";
 
 const CONNECT_TIMEOUT_MS = 5000;
 const REQUEST_TIMEOUT_MS = 8000;
@@ -27,15 +28,20 @@ type PendingRequest = {
 	timeoutId: ReturnType<typeof setTimeout>;
 };
 
+export type MembersHandler = (event: MembersChangedEvent) => void;
+
 /** Wrapper for socket.io connection to communicate with our collab server */
 export class CollabConnection {
 	private socket: Socket | null = null;
-	private fileId: string;
+	private sessionId: string;
+	private readonly ownerId: number;
 	private requestId = 0;
 	private pendingRequests = new Map<number, PendingRequest>();
+	private membersHandlers = new Set<MembersHandler>();
 
-	constructor(fileId: string) {
-		this.fileId = fileId;
+	constructor(sessionId: string, ownerId: number) {
+		this.sessionId = sessionId;
+		this.ownerId = ownerId;
 	}
 
 	private getOrCreateSocket(): Socket {
@@ -61,8 +67,19 @@ export class CollabConnection {
 			if (pending) {
 				this.pendingRequests.delete(data.id);
 				clearTimeout(pending.timeoutId);
+				const {result} = data;
+				if (typeof result === "object" && result !== null && "error" in result) {
+					pending.reject(new Error((result as ErrorResponse).error));
+				} else {
+					pending.resolve(result);
+				}
+			}
+		});
 
-				pending.resolve(data.result);
+		this.socket.on("membersChanged", (event: MembersChangedEvent) => {
+			if (event.sessionId !== this.sessionId) return;
+			for (const handler of this.membersHandlers) {
+				handler(event);
 			}
 		});
 
@@ -120,7 +137,7 @@ export class CollabConnection {
 		});
 	}
 
-	async request(data: CollabRequestPayload): Promise<unknown> {
+	async request(payload: CollabRequestPayload): Promise<unknown> {
 		await this.ensureConnected();
 		const socket = this.getOrCreateSocket();
 
@@ -128,48 +145,49 @@ export class CollabConnection {
 		return new Promise((resolve, reject) => {
 			const timeoutId = setTimeout(() => {
 				this.pendingRequests.delete(id);
-				reject(new Error(`Timed out waiting for collab response: ${data.type}`));
+				reject(new Error(`Timed out waiting for collab response: ${payload.type}`));
 			}, REQUEST_TIMEOUT_MS);
 
 			this.pendingRequests.set(id, {resolve, reject, timeoutId});
-			const request: CollabRequest = {id, fileId: this.fileId, ...data};
+			const request: CollabRequest = {id, sessionId: this.sessionId, ...payload};
 			socket.emit("collabRequest", request);
 		});
 	}
 
-	isConnected(): boolean {
-		return this.socket?.connected ?? false;
+	subscribeMembers(handler: MembersHandler): () => void {
+		this.getOrCreateSocket();
+		this.membersHandlers.add(handler);
+		return () => {
+			this.membersHandlers.delete(handler);
+		};
 	}
 
 	disconnect(): void {
 		this.rejectAllPending(new Error("Collab connection closed"));
+		this.membersHandlers.clear();
 		this.socket?.disconnect();
 		this.socket = null;
 	}
 }
 
-export async function getInitialDocument(connection: CollabConnection): Promise<{version: number; doc: Text}> {
-	const result = (await connection.request({type: "getInitialDocument"})) as DocumentResponse;
-	if ("error" in result) {
-		throw new Error(`Failed to get initial document: ${result.error}`);
-	}
-	return {
-		version: result.version,
-		doc: Text.of(result.doc.split("\n")),
-	};
+export async function getInitialDocument(
+	connection: CollabConnection,
+	ownerId: number,
+): Promise<{version: number; doc: Text}> {
+	const result = (await connection.request({type: "getInitialDocument", ownerId})) as DocumentResponse;
+	return {version: result.version, doc: Text.of(result.doc.split("\n"))};
 }
 
-export async function pullUpdates(connection: CollabConnection, version: number): Promise<readonly Update[]> {
-	const result = (await connection.request({type: "pullUpdates", version})) as SerializedUpdate[] | ErrorResponse;
-	if ("error" in result) {
-		throw new Error(`Failed to pull updates: ${result.error}`);
-	}
-	return result.map((record: SerializedUpdate) => {
-		return {
-			changes: ChangeSet.fromJSON(record.changes),
-			clientID: record.clientID,
-		};
-	});
+export async function pullUpdates(
+	connection: CollabConnection,
+	ownerId: number,
+	version: number,
+): Promise<readonly Update[]> {
+	const result = (await connection.request({type: "pullUpdates", ownerId, version})) as SerializedUpdate[];
+	return result.map((record) => ({
+		changes: ChangeSet.fromJSON(record.changes),
+		clientID: record.clientID,
+	}));
 }
 
 export async function pushUpdates(
@@ -187,4 +205,12 @@ export async function pushUpdates(
 
 export async function pushFileName(connection: CollabConnection, name: string): Promise<NameUpdateResponse> {
 	return (await connection.request({type: "pushFileName", name})) as NameUpdateResponse;
+}
+
+export async function pickFile(connection: CollabConnection, fileId: string): Promise<void> {
+	await connection.request({type: "pickFile", fileId});
+}
+
+export async function leaveSession(connection: CollabConnection): Promise<void> {
+	await connection.request({type: "leaveSession"});
 }

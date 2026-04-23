@@ -9,22 +9,41 @@ import type {
 	CollabRequest,
 	DocumentResponse,
 	ErrorResponse,
+	MembersChangedEvent,
 	NameUpdateResponse,
 	SerializedUpdate,
-	UserFile,
+	SessionInfo,
+	SessionMember,
 } from "#shared/src/types.js";
 
 const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
+// Grace period after the last socket leaves before a session is destroyed. Gives users time
+// to reload, recover from a network blip, or navigate back before in-memory state is flushed.
+const SESSION_DESTROY_GRACE_MS = 60_000;
 
-type CollabSession = {
+type PerOwnerDocState = {
+	fileId: string;
+	ownerId: number;
 	updates: Update[];
 	doc: Text;
 	pending: ((value: SerializedUpdate[]) => void)[];
 	fileName: string;
-	connectedSockets: Set<string>;
 	hasUnsavedChanges: boolean;
 	isFlushInProgress: boolean;
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
+};
+
+type SharedSession = {
+	sessionId: string;
+	owners: Map<number, PerOwnerDocState>;
+	connectedSockets: Map<string, number>;
+	usernames: Map<number, string>;
+	destroyTimer: ReturnType<typeof setTimeout> | null;
+};
+
+export type CollabSocketApi = {
+	createSessionFromFile: (userId: number, fileId: string) => Promise<string>;
+	getSessionInfo: (sessionId: string) => Promise<SessionInfo | undefined>;
 };
 
 function serializeUpdates(updates: readonly Update[]): SerializedUpdate[] {
@@ -40,8 +59,12 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 	}
 }
 
-function collabSocket(sockets: Server, db: Pool) {
-	const sessions = new Map<string, CollabSession>();
+function sessionRoomName(sessionId: string): string {
+	return `session:${sessionId}`;
+}
+
+export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
+	const sessions = new Map<string, SharedSession>();
 
 	// After this runs, socket.request.session is populated from the session store exactly as it would be for an HTTP request.
 	function middlewareAdapter(expressMiddleware: (req: Request, res: Response, next: NextFunction) => void) {
@@ -51,7 +74,7 @@ function collabSocket(sockets: Server, db: Pool) {
 	}
 	sockets.use(middlewareAdapter(sessionConfig));
 
-	// Populates socket.data.userId for authentication, or rejects the connection if there is no authenticated user. This runs after the session Express middleware,
+	// Populates socket.data.userId for authentication, or rejects the connection if there is no authenticated user.
 	sockets.use((socket, next) => {
 		const userId = (socket.request as Request).session?.userId;
 		if (!userId) {
@@ -62,199 +85,292 @@ function collabSocket(sockets: Server, db: Pool) {
 		}
 	});
 
-	async function getSession(fileId: string, userId: number): Promise<CollabSession | undefined> {
-		const session = sessions.get(fileId);
-		if (session) {
-			return session;
-		}
-
-		let doc = Text.empty;
-		let fileName = "";
+	async function cacheUsername(shared: SharedSession, userId: number): Promise<void> {
+		if (shared.usernames.has(userId)) return;
 		try {
-			const result = await db.query<Pick<UserFile, "name" | "content">>(
+			const result = await db.query<{username: string}>("SELECT username FROM users WHERE id = $1", [userId]);
+			const username = result.rows[0]?.username ?? `user${userId}`;
+			shared.usernames.set(userId, username);
+		} catch (error) {
+			timestampedLog(`Failed to fetch username for user ${userId}: ${String(error)}`);
+			shared.usernames.set(userId, `user${userId}`);
+		}
+	}
+
+	async function buildSessionInfo(shared: SharedSession): Promise<SessionInfo> {
+		const members: SessionMember[] = [];
+		for (const ownerId of shared.owners.keys()) {
+			await cacheUsername(shared, ownerId);
+			members.push({userId: ownerId, username: shared.usernames.get(ownerId)!});
+		}
+		return {id: shared.sessionId, members};
+	}
+
+	async function broadcastMembers(shared: SharedSession): Promise<void> {
+		const info = await buildSessionInfo(shared);
+		const event: MembersChangedEvent = {sessionId: shared.sessionId, members: info.members};
+		sockets.to(sessionRoomName(shared.sessionId)).emit("membersChanged", event);
+	}
+
+	async function loadOwnerSlot(userId: number, fileId: string): Promise<PerOwnerDocState | undefined> {
+		try {
+			const result = await db.query<{name: string; content: string}>(
 				"SELECT name, content FROM files WHERE id = $1 AND owner_id = $2",
 				[fileId, userId],
 			);
-			if (!result.rowCount) {
-				sessions.delete(fileId);
-				return undefined;
-			} else if (result.rowCount === 1) {
-				doc = Text.of((result.rows[0].content ?? "").split("\n"));
-				fileName = String(result.rows[0].name ?? fileName);
-			} else {
-				timestampedLog(`Found ${result.rowCount} for collab document ${fileId}`);
-				sessions.delete(fileId);
-				return undefined;
-			}
+			if (result.rowCount !== 1) return undefined;
+			return {
+				fileId,
+				ownerId: userId,
+				updates: [],
+				doc: Text.of((result.rows[0].content ?? "").split("\n")),
+				pending: [],
+				fileName: String(result.rows[0].name ?? ""),
+				hasUnsavedChanges: false,
+				isFlushInProgress: false,
+				dbSaveDebounceTimer: null,
+			};
 		} catch (error) {
-			timestampedLog(`Error loading collab document ${fileId}: ${String(error)}`);
-			sessions.delete(fileId);
+			timestampedLog(`Error loading collab slot for user ${userId}, file ${fileId}: ${String(error)}`);
 			return undefined;
 		}
-
-		const created: CollabSession = {
-			updates: [],
-			doc,
-			pending: [],
-			fileName,
-			connectedSockets: new Set(),
-			hasUnsavedChanges: false,
-			isFlushInProgress: false,
-			dbSaveDebounceTimer: null,
-		};
-
-		sessions.set(fileId, created);
-		return created;
 	}
 
-	async function flushSession(fileId: string) {
-		const session = sessions.get(fileId);
-		if (!session) {
-			return;
-		}
+	async function flushOwnerSlot(slot: PerOwnerDocState): Promise<void> {
+		slot.dbSaveDebounceTimer = null;
+		if (slot.isFlushInProgress || !slot.hasUnsavedChanges) return;
 
-		// The callback that fired is no longer pending once we start processing it
-		session.dbSaveDebounceTimer = null;
-		// `isFlushInProgress` prevents overlapping DB writes
-		// `hasUnsavedChanges` skips stale callbacks when there is nothing left to save
-		if (session.isFlushInProgress || !session.hasUnsavedChanges) {
-			return;
-		}
-
-		session.isFlushInProgress = true;
-
-		session.hasUnsavedChanges = false;
-		const content = session.doc.toString();
-		const fileName = session.fileName;
+		slot.isFlushInProgress = true;
+		slot.hasUnsavedChanges = false;
+		const content = slot.doc.toString();
+		const fileName = slot.fileName;
 
 		try {
 			const updateResult = await db.query("UPDATE files SET name = $1, content = $2 WHERE id = $3", [
 				fileName,
 				content,
-				fileId,
+				slot.fileId,
 			]);
 			if (updateResult.rowCount === 0) {
-				timestampedLog(`No file found to update for collab document ${fileId}`);
-				sessions.delete(fileId);
-				session.isFlushInProgress = false;
+				timestampedLog(`File deleted while session was active, evicting slot: ${slot.fileId}`);
+				for (const shared of sessions.values()) {
+					if (shared.owners.get(slot.ownerId) === slot) {
+						shared.owners.delete(slot.ownerId);
+						break;
+					}
+				}
+				drainPending(slot.pending, []);
+				slot.isFlushInProgress = false;
 				return;
 			} else if (updateResult.rowCount! > 1) {
-				timestampedLog(`Multiple files updated for collab document ${fileId}`);
-				sessions.delete(fileId);
-				session.isFlushInProgress = false;
-				return;
+				timestampedLog(`Multiple files updated for collab slot ${slot.fileId}`);
 			}
 		} catch (error) {
-			session.hasUnsavedChanges = true;
-			timestampedLog(`Error persisting collab document ${fileId}: ${String(error)}`);
+			slot.hasUnsavedChanges = true;
+			timestampedLog(`Error persisting collab slot ${slot.fileId}: ${String(error)}`);
 		}
 
-		session.isFlushInProgress = false;
+		slot.isFlushInProgress = false;
 
-		// If new changes arrived while we were awaiting the DB, keep the session alive until that work is persisted;
-		// otherwise, a stale timer can be cleared and the empty session deleted once no clients remain.
-		if (session.hasUnsavedChanges) {
-			if (!session.dbSaveDebounceTimer) {
-				session.dbSaveDebounceTimer = setTimeout(() => {
-					void flushSession(fileId);
-				}, DATABASE_SAVE_DEBOUNCE_TIME);
+		// If new changes arrived while we were awaiting the DB, reschedule.
+		if (slot.hasUnsavedChanges && !slot.dbSaveDebounceTimer) {
+			slot.dbSaveDebounceTimer = setTimeout(() => void flushOwnerSlot(slot), DATABASE_SAVE_DEBOUNCE_TIME);
+		}
+	}
+
+	function scheduleFlush(slot: PerOwnerDocState): void {
+		slot.hasUnsavedChanges = true;
+		if (slot.dbSaveDebounceTimer) {
+			clearTimeout(slot.dbSaveDebounceTimer);
+		}
+		slot.dbSaveDebounceTimer = setTimeout(() => void flushOwnerSlot(slot), DATABASE_SAVE_DEBOUNCE_TIME);
+	}
+
+	async function evictSlot(slot: PerOwnerDocState): Promise<void> {
+		if (slot.dbSaveDebounceTimer) {
+			clearTimeout(slot.dbSaveDebounceTimer);
+			slot.dbSaveDebounceTimer = null;
+		}
+		if (slot.hasUnsavedChanges || slot.isFlushInProgress) {
+			await flushOwnerSlot(slot);
+		}
+		// Release any long-polling pullUpdates waiters so their clients fall through to the next cycle.
+		drainPending(slot.pending, []);
+	}
+
+	async function destroySession(shared: SharedSession): Promise<void> {
+		for (const slot of shared.owners.values()) {
+			await evictSlot(slot);
+		}
+		sessions.delete(shared.sessionId);
+	}
+
+	function scheduleSessionDestroy(shared: SharedSession): void {
+		if (shared.destroyTimer) return;
+		shared.destroyTimer = setTimeout(() => {
+			shared.destroyTimer = null;
+			// Someone reconnected during the grace window — skip destruction.
+			if (shared.connectedSockets.size > 0) return;
+			void destroySession(shared);
+		}, SESSION_DESTROY_GRACE_MS);
+	}
+
+	function cancelSessionDestroy(shared: SharedSession): void {
+		if (!shared.destroyTimer) return;
+		clearTimeout(shared.destroyTimer);
+		shared.destroyTimer = null;
+	}
+
+	function attachSocketToSession(socket: Socket, shared: SharedSession, userId: number): void {
+		if (shared.connectedSockets.has(socket.id)) return;
+		cancelSessionDestroy(shared);
+		shared.connectedSockets.set(socket.id, userId);
+		socket.join(sessionRoomName(shared.sessionId));
+	}
+
+	function detachSocketFromSession(socketId: string, shared: SharedSession): void {
+		if (!shared.connectedSockets.has(socketId)) return;
+		shared.connectedSockets.delete(socketId);
+		if (shared.connectedSockets.size === 0) {
+			scheduleSessionDestroy(shared);
+		}
+	}
+
+	async function createSessionFromFile(userId: number, fileId: string): Promise<string> {
+		// Reuse a live session where this user already owns this fileId.
+		for (const existing of sessions.values()) {
+			const slot = existing.owners.get(userId);
+			if (slot && slot.fileId === fileId && existing.connectedSockets.size > 0) {
+				return existing.sessionId;
 			}
-			return;
 		}
 
-		if (session.connectedSockets.size === 0) {
-			if (session.dbSaveDebounceTimer) {
-				clearTimeout(session.dbSaveDebounceTimer);
-				session.dbSaveDebounceTimer = null;
-			}
-			sessions.delete(fileId);
-		}
+		const slot = await loadOwnerSlot(userId, fileId);
+		if (!slot) throw new Error("File not found or not owned by user");
+
+		const sessionId = crypto.randomUUID();
+		const shared: SharedSession = {
+			sessionId,
+			owners: new Map([[userId, slot]]),
+			connectedSockets: new Map(),
+			usernames: new Map(),
+			destroyTimer: null,
+		};
+		// Give the creator time to navigate and open a socket before we'd auto-clean.
+		scheduleSessionDestroy(shared);
+		await cacheUsername(shared, userId);
+		sessions.set(sessionId, shared);
+		return sessionId;
 	}
 
-	function scheduleFlush(fileId: string, session: CollabSession) {
-		session.hasUnsavedChanges = true;
-		if (session.dbSaveDebounceTimer) {
-			clearTimeout(session.dbSaveDebounceTimer);
-		}
-		session.dbSaveDebounceTimer = setTimeout(() => {
-			void flushSession(fileId);
-		}, DATABASE_SAVE_DEBOUNCE_TIME);
-	}
-
-	function attachSocketToSession(socketId: string, session: CollabSession) {
-		session.connectedSockets.add(socketId);
-	}
-
-	function detachSocketFromSession(fileId: string, session: CollabSession, socketId: string) {
-		session.connectedSockets.delete(socketId);
-
-		if (session.connectedSockets.size > 0) {
-			return;
-		}
-
-		if (session.dbSaveDebounceTimer) {
-			clearTimeout(session.dbSaveDebounceTimer);
-			session.dbSaveDebounceTimer = null;
-		}
-
-		if (session.isFlushInProgress || session.hasUnsavedChanges) {
-			void flushSession(fileId);
-			return;
-		}
-
-		sessions.delete(fileId);
+	async function getSessionInfo(sessionId: string): Promise<SessionInfo | undefined> {
+		const shared = sessions.get(sessionId);
+		if (!shared) return undefined;
+		return buildSessionInfo(shared);
 	}
 
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
-		// userId is guaranteed to be set — the auth middleware above rejects unauthenticated connections
+		// userId is guaranteed to be set — the auth middleware above rejects unauthenticated connections.
 		const userId: number = socket.data.userId;
 
 		socket.on("disconnect", () => {
-			for (const [fileId, session] of sessions.entries()) {
-				if (session.connectedSockets.has(socket.id)) {
-					detachSocketFromSession(fileId, session, socket.id);
+			for (const shared of sessions.values()) {
+				if (shared.connectedSockets.has(socket.id)) {
+					detachSocketFromSession(socket.id, shared);
 					break;
 				}
 			}
 		});
 
 		socket.on("collabRequest", async (data: CollabRequest) => {
-			const {id, type, fileId} = data;
+			const {id, type, sessionId, ownerId} = data;
 
 			function sendResponse(result: unknown) {
 				socket.emit("collabResponse", {id, result});
 			}
 
 			try {
-				if (!fileId || fileId.length === 0) {
-					sendResponse({error: "Empty file ID"} satisfies ErrorResponse);
+				if (!sessionId || typeof sessionId !== "string") {
+					sendResponse({error: "Missing sessionId"} satisfies ErrorResponse);
 					return;
 				}
 
-				const session = await getSession(fileId, userId);
-				if (!session) {
-					sendResponse({error: "File does not exist"} satisfies ErrorResponse);
+				const shared = sessions.get(sessionId);
+				if (!shared) {
+					sendResponse({error: "Session not found"} satisfies ErrorResponse);
 					return;
 				}
 
-				if (!socket.connected) {
-					return;
-				}
+				if (!socket.connected) return;
 
-				attachSocketToSession(socket.id, session);
+				attachSocketToSession(socket, shared, userId);
 
 				switch (type) {
-					case "pullUpdates": {
-						console.log(`Client ${socket.id} requested updates for file ${fileId} since version ${data.version}`);
-						if (session.doc.length < 0) {
-							sendResponse({error: "Document is in invalid state"} satisfies ErrorResponse);
-							return;
+					case "pickFile": {
+						if (shared.owners.has(userId)) {
+							sendResponse({
+								error: "You have already picked a file for this session",
+							} satisfies ErrorResponse);
+							break;
 						}
-						if (data.version < session.updates.length) {
-							sendResponse(serializeUpdates(session.updates.slice(data.version)));
-						} else if (data.version === session.updates.length) {
-							session.pending.push((newUpdates: SerializedUpdate[]) => {
+						if (!data.fileId || typeof data.fileId !== "string") {
+							sendResponse({error: "Invalid file ID"} satisfies ErrorResponse);
+							break;
+						}
+						const slot = await loadOwnerSlot(userId, data.fileId);
+						if (!slot) {
+							sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
+							break;
+						}
+						shared.owners.set(userId, slot);
+						await cacheUsername(shared, userId);
+						sendResponse(true);
+						try {
+							await broadcastMembers(shared);
+						} catch (err) {
+							timestampedLog(`Failed to broadcast members after pickFile: ${String(err)}`);
+						}
+						break;
+					}
+					case "leaveSession": {
+						const slot = shared.owners.get(userId);
+						if (slot) {
+							await evictSlot(slot);
+							shared.owners.delete(userId);
+						}
+						socket.leave(sessionRoomName(sessionId));
+						shared.connectedSockets.delete(socket.id);
+						sendResponse(true);
+						if (shared.connectedSockets.size === 0) {
+							await destroySession(shared);
+						} else {
+							await broadcastMembers(shared);
+						}
+						break;
+					}
+					case "getInitialDocument": {
+						const slot = shared.owners.get(ownerId);
+						if (!slot) {
+							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
+							break;
+						}
+						sendResponse({
+							version: slot.updates.length,
+							doc: slot.doc.toString(),
+						} satisfies DocumentResponse);
+						break;
+					}
+					case "pullUpdates": {
+						const slot = shared.owners.get(ownerId);
+						if (!slot) {
+							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
+							break;
+						}
+						if (data.version < slot.updates.length) {
+							sendResponse(serializeUpdates(slot.updates.slice(data.version)));
+						} else if (data.version === slot.updates.length) {
+							slot.pending.push((newUpdates: SerializedUpdate[]) => {
 								sendResponse(newUpdates satisfies SerializedUpdate[]);
 							});
 						} else {
@@ -263,59 +379,70 @@ function collabSocket(sockets: Server, db: Pool) {
 						break;
 					}
 					case "pushUpdates": {
+						if (ownerId !== userId) {
+							sendResponse({
+								error: "You may only push updates to your own slot",
+							} satisfies ErrorResponse);
+							break;
+						}
+						const slot = shared.owners.get(userId);
+						if (!slot) {
+							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
+							break;
+						}
+
 						let received: readonly Update[] = data.updates.map((json: SerializedUpdate) => ({
 							clientID: json.clientID,
 							changes: ChangeSet.fromJSON(json.changes),
 						}));
 
-						if (data.version !== session.updates.length) {
-							received = rebaseUpdates(received, session.updates.slice(data.version));
+						if (data.version !== slot.updates.length) {
+							received = rebaseUpdates(received, slot.updates.slice(data.version));
 						}
 
 						for (const update of received) {
-							session.updates.push(update);
-							session.doc = update.changes.apply(session.doc);
+							slot.updates.push(update);
+							slot.doc = update.changes.apply(slot.doc);
 						}
 
 						sendResponse(true);
-						scheduleFlush(fileId, session);
+						scheduleFlush(slot);
 
 						if (received.length) {
-							drainPending(session.pending, serializeUpdates(received));
+							drainPending(slot.pending, serializeUpdates(received));
 						}
-						break;
-					}
-					case "getInitialDocument": {
-						sendResponse({
-							version: session.updates.length,
-							doc: session.doc.toString(),
-						} satisfies DocumentResponse);
 						break;
 					}
 					case "pushFileName": {
-						const nextNameRaw = data.name;
-						if (typeof nextNameRaw !== "string") {
+						if (ownerId !== userId) {
+							sendResponse({
+								error: "You may only rename your own file",
+							} satisfies ErrorResponse);
+							break;
+						}
+						const slot = shared.owners.get(userId);
+						if (!slot) {
+							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
+							break;
+						}
+						if (typeof data.name !== "string") {
 							sendResponse({error: "Invalid file name"} satisfies ErrorResponse);
-							return;
+							break;
 						}
-
-						if (nextNameRaw !== session.fileName) {
-							session.fileName = nextNameRaw;
-							scheduleFlush(fileId, session);
+						if (data.name !== slot.fileName) {
+							slot.fileName = data.name;
+							scheduleFlush(slot);
 						}
-
-						sendResponse({
-							name: session.fileName,
-						} satisfies NameUpdateResponse);
+						sendResponse({name: slot.fileName} satisfies NameUpdateResponse);
 						break;
 					}
 				}
 			} catch (error) {
-				timestampedLog(`Error handling collab request (${type}): ${error}`);
+				timestampedLog(`Error handling collab request (${type}): ${String(error)}`);
 				sendResponse({error: String(error)} satisfies ErrorResponse);
 			}
 		});
 	});
-}
 
-export {collabSocket};
+	return {createSessionFromFile, getSessionInfo};
+}

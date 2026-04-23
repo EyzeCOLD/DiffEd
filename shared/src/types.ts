@@ -29,10 +29,12 @@ export type SerializedUpdate = {
 export type CollabRequestPayload =
 	| {
 			type: "getInitialDocument";
+			ownerId: number;
 	  }
 	| {
 			type: "pullUpdates";
 			version: number;
+			ownerId: number;
 	  }
 	| {
 			type: "pushUpdates";
@@ -42,25 +44,43 @@ export type CollabRequestPayload =
 	| {
 			type: "pushFileName";
 			name: string;
+	  }
+	| {
+			type: "pickFile";
+			fileId: string;
+	  }
+	| {
+			type: "leaveSession";
 	  };
 
 export type CollabRequest = CollabRequestPayload & {
 	id: number;
-	fileId: string;
+	sessionId: string;
 };
 
-export type DocumentResponse =
-	| {
-			version: number;
-			doc: string;
-	  }
-	| ErrorResponse;
+export type SessionMember = {
+	userId: number;
+	username: string;
+};
 
-export type NameUpdateResponse =
-	| {
-			name: string;
-	  }
-	| ErrorResponse;
+export type SessionInfo = {
+	id: string;
+	members: SessionMember[];
+};
+
+export type MembersChangedEvent = {
+	sessionId: string;
+	members: SessionMember[];
+};
+
+export type DocumentResponse = {
+	version: number;
+	doc: string;
+};
+
+export type NameUpdateResponse = {
+	name: string;
+};
 
 export type ApiSuccess<T> = {ok: true; data: T};
 export type ApiError = {ok: false; error: string};

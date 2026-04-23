@@ -27,7 +27,7 @@ function NewFile() {
 
 		console.log("New file created!");
 		showToast("success", "New file created!");
-		if (result) navigate(`/edit/${result.data}`);
+		if (result) navigate(`/collab/${result.data}`);
 	}
 
 	return (

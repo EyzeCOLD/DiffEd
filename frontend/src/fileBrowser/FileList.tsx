@@ -1,10 +1,10 @@
 import type {UserFile} from "#shared/src/types";
-import {Link} from "react-router";
+import {useNavigate} from "react-router";
 import type {JSX} from "react";
-import {Button} from "#/src/components/Button";
 import type {ApiResponse} from "#shared/src/types.js";
 import {apiFetch} from "#/src/utils.js";
 import {useShowToast} from "#/src/layout/toastStore.ts";
+import {Button} from "../components/Button";
 
 function FileList({
 	fileList,
@@ -13,10 +13,28 @@ function FileList({
 	fileList: UserFile[] | null;
 	refreshFileList: () => void;
 }): JSX.Element {
+	const navigate = useNavigate();
 	const showToast = useShowToast();
 
 	if (!fileList) return <p>Loading really slow...</p>;
 	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
+
+	async function startSessionFromFile(file: UserFile) {
+		try {
+			const response = await apiFetch<{sessionId: string}>("/api/workspace", {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify({fileId: file.id}),
+			});
+			if (!response.ok) {
+				showToast("error", response.error);
+				return;
+			}
+			navigate(`/collab/${response.data.sessionId}`);
+		} catch (err) {
+			showToast("error", err instanceof Error ? err.message : "Failed to open file");
+		}
+	}
 
 	async function handleDownload(file: UserFile) {
 		const response: ApiResponse<string> = await apiFetch(`/api/files/${file.id}/download`);
@@ -49,7 +67,6 @@ function FileList({
 			console.error(response.error);
 			showToast("error", `${response.error}`);
 		} else {
-			console.log("Delete succesful");
 			showToast("info", "File deleted");
 		}
 		refreshFileList();
@@ -59,7 +76,13 @@ function FileList({
 		return (
 			<tr key={file.id}>
 				<td>
-					<Link to={`/edit/${file.id}`}>🗎 {file.name}</Link>
+					<button
+						type="button"
+						className="bg-transparent border-0 p-0 text-inherit cursor-pointer hover:underline"
+						onClick={() => startSessionFromFile(file)}
+					>
+						🗎 {file.name}
+					</button>
 				</td>
 				<td className="text-center">
 					<Button onClick={() => handleDownload(file)}> 🡻 </Button>

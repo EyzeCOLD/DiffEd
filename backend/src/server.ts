@@ -9,13 +9,14 @@ import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import UserEndpoints from "./endpoints/users.js";
 import SessionEndpoints from "./endpoints/sessions.js";
+import workspaceEndpoints from "./endpoints/workspace.js";
 
 import {collabSocket} from "./endpoints/collabSocket.js";
 
 const api = express();
 const server = createServer(api);
 const sockets = new Server(server, {cors: {origin: "*"}});
-collabSocket(sockets, postgres);
+const collabApi = collabSocket(sockets, postgres);
 
 api.use(sessionConfig);
 api.use(express.static("../frontend/dist"));
@@ -36,6 +37,9 @@ UserEndpoints.getUser(api, postgres);
 SessionEndpoints.loginUser(api, postgres);
 SessionEndpoints.logoutUser(api);
 SessionEndpoints.getSession(api);
+
+workspaceEndpoints.createWorkspace(api, collabApi);
+workspaceEndpoints.getWorkspace(api, collabApi);
 
 // Catch-all to serve the frontend, needed for subroutes.
 api.get("/*splat", function (_, response) {
