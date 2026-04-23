@@ -1,42 +1,82 @@
 import {type Express} from "express";
 import {type Pool} from "pg";
-import pgPromise from "pg-promise";
+//import pgPromise from "pg-promise";
 import argon2 from "argon2";
-import {SignupSchema, usernameSchema, emailSchema, passwordSchema} from "#/src/validation/schemas.js";
+import {
+	/*SignupSchema,*/ createUserSchema,
+	usernameSchema,
+	emailSchema,
+	passwordSchema,
+} from "#/src/validation/schemas.js";
 import {z} from "zod";
 import {isDbError} from "#/src/utils.js";
+import {getUserByUsername, getUserByEmail, createUser} from "#/src/queries.js";
 
-function signupUser(app: Express, db: Pool) {
-	app.post("/api/user", async (req, res) => {
-		const {username, email, password} = req.body;
-
+function registerUser(app: Express) {
+	app.post("api/user", async (req, res) => {
 		try {
-			SignupSchema.parse({username, email, password});
-			const hash = await argon2.hash(password, {
-				type: argon2.argon2id,
+			const input = createUserSchema.parse(req.body);
+
+			const existingUsername = await getUserByUsername(input.username);
+			if (existingUsername) {
+				return res.status(400).json({error: "Username already exists"});
+			}
+
+			const existingEmail = await getUserByEmail(input.email);
+			if (existingEmail) {
+				return res.status(400).json({error: "Email already exists"});
+			}
+
+			const hashedPassword = await argon2.hash(input.password);
+
+			await createUser({
+				username: input.username,
+				email: input.email,
+				password: hashedPassword,
 			});
 
-			await db.query("INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3)", [
-				username,
-				email,
-				hash,
-			]);
-
-			res.status(201).send();
-		} catch (err: unknown) {
-			if (err instanceof pgPromise.errors.QueryResultError && err.code === (23505 as number)) {
-				console.log("Client tried to create user with already existing name or email");
-				res.status(409).json({error: "Username or email already in use"});
-			} else if (err instanceof z.ZodError) {
+			res.status(201).json({message: "Registed successfully"});
+		} catch (err) {
+			if (err instanceof z.ZodError) {
 				const msg = err.issues[0].message;
-				res.status(400).json({error: msg});
-			} else {
-				console.error("Error creating user", err);
-				res.status(500).json({error: "Internal server error"});
+				return res.status(400).json({error: msg});
 			}
+			res.status(500).json({error: "Internal server error"});
 		}
 	});
 }
+
+//function signupUser(app: Express, db: Pool) {
+//app.post("/api/user", async (req, res) => {
+//const {username, email, password} = req.body;
+//
+//try {
+//SignupSchema.parse({username, email, password});
+//const hash = await argon2.hash(password, {
+//type: argon2.argon2id,
+//});
+//
+//await db.query("INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3)", [
+//username,
+//email,
+//hash,
+//]);
+//
+//res.status(201).send();
+//} catch (err: unknown) {
+//if (err instanceof pgPromise.errors.QueryResultError && err.code === (23505 as number)) {
+//console.log("Client tried to create user with already existing name or email");
+//res.status(409).json({error: "Username or email already in use"});
+//} else if (err instanceof z.ZodError) {
+//const msg = err.issues[0].message;
+//res.status(400).json({error: msg});
+//} else {
+//console.error("Error creating user", err);
+//res.status(500).json({error: "Internal server error"});
+//}
+//}
+//});
+//}
 
 function modifyUser(app: Express, db: Pool) {
 	app.patch("/api/user", async (req, res) => {
@@ -152,4 +192,4 @@ function getUser(app: Express, db: Pool) {
 	});
 }
 
-export default {signupUser, deleteUser, getUser, modifyUser};
+export default {/*signupUser*/ registerUser, deleteUser, getUser, modifyUser};

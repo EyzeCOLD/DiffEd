@@ -6,6 +6,23 @@ export type UserFile = {
 	owner_id: number;
 };
 
+/*=========== BACKEND TYPES. MIGHT NOT MAKE SENSE TO SHARE =========*/
+export type User = {
+	id: number;
+	username: string;
+	email: string;
+	password?: string | null;
+};
+
+export type GoogleProfile = {
+	id: string;
+	displayName: string;
+	emails?: {value: string; verified: boolean}[];
+	provider: string;
+};
+
+/*=========== END =============*/
+
 export type SigningUser = {
 	username: string;
 	email: string;

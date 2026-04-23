@@ -1,13 +1,7 @@
 import {type UserFile, type SigningUser} from "#shared/src/types.js";
 import {z, type ZodType} from "zod";
 
-export const passwordSchema = z
-	.string()
-	.min(8, "Password must be at least 8 characters long")
-	.refine((password) => /[a-z]/.test(password), "Password must contain at least 1 small letter")
-	.refine((password) => /[A-Z]/.test(password), "Password must contain at least 1 capital letter")
-	.refine((password) => /[0-9]/.test(password), "password must contain at least 1 number")
-	.refine((password) => /[!@#$%^&*]/.test(password), "Password must contain at least 1 special character '!@#$%^&*'");
+export const passwordSchema = z.string().min(8, "Password must be at least 8 characters long");
 
 export const usernameSchema = z
 	.string()
@@ -16,6 +10,33 @@ export const usernameSchema = z
 	.regex(/^[a-zA-Z0-9_]+$/, "Username must contain only small/capital letter, numbers or underscore");
 
 export const emailSchema = z.email();
+
+export const userSchema = z.object({
+	id: z.number(),
+	username: usernameSchema,
+	email: emailSchema,
+	password: z.string().nullable().optional(),
+});
+
+export const createUserSchema = userSchema.omit({id: true}).extend({
+	password: passwordSchema,
+});
+
+export const loginSchema = z
+	.object({
+		username: usernameSchema,
+		password: passwordSchema,
+	})
+	.or(
+		z.object({
+			email: emailSchema,
+			password: passwordSchema,
+		}),
+	);
+
+export type User = z.infer<typeof userSchema>;
+export type CreateUser = z.infer<typeof createUserSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
 
 export const SignupSchema = z.object({
 	username: usernameSchema,

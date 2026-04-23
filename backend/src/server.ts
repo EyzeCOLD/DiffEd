@@ -5,6 +5,7 @@ import {Server} from "socket.io";
 import helmetSecurity from "helmet";
 import {postgres} from "./postgres.js";
 import sessionConfig from "./sessionConfig.js";
+import passport from "./passport.js";
 import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import UserEndpoints from "./endpoints/users.js";
@@ -21,6 +22,8 @@ api.use(sessionConfig);
 api.use(express.static("../frontend/dist"));
 api.use(express.json());
 api.use(helmetSecurity());
+api.use(passport.initialize());
+api.use(passport.session());
 
 Endpoints.getFiles(api, postgres);
 Endpoints.getFileById(api, postgres);
@@ -29,11 +32,14 @@ Endpoints.uploadFiles(api, postgres);
 Endpoints.deleteFile(api, postgres);
 Endpoints.downloadFile(api, postgres);
 
-UserEndpoints.signupUser(api, postgres);
+//UserEndpoints.signupUser(api, postgres);
+UserEndpoints.registerUser(api);
 UserEndpoints.modifyUser(api, postgres);
 UserEndpoints.deleteUser(api, postgres);
 UserEndpoints.getUser(api, postgres);
-SessionEndpoints.loginUser(api, postgres);
+//SessionEndpoints.loginUser(api, postgres);
+
+SessionEndpoints.login(api);
 SessionEndpoints.logoutUser(api);
 SessionEndpoints.getSession(api);
 
