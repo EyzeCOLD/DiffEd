@@ -21,9 +21,9 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 
 		const newFileArray = fileUploads?.slice() ?? new Array<File>();
 		for (const f of e.target.files) {
-			const err = fileNotValid(f.type, f.size, await f.text());
+			const err = fileNotValid(f.type, f.size, await f.text(), f.name);
 			if (err) {
-				showToast("error", `File '${f.name}' is ${err}`);
+				showToast("error", `File '${f.name}': ${err}`);
 				console.error(`File '${f.name}' is ${err}`);
 			} else {
 				const index = newFileArray.findIndex(
@@ -54,13 +54,13 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 		const newFileArray = fileUploads.filter((value: File) => value.name !== name);
 		if (newFileArray.length) setFileUploads(newFileArray);
 		else resetInput();
-		// else console.log("trying to remove nonexistent file", name);
 	}
 
 	async function handleUpload() {
 		if (fileUploads) {
 			console.log("Uploading file(s)...", fileUploads);
-			showToast("info", "Uploading file(s)...");
+			// I think would be better to make the submit button unpressable during this
+			// showToast("info", "Uploading file(s)...");
 
 			const formData = new FormData();
 			[...fileUploads].forEach((file: File) => {
@@ -73,10 +73,14 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 			});
 
 			if (!response.ok) {
-				// could do more handling here
 				console.error(`${response.error}`);
-				showToast("error", `${response.error}`);
-				resetInput();
+				if (response.error === "Network error") {
+					showToast("error", "Network error: Try to reupload files");
+					resetInput();
+				} else {
+					const errors = response.error.split("\0");
+					errors.forEach((e) => showToast("error", e));
+				}
 				return;
 			}
 

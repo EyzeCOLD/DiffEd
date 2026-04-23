@@ -4,6 +4,7 @@ import {Button} from "#/src/components/Button";
 import {useShowToast} from "#/src/stores/toastStore";
 import {Input} from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
+import type {UserFile} from "#shared/src/types";
 
 type NewFileProps = {
 	// When provided, called with the new file's ID instead of creating a workspace and navigating
@@ -17,10 +18,10 @@ function NewFile({onCreated}: NewFileProps): JSX.Element {
 
 	async function openNewFile() {
 		const formData = new FormData();
-		const file = new File([""], newFilename!, {type: "text/weee"});
+		const file = new File([""], newFilename!, {type: "text/plain"});
 		formData.append("file", file);
 
-		const fileResult = await apiFetch<string>("/api/files", {
+		const fileResult = await apiFetch<UserFile>("/api/files", {
 			method: "POST",
 			body: formData,
 		});
@@ -31,13 +32,13 @@ function NewFile({onCreated}: NewFileProps): JSX.Element {
 		}
 
 		if (onCreated) {
-			await onCreated(fileResult.data);
+			await onCreated(fileResult.data.id);
 			return;
 		}
 
 		const workspaceResult = await apiFetch<{workspaceId: string}>("/api/workspace", {
 			method: "POST",
-			body: JSON.stringify({fileId: fileResult.data}),
+			body: JSON.stringify({fileId: fileResult.data.id}),
 			headers: [["Content-Type", "application/json"] as [string, string]],
 		});
 
