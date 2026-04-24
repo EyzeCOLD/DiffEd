@@ -7,13 +7,12 @@ export type UserFile = {
 };
 
 export type User = {
+	id: number;
 	username: string;
 	email: string;
 };
 
-export type SigningUser = {
-	username: string;
-	email: string;
+export type SigningUser = Omit<User, "id"> & {
 	password: string;
 };
 
@@ -54,7 +53,7 @@ export type CollabRequestPayload =
 	  };
 
 export type CollabRequest = CollabRequestPayload & {
-	id: number;
+	userId: number;
 	sessionId: string;
 };
 
