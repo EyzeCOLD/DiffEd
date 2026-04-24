@@ -4,14 +4,16 @@ import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
 import {useNavigate} from "react-router";
 import {getSession, apiFetch} from "#/src/utils.ts";
-import {useShowToast} from "#/src/layout/toastStore.ts";
-import type {ApiResponse} from "#shared/src/types.js";
+import {useShowToast} from "#/src/stores/toastStore";
+import {useSetUser} from "#/src/stores/userStore.ts";
+import type {ApiResponse, User} from "#shared/src/types.js";
 
 export default function LoginPage() {
 	const [loginIdentifier, setLoginIdentifier] = useState("");
 	const [loginPassword, setLoginPassword] = useState("");
 	const navigate = useNavigate();
 	const showToast = useShowToast();
+	const setUser = useSetUser();
 
 	useEffect(() => {
 		getSession().then((isLoggedIn) => {
@@ -28,7 +30,7 @@ export default function LoginPage() {
 			return showToast("error", "Please fill all the fields.");
 		}
 
-		const response: ApiResponse<null> = await apiFetch("/api/session", {
+		const response: ApiResponse<User> = await apiFetch("/api/session", {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
 			credentials: "include",
@@ -37,6 +39,7 @@ export default function LoginPage() {
 		if (!response.ok) {
 			return showToast("error", `Login failed. ${response.error}`);
 		}
+		setUser(response.data);
 		showToast("success", "Login successful");
 		navigate("/dashboard");
 	}
