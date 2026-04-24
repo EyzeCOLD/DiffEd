@@ -5,7 +5,7 @@ import {Button} from "#/src/components/Button";
 import {Input} from "#/src/components/Input";
 import {useShowToast} from "#/src/layout/toastStore";
 import {apiFetch} from "#/src/utils.js";
-import type {ApiResponse, SigningUser} from "#shared/src/types.js";
+import type {ApiResponse, User} from "#shared/src/types.js";
 
 const emailSchema = z.email();
 
@@ -307,7 +307,7 @@ export default function UserManagementPage() {
 	const navigate = useNavigate();
 
 	async function getUserData() {
-		const response: ApiResponse<Pick<SigningUser, "username" | "email">> = await apiFetch("/api/user", {
+		const response: ApiResponse<User> = await apiFetch("/api/user", {
 			method: "GET",
 			headers: {"Content-Type": "application/json"},
 			credentials: "include",

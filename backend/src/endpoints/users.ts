@@ -4,7 +4,7 @@ import argon2 from "argon2";
 import {SignupSchema, usernameSchema, emailSchema, passwordSchema} from "#/src/validation/schemas.js";
 import {z} from "zod";
 import {isDbError, isUniqueViolation} from "#/src/utils.js";
-import type {ApiResponse, SigningUser} from "#shared/src/types.js";
+import type {ApiResponse, User} from "#shared/src/types.js";
 import {timestampedLog} from "#/src/logging.js";
 import {requireAuth} from "#/src/middleware.js";
 
@@ -25,7 +25,7 @@ function signupUser(app: Express, db: Pool) {
 			timestampedLog(`DB VALUES >>> ${values}`);
 			await db.query(query, values);
 
-			res.status(200).json({ok: true, data: null});
+			res.status(201).json({ok: true, data: null});
 		} catch (error: unknown) {
 			if (isDbError(error) && isUniqueViolation(error)) {
 				res.status(409).json({ok: false, error: "Username or email already in use"});
@@ -157,39 +157,33 @@ function deleteUser(app: Express, db: Pool) {
 	});
 }
 
-// Not a hundred percent on this type, didn't want to create a new one just for
-// this, but it felt bad using Object...
 function getUser(app: Express, db: Pool) {
-	app.get(
-		"/api/user",
-		requireAuth,
-		async (req: Request, res: Response<ApiResponse<Pick<SigningUser, "username" | "email">>>) => {
-			timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+	app.get("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<User>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
-			const id = req.session.userId;
-			const query = "SELECT username, email FROM users WHERE id = $1";
-			timestampedLog(`DB QUERY >>> ${query}`);
-			timestampedLog(`DB VALUES >>> ${[id]}`);
-			try {
-				const result = await db.query(query, [id]);
+		const id = req.session.userId;
+		const query = "SELECT username, email FROM users WHERE id = $1";
+		timestampedLog(`DB QUERY >>> ${query}`);
+		timestampedLog(`DB VALUES >>> ${[id]}`);
+		try {
+			const result = await db.query(query, [id]);
 
-				if (!result.rows.length) {
-					throw new Error("No query result");
-				}
-
-				const user: Pick<SigningUser, "username" | "email"> = result.rows[0];
-
-				res.status(200).json({ok: true, data: user});
-			} catch (error: unknown) {
-				if (isDbError(error)) {
-					timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
-				} else {
-					timestampedLog(`ERROR <<< ${error}`);
-				}
-				return res.status(500).json({ok: false, error: "Internal server error"});
+			if (!result.rows.length) {
+				throw new Error("No query result");
 			}
-		},
-	);
+
+			const user: User = result.rows[0];
+
+			res.status(200).json({ok: true, data: user});
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
+			return res.status(500).json({ok: false, error: "Internal server error"});
+		}
+	});
 }
 
 export default {signupUser, deleteUser, getUser, modifyUser};

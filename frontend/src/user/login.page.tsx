@@ -25,7 +25,7 @@ export default function LoginPage() {
 		event.preventDefault();
 
 		if (!loginIdentifier || !loginPassword) {
-			throw new Error("Please fill all the fields!");
+			return showToast("error", "Please fill all the fields.");
 		}
 
 		const response: ApiResponse<null> = await apiFetch("/api/session", {
@@ -35,8 +35,7 @@ export default function LoginPage() {
 			body: JSON.stringify({loginIdentifier, password: loginPassword}),
 		});
 		if (!response.ok) {
-			showToast("error", `Login failed. ${response.error}`);
-			return;
+			return showToast("error", `Login failed. ${response.error}`);
 		}
 		showToast("success", "Login successful");
 		navigate("/dashboard");
