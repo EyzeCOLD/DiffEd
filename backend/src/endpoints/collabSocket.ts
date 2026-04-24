@@ -282,10 +282,11 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		});
 
 		socket.on("collabRequest", async (data: CollabRequest) => {
-			const {type, sessionId, userId} = data;
+			const {requestId, type, sessionId} = data;
+			const userId = socket.data.userId as number;
 
 			function sendResponse(result: unknown) {
-				socket.emit("collabResponse", {userId, result});
+				socket.emit("collabResponse", {requestId, result});
 			}
 
 			try {

@@ -53,7 +53,7 @@ export type CollabRequestPayload =
 	  };
 
 export type CollabRequest = CollabRequestPayload & {
-	userId: number;
+	requestId: number;
 	sessionId: string;
 };
 

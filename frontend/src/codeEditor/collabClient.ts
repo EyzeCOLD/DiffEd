@@ -17,7 +17,7 @@ const COLLAB_URL = import.meta.env.COLLAB_SERVER_URL || window.location.origin;
 
 type CollabResponse =
 	| {
-			id: number;
+			requestId: number;
 			result: unknown;
 	  }
 	| ErrorResponse;
@@ -34,14 +34,12 @@ export type MembersHandler = (event: MembersChangedEvent) => void;
 export class CollabConnection {
 	private socket: Socket | null = null;
 	private sessionId: string;
-	private readonly ownerId: number;
 	private requestId = 0;
 	private pendingRequests = new Map<number, PendingRequest>();
 	private membersHandlers = new Set<MembersHandler>();
 
-	constructor(sessionId: string, ownerId: number) {
+	constructor(sessionId: string) {
 		this.sessionId = sessionId;
-		this.ownerId = ownerId;
 	}
 
 	private getOrCreateSocket(): Socket {
@@ -63,9 +61,9 @@ export class CollabConnection {
 				return;
 			}
 
-			const pending = this.pendingRequests.get(data.id);
+			const pending = this.pendingRequests.get(data.requestId);
 			if (pending) {
-				this.pendingRequests.delete(data.id);
+				this.pendingRequests.delete(data.requestId);
 				clearTimeout(pending.timeoutId);
 				const {result} = data;
 				if (typeof result === "object" && result !== null && "error" in result) {
@@ -149,7 +147,7 @@ export class CollabConnection {
 			}, REQUEST_TIMEOUT_MS);
 
 			this.pendingRequests.set(id, {resolve, reject, timeoutId});
-			const request: CollabRequest = {userId: this.ownerId, sessionId: this.sessionId, ...payload};
+			const request: CollabRequest = {requestId: id, sessionId: this.sessionId, ...payload};
 			socket.emit("collabRequest", request);
 		});
 	}

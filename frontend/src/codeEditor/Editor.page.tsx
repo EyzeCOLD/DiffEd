@@ -1,38 +1,21 @@
-import {useNavigate, useParams} from "react-router";
+import {useParams} from "react-router";
 import type {SessionInfo} from "#shared/src/types";
 import {useEffect, useMemo, useState} from "react";
 import {CollabConnection} from "./collabClient";
 import {apiFetch} from "../utils";
 import FilePicker from "./FilePicker";
 import SharedEditor from "./SharedEditor";
-
-type Me = {id: number; username: string};
+import {useCurrentUser} from "../stores/userStore";
 
 export default function EditorPage() {
 	const params = useParams();
 	const sessionId = params.sessionId;
-	const navigate = useNavigate();
+	const user = useCurrentUser()!;
 
-	const [me, setMe] = useState<Me | null>(null);
 	const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-	const connection = useMemo(() => (sessionId && me ? new CollabConnection(sessionId, me.id) : null), [sessionId, me]);
-
-	useEffect(() => {
-		fetch("/api/user")
-			.then((res) => {
-				if (!res.ok) {
-					navigate("/login");
-					return null;
-				}
-				return res.json() as Promise<Me>;
-			})
-			.then((data) => {
-				if (data) setMe(data);
-			})
-			.catch(() => setErrorMessage("Failed to connect to server"));
-	}, [navigate]);
+	const connection = useMemo(() => (sessionId ? new CollabConnection(sessionId) : null), [sessionId]);
 
 	useEffect(() => {
 		if (!sessionId) return;
@@ -70,9 +53,9 @@ export default function EditorPage() {
 
 	if (!sessionId) return <div>Session ID is missing</div>;
 	if (errorMessage) return <div className="p-4 text-red-500">{errorMessage}</div>;
-	if (!me || !sessionInfo || !connection) return <div>Loading...</div>;
+	if (!sessionInfo || !connection) return <div>Loading...</div>;
 
-	const isMember = sessionInfo.members.some((m) => m.userId === me.id);
+	const isMember = sessionInfo.members.some((m) => m.userId === user.id);
 
 	if (!isMember) {
 		return (
@@ -80,13 +63,13 @@ export default function EditorPage() {
 				connection={connection}
 				onPicked={() => {
 					setSessionInfo((prev) => {
-						if (!prev || prev.members.some((m) => m.userId === me.id)) return prev;
-						return {id: prev.id, members: [...prev.members, {userId: me.id, username: me.username}]};
+						if (!prev || prev.members.some((m) => m.userId === user.id)) return prev;
+						return {id: prev.id, members: [...prev.members, {userId: user.id, username: user.username}]};
 					});
 				}}
 			/>
 		);
 	}
 
-	return <SharedEditor connection={connection} myOwnerId={me.id} initialMembers={sessionInfo.members} />;
+	return <SharedEditor connection={connection} myOwnerId={user.id} initialMembers={sessionInfo.members} />;
 }
