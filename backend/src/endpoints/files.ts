@@ -5,22 +5,28 @@ import {UserFileSchema} from "#/src/validation/schemas.js";
 import {requireAuth} from "#/src/middleware.js";
 import type {UserFile, ApiResponse} from "#shared/src/types.js";
 import multer from "multer";
-import {isDbError} from "#/src/utils.js";
+import {isDbError, isUniqueViolation} from "#/src/utils.js";
 const storage = multer.memoryStorage();
 const upload = multer({storage: storage});
 
 function getFiles(app: Express, db: Pool) {
 	app.get("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile[]>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+
+		const query = "SELECT * FROM files WHERE owner_id = $1";
+		timestampedLog(`DB QUERY >>> ${query}`);
+		timestampedLog(`DB VALUES >>> ${req.session.userId}`);
+
 		try {
-			const query = "SELECT * FROM files WHERE owner_id = $1";
-			timestampedLog(`DB QUERY >>> ${query}`);
-			timestampedLog(`DB VALUES >>> ${req.session.userId}`);
 			const result = await db.query(query, [req.session.userId]);
 
 			return res.status(200).json({ok: true, data: result.rows});
-		} catch (error) {
-			timestampedLog(`ERROR <<< ${error}`);
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -35,12 +41,12 @@ function getFileById(app: Express, db: Pool) {
 			return res.status(400).json({ok: false, error: "Invalid file id"});
 		}
 
-		try {
-			const query = "SELECT * FROM files WHERE id = $1 AND owner_id = $2";
-			const values = [fileId.data, req.session.userId];
+		const query = "SELECT * FROM files WHERE id = $1 AND owner_id = $2";
+		const values = [fileId.data, req.session.userId];
+		timestampedLog(`DB QUERY >>> ${query}`);
+		timestampedLog(`DB VALUES >>> ${values}`);
 
-			timestampedLog(`DB QUERY >>> ${query}`);
-			timestampedLog(`DB VALUES >>> ${values}`);
+		try {
 			const result = await db.query(query, values);
 
 			if (!result.rowCount) {
@@ -48,8 +54,12 @@ function getFileById(app: Express, db: Pool) {
 			}
 
 			return res.status(200).json({ok: true, data: result.rows[0]});
-		} catch (error) {
-			timestampedLog(`ERROR <<< ${error}`);
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -70,21 +80,24 @@ function createNewFile(app: Express, db: Pool) {
 			owner_id: req.session.userId!,
 		};
 
+		const query = `INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id`;
+		timestampedLog(`DB QUERY >>> ${query}`);
+		timestampedLog(`DB VALUES >>> ${JSON.stringify(newFile)}`);
+
 		try {
-			const query = `INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id`;
-			timestampedLog(`DB QUERY >>> ${query}`);
-			timestampedLog(`DB VALUES >>> ${JSON.stringify(newFile)}`);
 			const result = await db.query(query, Object.values(newFile));
 
 			return res.status(201).json({ok: true, data: result.rows[0].id});
 		} catch (error: unknown) {
-			if (isDbError(error)) {
-				timestampedLog(`DB ERROR <<< ${error.code}: ${error.detail}`);
-				if (error.constraint === "files_name_owner_id_key") {
-					return res.status(409).json({ok: false, error: `A file with name '${newFile.name}' already exists`});
-				}
+			if (isDbError(error) && isUniqueViolation(error)) {
+				return res.status(409).json({ok: false, error: `A file with name '${newFile.name}' already exists`});
 			}
-			timestampedLog(`ERROR <<< ${error}`);
+
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -120,18 +133,18 @@ function uploadFiles(app: Express, db: Pool) {
 
 				return res.status(201).json({ok: true, data: null});
 			} catch (error: unknown) {
-				if (!isDbError(error)) {
-					timestampedLog(`ERROR <<< ${error}`);
-					return res.status(500).json({ok: false, error: "Internal server error"});
-				}
-
-				timestampedLog(`DB ERROR <<< ${error.code}: ${error.detail}`);
-				if (error.constraint === "files_name_owner_id_key") {
+				if (isDbError(error) && isUniqueViolation(error)) {
 					const msg =
 						req.files.length === 1
 							? `A file with name '${req.files[0].originalname}' already exists`
 							: "One or more of the filenames already exist";
 					return res.status(409).json({ok: false, error: msg});
+				}
+
+				if (isDbError(error)) {
+					timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+				} else {
+					timestampedLog(`ERROR <<< ${error}`);
 				}
 				return res.status(500).json({ok: false, error: "Internal server error"});
 			}
@@ -152,6 +165,7 @@ function deleteFile(app: Express, db: Pool) {
 		const values = [fileId.data, req.session.userId];
 		timestampedLog(`DB QUERY >>> ${query}`);
 		timestampedLog(`DB VALUES >>> ${values}`);
+
 		try {
 			const result = await db.query(query, values);
 
@@ -160,8 +174,12 @@ function deleteFile(app: Express, db: Pool) {
 			}
 
 			return res.status(200).json({ok: true, data: null});
-		} catch (error) {
-			timestampedLog(`ERROR <<< ${error}`);
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});
@@ -189,8 +207,12 @@ function downloadFile(app: Express, db: Pool) {
 			}
 			const file = result.rows[0];
 			return res.status(200).json({ok: true, data: file.content});
-		} catch (error) {
-			timestampedLog(`ERROR <<< ${error}`);
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
 			return res.status(500).json({ok: false, error: "Internal server error"});
 		}
 	});

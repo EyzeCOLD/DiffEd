@@ -6,6 +6,11 @@ export type UserFile = {
 	owner_id: number;
 };
 
+export type User = {
+	username: string;
+	email: string;
+};
+
 export type SigningUser = {
 	username: string;
 	email: string;

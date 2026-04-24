@@ -4,6 +4,8 @@ import {z} from "zod";
 import {Button} from "#/src/components/Button";
 import {Input} from "#/src/components/Input";
 import {useShowToast} from "#/src/layout/toastStore";
+import {apiFetch} from "#/src/utils.js";
+import type {ApiResponse, User} from "#shared/src/types.js";
 
 const emailSchema = z.email();
 
@@ -25,20 +27,20 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 				throw new Error("The field cannot be empty");
 			}
 
-			const response = await fetch("/api/user", {
+			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "PATCH",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
 				body: JSON.stringify({username: newUsername}),
 			});
+
 			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error || "Unexpected error");
+				throw new Error(response.error);
 			}
 
 			onUpdate(newUsername);
 			showToast("success", "Successfully changed username");
-		} catch (e) {
+		} catch (e: unknown) {
 			setNewUsername(initialValue);
 			showToast("error", e instanceof Error ? e.message : String(e));
 		} finally {
@@ -97,25 +99,24 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 				throw new Error("The field cannot be empty");
 			}
 
-			const result = emailSchema.safeParse(newEmail);
-			if (!result.success) {
+			if (!emailSchema.safeParse(newEmail).success) {
 				throw new Error("Invalid email");
 			}
 
-			const response = await fetch("/api/user", {
+			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "PATCH",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
 				body: JSON.stringify({email: newEmail}),
 			});
+
 			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error || "Unexpected error");
+				throw new Error(response.error);
 			}
 
 			onUpdate(newEmail);
 			showToast("success", "Successfully changed email");
-		} catch (e) {
+		} catch (e: unknown) {
 			setNewEmail(initialValue);
 			showToast("error", e instanceof Error ? e.message : String(e));
 		} finally {
@@ -185,7 +186,7 @@ function Password() {
 				throw new Error("The passwords do not match!");
 			}
 
-			const response = await fetch("/api/user", {
+			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "PATCH",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
@@ -193,8 +194,7 @@ function Password() {
 			});
 
 			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error || "Unexpected error");
+				throw new Error(response.error);
 			}
 
 			setNewPassword("");
@@ -236,7 +236,7 @@ function Password() {
 					</div>
 					<div>
 						<Input
-							placeholder="type new password again"
+							placeholder="new password, again"
 							type="password"
 							value={newPassword2}
 							onChange={(e) => setNewPassword2(e.target.value)}
@@ -271,16 +271,16 @@ function Delete() {
 		if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
 			return;
 		}
+
 		try {
-			const response = await fetch("/api/user", {
+			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "DELETE",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
 			});
 
 			if (!response.ok) {
-				const msg = await response.json();
-				window.alert(msg.error || "Failed to delete account");
+				throw new Error("Failed to delete account");
 			}
 
 			showToast("success", "Successfully deleted user");
@@ -293,7 +293,7 @@ function Delete() {
 	return (
 		<div>
 			<Button onClick={deleteAccount} aria-label="Delete account">
-				Delete account
+				Delete Account
 			</Button>
 		</div>
 	);
@@ -303,36 +303,28 @@ export default function UserManagementPage() {
 	const [user, setUser] = useState("");
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(true);
+	const showToast = useShowToast();
 	const navigate = useNavigate();
 
-	useEffect(() => {
-		fetch("/api/user", {
+	async function getUserData() {
+		const response: ApiResponse<User> = await apiFetch("/api/user", {
 			method: "GET",
 			headers: {"Content-Type": "application/json"},
 			credentials: "include",
-		})
-			.then((res) => {
-				if (!res.ok) throw new Error("Error fetching user");
-				return res.json();
-			})
-			.then((data) => {
-				setUser(data.username);
-				setEmail(data.email);
-				setLoading(false);
-			})
-			.catch((error) => {
-				console.error(error);
-				navigate("/dashboard");
-			});
+		});
+
+		if (!response.ok) {
+			showToast("error", `Error fetching user data: ${response.error}`);
+			return;
+		}
+		setUser(response.data.username);
+		setEmail(response.data.email);
+		setLoading(false);
+	}
+
+	useEffect(() => {
+		getUserData();
 	}, [navigate]);
-
-	function handleEmailUpdate(newEmail: string) {
-		setEmail(newEmail);
-	}
-
-	function handleUsernameUpdate(newUsername: string) {
-		setUser(newUsername);
-	}
 
 	return loading ? (
 		<div>Loading...</div>
@@ -340,10 +332,10 @@ export default function UserManagementPage() {
 		<div>
 			<div>User Management</div>
 			<div>
-				<Username initialValue={user} onUpdate={handleUsernameUpdate} />
+				<Username initialValue={user} onUpdate={(newUsername: string) => setUser(newUsername)} />
 			</div>
 			<div>
-				<Email initialValue={email} onUpdate={handleEmailUpdate} />
+				<Email initialValue={email} onUpdate={(newEmail: string) => setEmail(newEmail)} />
 			</div>
 			<div>
 				<Password />
