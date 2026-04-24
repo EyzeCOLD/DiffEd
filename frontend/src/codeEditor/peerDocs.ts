@@ -89,7 +89,7 @@ export class CollabPeersPool {
 			} catch (error) {
 				if (state.aborted) return;
 				if (attempt === INITIAL_MAX_ATTEMPTS) {
-					console.error(`Failed to load initial shadow for owner ${ownerId}:`, error);
+					console.error(`Failed to load initial doc for owner ${ownerId}:`, error);
 					return;
 				}
 				await new Promise((resolve) => setTimeout(resolve, INITIAL_RETRY_DELAY_MS));

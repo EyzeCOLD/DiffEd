@@ -149,7 +149,7 @@ export class CollabConnection {
 			}, REQUEST_TIMEOUT_MS);
 
 			this.pendingRequests.set(id, {resolve, reject, timeoutId});
-			const request: CollabRequest = {id, sessionId: this.sessionId, ...payload};
+			const request: CollabRequest = {userId: this.ownerId, sessionId: this.sessionId, ...payload};
 			socket.emit("collabRequest", request);
 		});
 	}

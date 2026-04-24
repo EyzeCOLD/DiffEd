@@ -2,7 +2,7 @@ import {useEffect, useMemo, useRef, useState} from "react";
 import type {JSX} from "react";
 import type {SessionMember} from "#shared/src/types";
 import {CollabConnection} from "./collabClient";
-import {CollabPeersPool, type peerDocEvent} from "./peerShadows";
+import {CollabPeersPool, type peerDocEvent} from "./peerDocs";
 import MyMergeEditor, {type MyMergeEditorHandle} from "./MyMergeEditor";
 import PeerBar from "./PeerBar";
 

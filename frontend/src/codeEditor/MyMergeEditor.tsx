@@ -87,7 +87,6 @@ export type MyMergeEditorHandle = {
 type MyMergeEditorProps = {
 	connection: CollabConnection;
 	myOwnerId: number;
-	/** The base peer's shadow doc at mount. When null, solo mode (no merge view). */
 	peerInitialDoc: Text | null;
 };
 

@@ -1,6 +1,6 @@
 import type {JSX} from "react";
 import type {SessionMember} from "#shared/src/types";
-import {CollabPeersPool} from "./peerShadows";
+import {CollabPeersPool} from "./peerDocs";
 
 type PeerBarProps = {
 	peers: SessionMember[];
@@ -8,7 +8,6 @@ type PeerBarProps = {
 	onSelect: (ownerId: number) => void;
 	pool: CollabPeersPool;
 };
-
 export default function PeerBar({peers, selectedOwnerId, onSelect, pool}: PeerBarProps): JSX.Element {
 	if (peers.length === 0) {
 		return (
