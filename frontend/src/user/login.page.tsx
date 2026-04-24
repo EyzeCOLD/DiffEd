@@ -16,10 +16,8 @@ export default function LoginPage() {
 	const setUser = useSetUser();
 
 	useEffect(() => {
-		getSession().then((isLoggedIn) => {
-			if (isLoggedIn) {
-				navigate("/dashboard");
-			}
+		getSession().then((ok) => {
+			if (ok) navigate("/dashboard");
 		});
 	}, [navigate]);
 

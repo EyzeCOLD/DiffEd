@@ -19,10 +19,8 @@ export default function SignupPage() {
 	const showToast = useShowToast();
 
 	useEffect(() => {
-		getSession().then((isLoggedIn) => {
-			if (isLoggedIn) {
-				navigate("/dashboard");
-			}
+		getSession().then((ok) => {
+			if (ok) navigate("/dashboard");
 		});
 	}, [navigate]);
 

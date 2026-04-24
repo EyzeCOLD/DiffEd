@@ -1,8 +1,9 @@
-import {PublicTopBar} from "./TopBars";
+import {PublicTopBar, UserTopBar} from "./TopBars";
 import {Outlet, useNavigate} from "react-router";
 import {useEffect, useState} from "react";
-import {getSession} from "../utils";
-import {UserTopBar} from "./TopBars";
+import {getSession, apiFetch} from "../utils";
+import {useCurrentUser, useSetUser, useClearUser} from "../stores/userStore";
+import type {User} from "#shared/src/types.js";
 
 export function PublicLayout() {
 	return (
@@ -17,20 +18,33 @@ export function PublicLayout() {
 
 export function UserLayout() {
 	const navigate = useNavigate();
-	const [isLoggedIn, setIsLoggedIn] = useState(false);
+	const storeUser = useCurrentUser();
+	const setUser = useSetUser();
+	const clearUser = useClearUser();
+	const [ready, setReady] = useState(!!storeUser);
 
 	useEffect(() => {
-		getSession().then(setIsLoggedIn);
+		if (storeUser) {
+			// Detects expired sessions without blocking render
+			getSession().then((ok) => {
+				if (!ok) {
+					clearUser();
+					navigate("/login", {replace: true});
+				}
+			});
+		} else {
+			apiFetch<User>("/api/user", {method: "GET", credentials: "include"}).then((res) => {
+				if (!res.ok) {
+					navigate("/login", {replace: true});
+				} else {
+					setUser(res.data);
+					setReady(true);
+				}
+			});
+		}
 	}, []);
 
-	useEffect(() => {
-		getSession().then((isLoggedIn) => {
-			if (!isLoggedIn) navigate("/login", {replace: true});
-			else setIsLoggedIn(true);
-		});
-	}, []);
-
-	if (!isLoggedIn) return <p>Loading...</p>;
+	if (!ready) return <p>Loading...</p>;
 
 	return (
 		<>
