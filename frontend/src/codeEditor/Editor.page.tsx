@@ -17,10 +17,7 @@ export default function EditorPage() {
 	const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-	const connection = useMemo(
-		() => (sessionId && me ? new CollabConnection(sessionId, me.id) : null),
-		[sessionId, me],
-	);
+	const connection = useMemo(() => (sessionId && me ? new CollabConnection(sessionId, me.id) : null), [sessionId, me]);
 
 	useEffect(() => {
 		fetch("/api/user")
