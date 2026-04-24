@@ -1,18 +1,19 @@
 import {ChangeSet, Text} from "@codemirror/state";
 import {CollabConnection, getInitialDocument, pullUpdates} from "./collabClient";
+import {delay} from "../utils";
 
-export type peerDoc = {
+export type PeerDoc = {
 	doc: Text;
 	version: number;
 };
 
-export type peerDocEvent = {
-	doc: peerDoc;
+export type PeerDocEvent = {
+	doc: PeerDoc;
 	changes: ChangeSet | null;
 };
 
 type PeerState = {
-	doc: peerDoc | undefined;
+	doc: PeerDoc | undefined;
 	aborted: boolean;
 };
 
@@ -23,7 +24,7 @@ const INITIAL_RETRY_DELAY_MS = 250;
 export class CollabPeersPool {
 	private connection: CollabConnection;
 	private peers = new Map<number, PeerState>();
-	private listeners = new Set<(ownerId: number, event: peerDocEvent) => void>();
+	private listeners = new Set<(ownerId: number, event: PeerDocEvent) => void>();
 
 	constructor(connection: CollabConnection) {
 		this.connection = connection;
@@ -52,11 +53,15 @@ export class CollabPeersPool {
 		this.peers.delete(id);
 	}
 
-	getPeerDoc(ownerId: number): peerDoc | null {
+	getPeerDoc(ownerId: number): PeerDoc | null {
 		return this.peers.get(ownerId)?.doc ?? null;
 	}
 
-	onShadowUpdate(fn: (ownerId: number, event: peerDocEvent) => void): () => void {
+	isReady(ownerId: number): boolean {
+		return this.peers.get(ownerId)?.doc !== undefined;
+	}
+
+	onShadowUpdate(fn: (ownerId: number, event: PeerDocEvent) => void): () => void {
 		this.listeners.add(fn);
 		return () => {
 			this.listeners.delete(fn);
@@ -71,30 +76,34 @@ export class CollabPeersPool {
 		this.listeners.clear();
 	}
 
-	private notify(ownerId: number, event: peerDocEvent): void {
+	private notify(ownerId: number, event: PeerDocEvent): void {
 		for (const listener of this.listeners) {
 			listener(ownerId, event);
 		}
 	}
 
-	private async runPeer(ownerId: number, state: PeerState): Promise<void> {
-		// Initial fetch with retry, mirroring CodeEditor's backoff.
+	private async fetchInitialDoc(ownerId: number, state: PeerState): Promise<boolean> {
 		for (let attempt = 1; attempt <= INITIAL_MAX_ATTEMPTS; attempt += 1) {
-			if (state.aborted) return;
+			if (state.aborted) return false;
 			try {
 				const {doc, version} = await getInitialDocument(this.connection, ownerId);
 				state.doc = {doc, version};
 				this.notify(ownerId, {doc: state.doc, changes: null});
-				break;
+				return true;
 			} catch (error) {
-				if (state.aborted) return;
+				if (state.aborted) return false;
 				if (attempt === INITIAL_MAX_ATTEMPTS) {
 					console.error(`Failed to load initial doc for owner ${ownerId}:`, error);
-					return;
+					return false;
 				}
-				await new Promise((resolve) => setTimeout(resolve, INITIAL_RETRY_DELAY_MS));
+				await delay(INITIAL_RETRY_DELAY_MS);
 			}
 		}
+		return false;
+	}
+
+	private async runPeer(ownerId: number, state: PeerState): Promise<void> {
+		if (!(await this.fetchInitialDoc(ownerId, state))) return;
 
 		while (!state.aborted && state.doc) {
 			try {
@@ -116,7 +125,7 @@ export class CollabPeersPool {
 			} catch (error) {
 				if (state.aborted) return;
 				console.error(`Peer ${ownerId} pull failed:`, error);
-				await new Promise((resolve) => setTimeout(resolve, PULL_ERROR_BACKOFF_MS));
+				await delay(PULL_ERROR_BACKOFF_MS);
 			}
 		}
 	}
