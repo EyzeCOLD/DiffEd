@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
 import {Button} from "#/src/components/Button";
-import {useShowToast} from "#/src/layout/toastStore.ts";
+import {useShowToast} from "#/src/stores/toastStore";
 import {Input} from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
 
