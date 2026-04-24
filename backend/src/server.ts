@@ -29,10 +29,10 @@ Endpoints.uploadFiles(api, postgres);
 Endpoints.deleteFile(api, postgres);
 Endpoints.downloadFile(api, postgres);
 
-UserEndpoints.signupUser(api, postgres);
+UserEndpoints.signupUser(api);
 UserEndpoints.modifyUser(api, postgres);
-UserEndpoints.deleteUser(api, postgres);
-UserEndpoints.getUser(api, postgres);
+UserEndpoints.deleteUser(api);
+UserEndpoints.getUser(api);
 SessionEndpoints.loginUser(api, postgres);
 SessionEndpoints.logoutUser(api);
 SessionEndpoints.getSession(api);

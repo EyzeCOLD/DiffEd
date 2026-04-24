@@ -7,8 +7,9 @@ import {isDbError, isUniqueViolation} from "#/src/utils.js";
 import type {ApiResponse, User} from "#shared/src/types.js";
 import {timestampedLog} from "#/src/logging.js";
 import {requireAuth} from "#/src/middleware.js";
+import {getUserById, getUserByUsername, getUserByEmail, createUser, deleteUserById} from "#/src/queries/users.js";
 
-function signupUser(app: Express, db: Pool) {
+function signupUser(app: Express) {
 	app.post("/api/user", async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 		const {username, email, password} = req.body;
@@ -19,12 +20,8 @@ function signupUser(app: Express, db: Pool) {
 				type: argon2.argon2id,
 			});
 
-			const query = "INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3)";
-			const values = [username, email, hash];
-			timestampedLog(`DB QUERY >>> ${query}`);
-			timestampedLog(`DB VALUES >>> ${values}`);
-			await db.query(query, values);
-
+			//const id = await createUser({username, email} as User, hash);
+			await createUser({username, email} as User, hash);
 			res.status(201).json({ok: true, data: null});
 		} catch (error: unknown) {
 			if (isDbError(error) && isUniqueViolation(error)) {
@@ -57,16 +54,13 @@ function modifyUser(app: Express, db: Pool) {
 			if (username) {
 				usernameSchema.parse(username);
 
-				let query = "SELECT EXISTS (SELECT 1 FROM users WHERE username = $1 AND id != $2)";
-				const values = [username, id];
-				timestampedLog(`DB QUERY >>> ${query}`);
-				timestampedLog(`DB VALUES >>> ${values}`);
-				const isUsernameTaken = (await db.query(query, values)).rows[0].exists;
-				if (isUsernameTaken) {
+				const usernameExists = await getUserByUsername(username);
+				if (usernameExists) {
 					return res.status(409).json({ok: false, error: "Username already taken"});
 				}
 
-				query = "UPDATE users SET username = $1 WHERE id = $2";
+				const query = "UPDATE users SET username = $1 WHERE id = $2";
+				const values = [username, id];
 				timestampedLog(`DB QUERY >>> ${query}`);
 				timestampedLog(`DB VALUES >>> ${values}`);
 				await db.query(query, values);
@@ -75,16 +69,13 @@ function modifyUser(app: Express, db: Pool) {
 			if (email) {
 				emailSchema.parse(email);
 
-				let query = "SELECT EXISTS (SELECT 1 FROM users WHERE email = $1 AND id != $2)";
-				const values = [email, id];
-				timestampedLog(`DB QUERY >>> ${query}`);
-				timestampedLog(`DB VALUES >>> ${values}`);
-				const isEmailTaken = (await db.query(query, values)).rows[0].exists;
-				if (isEmailTaken) {
+				const emailExists = await getUserByEmail(email);
+				if (emailExists) {
 					return res.status(409).json({ok: false, error: "Email already taken"});
 				}
 
-				query = "UPDATE users SET email = $1 WHERE id = $2";
+				const values = [email, id];
+				const query = "UPDATE users SET email = $1 WHERE id = $2";
 				timestampedLog(`DB QUERY >>> ${query}`);
 				timestampedLog(`DB VALUES >>> ${values}`);
 				await db.query(query, values);
@@ -102,7 +93,6 @@ function modifyUser(app: Express, db: Pool) {
 				}
 
 				const match = await argon2.verify(result.rows[0].hashed_password, oldPassword);
-
 				if (!match) {
 					return res.status(401).json({ok: false, error: "Incorrect password"});
 				}
@@ -110,6 +100,10 @@ function modifyUser(app: Express, db: Pool) {
 				const hash = await argon2.hash(newPassword, {
 					type: argon2.argon2id,
 				});
+
+				if (await argon2.verify(result.rows[0].hashed_password, newPassword)) {
+					return res.status(200).json({ok: true, data: "not changed"});
+				}
 				const values = [hash, id];
 				query = "UPDATE users SET hashed_password = $1 WHERE id = $2";
 				timestampedLog(`DB QUERY >>> ${query}`);
@@ -133,17 +127,15 @@ function modifyUser(app: Express, db: Pool) {
 	});
 }
 
-function deleteUser(app: Express, db: Pool) {
+function deleteUser(app: Express) {
 	app.delete("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
-		const id = req.session.userId;
-		const query = "DELETE FROM users WHERE id = $1";
-		timestampedLog(`DB QUERY >>> ${query}`);
-		timestampedLog(`DB VALUES >>> ${[id]}`);
+		const id = req.session.userId as number;
 		try {
-			await db.query(query, [id]);
-
+			if ((await deleteUserById(id)) === false) {
+				throw new Error("Deletion failure");
+			}
 			res.clearCookie("connect.sid");
 			res.status(200).json({ok: true, data: null});
 		} catch (error: unknown) {
@@ -157,22 +149,16 @@ function deleteUser(app: Express, db: Pool) {
 	});
 }
 
-function getUser(app: Express, db: Pool) {
+function getUser(app: Express) {
 	app.get("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<User>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
-		const id = req.session.userId;
-		const query = "SELECT username, email FROM users WHERE id = $1";
-		timestampedLog(`DB QUERY >>> ${query}`);
-		timestampedLog(`DB VALUES >>> ${[id]}`);
+		const id = req.session.userId as number;
 		try {
-			const result = await db.query(query, [id]);
-
-			if (!result.rows.length) {
+			const user = await getUserById(id);
+			if (!user) {
 				throw new Error("No query result");
 			}
-
-			const user: User = result.rows[0];
 
 			res.status(200).json({ok: true, data: user});
 		} catch (error: unknown) {

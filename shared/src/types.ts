@@ -7,6 +7,7 @@ export type UserFile = {
 };
 
 export type User = {
+	id: number;
 	username: string;
 	email: string;
 };
