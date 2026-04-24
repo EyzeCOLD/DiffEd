@@ -271,8 +271,6 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
-		// userId is guaranteed to be set — the auth middleware above rejects unauthenticated connections.
-		const userId: number = socket.data.userId;
 
 		socket.on("disconnect", () => {
 			for (const shared of sessions.values()) {
@@ -284,10 +282,10 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		});
 
 		socket.on("collabRequest", async (data: CollabRequest) => {
-			const {id, type, sessionId, ownerId} = data;
+			const {type, sessionId, userId} = data;
 
 			function sendResponse(result: unknown) {
-				socket.emit("collabResponse", {id, result});
+				socket.emit("collabResponse", {userId, result});
 			}
 
 			try {
@@ -350,7 +348,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "getInitialDocument": {
-						const slot = shared.owners.get(ownerId);
+						const slot = shared.owners.get(userId);
 						if (!slot) {
 							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
 							break;
@@ -362,7 +360,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pullUpdates": {
-						const slot = shared.owners.get(ownerId);
+						const slot = shared.owners.get(userId);
 						if (!slot) {
 							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
 							break;
@@ -379,15 +377,16 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pushUpdates": {
-						if (ownerId !== userId) {
-							sendResponse({
-								error: "You may only push updates to your own slot",
-							} satisfies ErrorResponse);
-							break;
-						}
 						const slot = shared.owners.get(userId);
 						if (!slot) {
 							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
+							break;
+						}
+
+						if (slot.ownerId !== userId) {
+							sendResponse({
+								error: "You may only push updates to your own slot",
+							} satisfies ErrorResponse);
 							break;
 						}
 
@@ -414,7 +413,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pushFileName": {
-						if (ownerId !== userId) {
+						if (userId !== userId) {
 							sendResponse({
 								error: "You may only rename your own file",
 							} satisfies ErrorResponse);
