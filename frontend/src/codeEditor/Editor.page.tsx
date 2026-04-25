@@ -68,7 +68,11 @@ export default function EditorPage() {
 				onPicked={() => {
 					setSessionInfo((prev) => {
 						if (!prev || prev.members.some((m) => m.userId === user.id)) return prev;
-						return {id: prev.id, members: [...prev.members, {userId: user.id, username: user.username}], isCurrentUserMember: true};
+						return {
+							id: prev.id,
+							members: [...prev.members, {userId: user.id, username: user.username}],
+							isCurrentUserMember: true,
+						};
 					});
 				}}
 			/>
