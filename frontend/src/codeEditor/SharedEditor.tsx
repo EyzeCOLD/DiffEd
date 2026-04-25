@@ -35,7 +35,6 @@ type SharedEditorProps = {
 };
 
 export default function SharedEditor({connection, myOwnerId, initialMembers}: SharedEditorProps): JSX.Element {
-	const [members, setMembers] = useState<SessionMember[]>(initialMembers);
 	const [selectedPeerId, setSelectedPeerId] = useState<number | null>(null);
 	const [readyPeerIds, setReadyPeerIds] = useState<ReadonlySet<number>>(new Set());
 
@@ -46,16 +45,12 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 	const [retryCount, setRetryCount] = useState(0);
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
-	const pool = useMemo(() => new CollabPeersPool(connection), [connection]);
-	const peers = members.filter((m) => m.userId !== myOwnerId);
+	const [pool] = useState(() => new CollabPeersPool(connection, myOwnerId, initialMembers));
+	const [peers, setPeers] = useState<SessionMember[]>(() => pool.getPeers());
 
 	useEffect(() => () => pool.dispose(), [pool]);
 
-	useEffect(() => connection.subscribeMembers((event) => setMembers(event.members)), [connection]);
-
-	useEffect(() => {
-		pool.setSyncedPeers(new Set(peers.map((p) => p.userId)));
-	}, [peers, pool]);
+	useEffect(() => pool.onPeersChange(setPeers), [pool]);
 
 	const basePeerId = useMemo(() => {
 		if (selectedPeerId !== null && peers.some((p) => p.userId === selectedPeerId)) {

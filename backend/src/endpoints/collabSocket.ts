@@ -43,7 +43,7 @@ type SharedSession = {
 
 export type CollabSocketApi = {
 	createSessionFromFile: (userId: number, fileId: string) => Promise<string>;
-	getSessionInfo: (sessionId: string) => Promise<SessionInfo | undefined>;
+	getSessionInfo: (sessionId: string, userId?: number) => Promise<SessionInfo | undefined>;
 };
 
 function serializeUpdates(updates: readonly Update[]): SerializedUpdate[] {
@@ -103,7 +103,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			await cacheUsername(shared, ownerId);
 			members.push({userId: ownerId, username: shared.usernames.get(ownerId)!});
 		}
-		return {id: shared.sessionId, members};
+		return {id: shared.sessionId, members, isCurrentUserMember: false};
 	}
 
 	async function broadcastMembers(shared: SharedSession): Promise<void> {
@@ -263,10 +263,14 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		return sessionId;
 	}
 
-	async function getSessionInfo(sessionId: string): Promise<SessionInfo | undefined> {
+	async function getSessionInfo(sessionId: string, userId?: number): Promise<SessionInfo | undefined> {
 		const shared = sessions.get(sessionId);
 		if (!shared) return undefined;
-		return buildSessionInfo(shared);
+		const info = await buildSessionInfo(shared);
+		if (userId !== undefined) {
+			info.isCurrentUserMember = shared.owners.has(userId);
+		}
+		return info;
 	}
 
 	sockets.on("connection", (socket) => {
@@ -349,7 +353,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "getInitialDocument": {
-						const slot = shared.owners.get(userId);
+						const slot = shared.owners.get(data.ownerId);
 						if (!slot) {
 							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
 							break;
@@ -361,7 +365,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pullUpdates": {
-						const slot = shared.owners.get(userId);
+						const slot = shared.owners.get(data.ownerId);
 						if (!slot) {
 							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
 							break;

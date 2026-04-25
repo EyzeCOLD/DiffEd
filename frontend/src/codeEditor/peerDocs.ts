@@ -1,4 +1,5 @@
 import {ChangeSet, Text} from "@codemirror/state";
+import type {SessionMember} from "#shared/src/types";
 import {CollabConnection, getInitialDocument, pullUpdates} from "./collabClient";
 import {delay} from "../utils";
 
@@ -13,6 +14,7 @@ export type PeerDocEvent = {
 };
 
 type PeerState = {
+	member: SessionMember;
 	doc: PeerDoc | undefined;
 	aborted: boolean;
 };
@@ -23,61 +25,83 @@ const INITIAL_RETRY_DELAY_MS = 250;
 
 export class CollabPeersPool {
 	private connection: CollabConnection;
-	private peers = new Map<number, PeerState>();
-	private listeners = new Set<(ownerId: number, event: PeerDocEvent) => void>();
+	private myOwnerId: number;
+	private peerSlots = new Map<number, PeerState>();
+	private docListeners = new Set<(ownerId: number, event: PeerDocEvent) => void>();
+	private peersListeners = new Set<(peers: SessionMember[]) => void>();
+	private unsubscribeMembers: () => void;
 
-	constructor(connection: CollabConnection) {
+	constructor(connection: CollabConnection, myOwnerId: number, initialMembers: SessionMember[]) {
 		this.connection = connection;
+		this.myOwnerId = myOwnerId;
+		this.syncPeerSlots(initialMembers.filter((m) => m.userId !== myOwnerId));
+		this.unsubscribeMembers = connection.subscribeMembers((event) => {
+			const peers = event.members.filter((m) => m.userId !== this.myOwnerId);
+			this.syncPeerSlots(peers);
+			for (const fn of this.peersListeners) fn(peers);
+		});
 	}
 
-	setSyncedPeers(peerIds: Set<number>): void {
-		for (const id of [...this.peers.keys()]) {
+	getPeers(): SessionMember[] {
+		return [...this.peerSlots.values()].map((s) => s.member);
+	}
+
+	onPeersChange(fn: (peers: SessionMember[]) => void): () => void {
+		this.peersListeners.add(fn);
+		return () => this.peersListeners.delete(fn);
+	}
+
+	private syncPeerSlots(peers: SessionMember[]): void {
+		const peerIds = new Set(peers.map((p) => p.userId));
+		for (const id of [...this.peerSlots.keys()]) {
 			if (!peerIds.has(id)) this.removePeer(id);
 		}
-		for (const id of peerIds) {
-			if (!this.peers.has(id)) this.addPeer(id);
+		for (const member of peers) {
+			if (!this.peerSlots.has(member.userId)) this.addPeer(member);
 		}
 	}
 
-	private addPeer(id: number): void {
-		if (this.peers.has(id)) return;
-		const state: PeerState = {doc: undefined, aborted: false};
-		this.peers.set(id, state);
-		void this.runPeer(id, state);
+	private addPeer(member: SessionMember): void {
+		if (this.peerSlots.has(member.userId)) return;
+		const state: PeerState = {member, doc: undefined, aborted: false};
+		this.peerSlots.set(member.userId, state);
+		void this.runPeer(member.userId, state);
 	}
 
 	private removePeer(id: number): void {
-		const state = this.peers.get(id);
+		const state = this.peerSlots.get(id);
 		if (!state) return;
 		state.aborted = true;
-		this.peers.delete(id);
+		this.peerSlots.delete(id);
 	}
 
 	getPeerDoc(ownerId: number): PeerDoc | null {
-		return this.peers.get(ownerId)?.doc ?? null;
+		return this.peerSlots.get(ownerId)?.doc ?? null;
 	}
 
 	isReady(ownerId: number): boolean {
-		return this.peers.get(ownerId)?.doc !== undefined;
+		return this.peerSlots.get(ownerId)?.doc !== undefined;
 	}
 
 	onShadowUpdate(fn: (ownerId: number, event: PeerDocEvent) => void): () => void {
-		this.listeners.add(fn);
+		this.docListeners.add(fn);
 		return () => {
-			this.listeners.delete(fn);
+			this.docListeners.delete(fn);
 		};
 	}
 
 	dispose(): void {
-		for (const state of this.peers.values()) {
+		this.unsubscribeMembers();
+		for (const state of this.peerSlots.values()) {
 			state.aborted = true;
 		}
-		this.peers.clear();
-		this.listeners.clear();
+		this.peerSlots.clear();
+		this.docListeners.clear();
+		this.peersListeners.clear();
 	}
 
 	private notify(ownerId: number, event: PeerDocEvent): void {
-		for (const listener of this.listeners) {
+		for (const listener of this.docListeners) {
 			listener(ownerId, event);
 		}
 	}

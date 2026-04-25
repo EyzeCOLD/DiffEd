@@ -65,6 +65,7 @@ export type SessionMember = {
 export type SessionInfo = {
 	id: string;
 	members: SessionMember[];
+	isCurrentUserMember: boolean;
 };
 
 export type MembersChangedEvent = {

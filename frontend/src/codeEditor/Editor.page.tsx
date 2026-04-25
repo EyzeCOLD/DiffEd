@@ -40,10 +40,14 @@ export default function EditorPage() {
 	useEffect(() => {
 		if (!connection) return;
 		const unsubscribe = connection.subscribeMembers((event) => {
-			setSessionInfo({id: event.sessionId, members: event.members});
+			setSessionInfo({
+				id: event.sessionId,
+				members: event.members,
+				isCurrentUserMember: event.members.some((m) => m.userId === user.id),
+			});
 		});
 		return unsubscribe;
-	}, [connection]);
+	}, [connection, user.id]);
 
 	useEffect(() => {
 		return function cleanup() {
@@ -55,7 +59,7 @@ export default function EditorPage() {
 	if (errorMessage) return <div className="p-4 text-red-500">{errorMessage}</div>;
 	if (!sessionInfo || !connection) return <div>Loading...</div>;
 
-	const isMember = sessionInfo.members.some((m) => m.userId === user.id);
+	const isMember = sessionInfo.isCurrentUserMember;
 
 	if (!isMember) {
 		return (
@@ -64,7 +68,7 @@ export default function EditorPage() {
 				onPicked={() => {
 					setSessionInfo((prev) => {
 						if (!prev || prev.members.some((m) => m.userId === user.id)) return prev;
-						return {id: prev.id, members: [...prev.members, {userId: user.id, username: user.username}]};
+						return {id: prev.id, members: [...prev.members, {userId: user.id, username: user.username}], isCurrentUserMember: true};
 					});
 				}}
 			/>
