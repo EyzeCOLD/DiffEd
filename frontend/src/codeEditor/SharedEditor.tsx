@@ -127,7 +127,27 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 					...peerExtension(version, connection, myOwnerId),
 				];
 				if (peerInitialDoc !== null) {
-					extensions.push(...unifiedMergeView({original: peerInitialDoc, allowInlineDiffs: true}));
+					extensions.push(
+						...unifiedMergeView({
+							original: peerInitialDoc,
+							allowInlineDiffs: false,
+							mergeControls: (type, action) => {
+								// We're comparing with the peer as the base doc, meaning the native "accept" would modify the peer's doc locally.
+								// We don't want that, so we hide the "accept" button
+								if (type === "accept") {
+									const el = document.createElement("span");
+									el.style.display = "none";
+									return el;
+								}
+								// We repurpose the native "reject" button to seem like an "Accept",
+								// because it overrides the diffed doc (which is the user's own doc) based on the peer
+								const btn = document.createElement("button");
+								btn.textContent = "Accept";
+								btn.addEventListener("click", action);
+								return btn;
+							},
+						}),
+					);
 				}
 
 				const state = EditorState.create({doc, extensions});
