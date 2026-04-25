@@ -4,6 +4,7 @@ import type {UserFile} from "#shared/src/types";
 import {CollabConnection, pickFile} from "./collabClient";
 import {Button} from "../components/Button";
 import {apiFetch} from "../utils";
+import NewFile from "../fileBrowser/NewFile";
 
 type FilePickerProps = {
 	connection: CollabConnection;
@@ -47,6 +48,11 @@ export default function FilePicker({connection, onPicked}: FilePickerProps): JSX
 		}
 	}
 
+	async function handleNewFile(fileId: string) {
+		await pickFile(connection, fileId);
+		onPicked();
+	}
+
 	if (error) {
 		return (
 			<div className="p-4">
@@ -55,20 +61,24 @@ export default function FilePicker({connection, onPicked}: FilePickerProps): JSX
 		);
 	}
 	if (!files) return <p className="p-4">Loading your files...</p>;
-	if (files.length === 0) return <p className="p-4">You have no files to bring into this session.</p>;
 
 	return (
 		<div className="p-4 flex flex-col gap-2">
 			<h2 className="text-lg">Pick a file to bring into this session</h2>
-			<ul className="flex flex-col gap-1">
-				{files.map((file) => (
-					<li key={file.id}>
-						<Button onClick={() => handlePick(file)} disabled={pickingId !== null}>
-							🗎 {file.name}
-						</Button>
-					</li>
-				))}
-			</ul>
+			<NewFile onCreated={handleNewFile} />
+			{files.length === 0 ? (
+				<p>You have no files to bring into this session.</p>
+			) : (
+				<ul className="flex flex-col gap-1">
+					{files.map((file) => (
+						<li key={file.id}>
+							<Button onClick={() => handlePick(file)} disabled={pickingId !== null}>
+								🗎 {file.name}
+							</Button>
+						</li>
+					))}
+				</ul>
+			)}
 		</div>
 	);
 }
