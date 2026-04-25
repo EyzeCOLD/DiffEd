@@ -19,9 +19,9 @@ type PeerState = {
 	aborted: boolean;
 };
 
-const PULL_ERROR_BACKOFF_MS = 1000;
 const INITIAL_MAX_ATTEMPTS = 3;
 const INITIAL_RETRY_DELAY_MS = 250;
+const ERROR_RETRY_DELAY_MS = 1000;
 
 export class CollabPeersPool {
 	private connection: CollabConnection;
@@ -107,8 +107,9 @@ export class CollabPeersPool {
 	}
 
 	private async fetchInitialDoc(ownerId: number, state: PeerState): Promise<boolean> {
-		for (let attempt = 1; attempt <= INITIAL_MAX_ATTEMPTS; attempt += 1) {
-			if (state.aborted) return false;
+		let attempt = 0;
+		// Will retry infinitely to account for collab users in file picker
+		while (!state.aborted) {
 			try {
 				const {doc, version} = await getInitialDocument(this.connection, ownerId);
 				state.doc = {doc, version};
@@ -116,11 +117,9 @@ export class CollabPeersPool {
 				return true;
 			} catch (error) {
 				if (state.aborted) return false;
-				if (attempt === INITIAL_MAX_ATTEMPTS) {
-					console.error(`Failed to load initial doc for owner ${ownerId}:`, error);
-					return false;
-				}
-				await delay(INITIAL_RETRY_DELAY_MS);
+				attempt++;
+				console.error(`Failed to load initial doc for owner ${ownerId}:`, error);
+				await delay(attempt < INITIAL_MAX_ATTEMPTS ? INITIAL_RETRY_DELAY_MS : ERROR_RETRY_DELAY_MS);
 			}
 		}
 		return false;
@@ -149,7 +148,7 @@ export class CollabPeersPool {
 			} catch (error) {
 				if (state.aborted) return;
 				console.error(`Peer ${ownerId} pull failed:`, error);
-				await delay(PULL_ERROR_BACKOFF_MS);
+				await delay(ERROR_RETRY_DELAY_MS);
 			}
 		}
 	}
