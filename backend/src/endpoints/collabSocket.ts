@@ -278,10 +278,22 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 		socket.on("disconnect", () => {
 			for (const shared of sessions.values()) {
-				if (shared.connectedSockets.has(socket.id)) {
-					detachSocketFromSession(socket.id, shared);
-					break;
+				if (!shared.connectedSockets.has(socket.id)) continue;
+				const userId = socket.data.userId as number;
+				detachSocketFromSession(socket.id, shared);
+				// Only evict if this user has no other sockets still connected to this session
+				const stillConnected = [...shared.connectedSockets.values()].some((id) => id === userId);
+				if (!stillConnected && shared.owners.has(userId)) {
+					void (async () => {
+						const slot = shared.owners.get(userId);
+						if (slot) await evictSlot(slot);
+						shared.owners.delete(userId);
+						if (shared.connectedSockets.size > 0) {
+							await broadcastMembers(shared);
+						}
+					})();
 				}
+				break;
 			}
 		});
 
