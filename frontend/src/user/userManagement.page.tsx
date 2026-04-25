@@ -27,10 +27,6 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 				throw new Error("The field cannot be empty");
 			}
 
-			if (newUsername === initialValue) {
-				showToast("info", "New username same as old. No changes made");
-				return;
-			}
 			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "PATCH",
 				headers: {"Content-Type": "application/json"},
@@ -101,11 +97,6 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 		try {
 			if (!newEmail) {
 				throw new Error("The field cannot be empty");
-			}
-
-			if (newEmail === initialValue) {
-				showToast("info", "New email same as old. No changes made");
-				return;
 			}
 
 			if (!emailSchema.safeParse(newEmail).success) {
@@ -206,10 +197,6 @@ function Password() {
 				throw new Error(response.error);
 			}
 
-			if (response.ok && response.data) {
-				showToast("info", "New password same as old. No changes made");
-				return;
-			}
 			setNewPassword("");
 			setNewPassword2("");
 			setOldPassword("");

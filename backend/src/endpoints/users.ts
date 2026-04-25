@@ -44,15 +44,27 @@ function modifyUser(app: Express, db: Pool) {
 	app.patch("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 		const {username, email, oldPassword, newPassword} = req.body;
-		const id = req.session.userId;
+		const id = req.session.userId as number;
 
 		if (!username && !email && !newPassword) {
 			return res.status(400).json({ok: false, error: "Nothing to update"});
 		}
 
 		try {
+			const user = await getUserById(id);
+			// this should never be true, but added because of Typescript
+			if (!user) {
+				throw new Error("Not a valid user");
+			}
+
 			if (username) {
 				usernameSchema.parse(username);
+
+				if (user.username === username) {
+					return res
+						.status(400)
+						.json({ok: false, error: "No change made: New username can not be the same as old username"});
+				}
 
 				const usernameExists = await getUserByUsername(username);
 				if (usernameExists) {
@@ -69,6 +81,9 @@ function modifyUser(app: Express, db: Pool) {
 			if (email) {
 				emailSchema.parse(email);
 
+				if (user.email === email) {
+					return res.status(400).json({ok: false, error: "No change made: New email can not be the same as old email"});
+				}
 				const emailExists = await getUserByEmail(email);
 				if (emailExists) {
 					return res.status(409).json({ok: false, error: "Email already taken"});
@@ -102,8 +117,9 @@ function modifyUser(app: Express, db: Pool) {
 				});
 
 				if (await argon2.verify(result.rows[0].hashed_password, newPassword)) {
-					return res.status(200).json({ok: true, data: "not changed"});
+					return res.status(400).json({ok: false, error: "New Password can not be the same as old password!"});
 				}
+
 				const values = [hash, id];
 				query = "UPDATE users SET hashed_password = $1 WHERE id = $2";
 				timestampedLog(`DB QUERY >>> ${query}`);
@@ -111,7 +127,7 @@ function modifyUser(app: Express, db: Pool) {
 				await db.query(query, values);
 			}
 
-			res.status(200).send({ok: true, data: null});
+			res.status(200).json({ok: true, data: null});
 		} catch (error: unknown) {
 			if (error instanceof z.ZodError) {
 				const msg = error.issues[0].message;
