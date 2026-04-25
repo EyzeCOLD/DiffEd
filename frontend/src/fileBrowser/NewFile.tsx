@@ -1,13 +1,17 @@
-import {useState} from "react";
+import {useState, type JSX} from "react";
 import {useNavigate} from "react-router";
 import {Button} from "#/src/components/Button";
 import {useShowToast} from "#/src/stores/toastStore";
 import {Input} from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
 
-function NewFile() {
+type NewFileProps = {
+	// When provided, called with the new file's ID instead of creating a workspace and navigating
+	onCreated?: (fileId: string) => Promise<void>;
+};
+
+function NewFile({onCreated}: NewFileProps): JSX.Element {
 	const [newFilename, setNewFilename] = useState<string>();
-	const [showFilenamePrompt, setShowFilenamePrompt] = useState(false);
 	const navigate = useNavigate();
 	const showToast = useShowToast();
 
@@ -20,6 +24,11 @@ function NewFile() {
 
 		if (!fileResult.ok) {
 			showToast("error", "File creation failed!");
+			return;
+		}
+
+		if (onCreated) {
+			await onCreated(fileResult.data);
 			return;
 		}
 
@@ -39,20 +48,20 @@ function NewFile() {
 	}
 
 	return (
-		<>
-			<Button onClick={() => setShowFilenamePrompt(!showFilenamePrompt)}>New File</Button>
-			{showFilenamePrompt ? (
-				<form
-					onSubmit={(e) => {
-						e.preventDefault();
-						openNewFile();
-					}}
-				>
-					<Input id="fileNameInput" value={newFilename} onChange={(event) => setNewFilename(event.target.value)} />
-					<Button type="submit">Submit</Button>
-				</form>
-			) : null}
-		</>
+		<form
+			onSubmit={(e) => {
+				e.preventDefault();
+				openNewFile();
+			}}
+		>
+			<Input
+				id="fileNameInput"
+				value={newFilename}
+				placeholder="New file"
+				onChange={(event) => setNewFilename(event.target.value)}
+			/>
+			<Button type="submit">Create</Button>
+		</form>
 	);
 }
 
