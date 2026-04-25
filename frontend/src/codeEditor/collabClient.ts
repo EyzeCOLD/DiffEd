@@ -171,9 +171,9 @@ export class CollabConnection {
 export async function getInitialDocument(
 	connection: CollabConnection,
 	ownerId: number,
-): Promise<{version: number; doc: Text}> {
+): Promise<{version: number; doc: Text; fileName: string}> {
 	const result = (await connection.request({type: "getInitialDocument", ownerId})) as DocumentResponse;
-	return {version: result.version, doc: Text.of(result.doc.split("\n"))};
+	return {version: result.version, doc: Text.of(result.doc.split("\n")), fileName: result.fileName};
 }
 
 export async function pullUpdates(

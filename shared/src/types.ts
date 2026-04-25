@@ -76,6 +76,7 @@ export type MembersChangedEvent = {
 export type DocumentResponse = {
 	version: number;
 	doc: string;
+	fileName: string;
 };
 
 export type NameUpdateResponse = {

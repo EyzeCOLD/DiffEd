@@ -7,11 +7,13 @@ import {unifiedMergeView, updateOriginalDoc} from "@codemirror/merge";
 import {basicSetup} from "codemirror";
 import keybinds from "./keybinds";
 import langServer from "./langExtensions";
-import {CollabConnection, getInitialDocument} from "./collabClient";
+import {CollabConnection, getInitialDocument, pushFileName} from "./collabClient";
 import {CollabPeersPool, type PeerDocEvent} from "./peerDocs";
 import {peerExtension} from "./peerExtension";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
+import {Input} from "../components/Input";
+import {Button} from "../components/Button";
 
 const INITIAL_DOC_MAX_ATTEMPTS = 2;
 const INITIAL_DOC_RETRY_DELAY_MS = 250;
@@ -43,6 +45,7 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [retryCount, setRetryCount] = useState(0);
+	const [fileName, setFileName] = useState("");
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
 	const [pool] = useState(() => new CollabPeersPool(connection, myOwnerId, initialMembers));
@@ -113,8 +116,9 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 
 		async function initializeEditor(): Promise<void> {
 			try {
-				const {doc, version} = await getInitialDocumentWithRetry();
+				const {doc, version, fileName: initialFileName} = await getInitialDocumentWithRetry();
 				if (hasUnmounted) return;
+				setFileName(initialFileName);
 
 				const extensions = [
 					basicSetup,
@@ -165,16 +169,36 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 		setRetryCount((count) => count + 1);
 	}
 
+	async function handleRename(): Promise<void> {
+		if (!connection) return;
+		const response = await pushFileName(connection, fileName);
+		setFileName(response.name);
+	}
+
 	return (
 		<div className="flex flex-col h-full">
 			<PeerBar peers={peers} selectedOwnerId={basePeerId} onSelect={setSelectedPeerId} pool={pool} />
+			{!isLoading && !error && (
+				<form
+					className="flex gap-2 p-1"
+					onSubmit={(e) => {
+						e.preventDefault();
+						void handleRename();
+					}}
+				>
+					<Input type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} />
+					<Button type="submit" className="border px-2">
+						Rename
+					</Button>
+				</form>
+			)}
 			<div ref={editorDomRef} className={`h-full w-full${error ? " hidden" : ""}`} />
 			{error ? (
 				<div className="border border-red-500 p-2 text-red-500">
 					<div>Error initializing editor: {error}</div>
-					<button className="mt-2 border px-2 py-1" onClick={retryInitialization} type="button">
+					<Button onClick={retryInitialization} type="button">
 						Retry
-					</button>
+					</Button>
 				</div>
 			) : isLoading ? (
 				<div className="p-2">Initializing collaborative editor...</div>

@@ -361,6 +361,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						sendResponse({
 							version: slot.updates.length,
 							doc: slot.doc.toString(),
+							fileName: slot.fileName,
 						} satisfies DocumentResponse);
 						break;
 					}
