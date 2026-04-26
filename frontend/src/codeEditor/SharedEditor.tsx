@@ -198,7 +198,16 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 	return (
 		<div className="flex flex-col h-full">
 			<PeerBar peers={members} readyPeerIds={readyPeerIds} selectedPeerId={basePeerId} onSelect={setSelectedPeerId} />
-			{!isLoading && !error && (
+			{error ? (
+				<div className="border border-red-500 p-2 text-red-500">
+					<div>Error initializing editor: {error}</div>
+					<Button onClick={retryInitialization} type="button">
+						Retry
+					</Button>
+				</div>
+			) : isLoading ? (
+				<div className="p-2">Initializing collaborative editor...</div>
+			) : (
 				<form
 					className="flex gap-2 p-1"
 					onSubmit={(e) => {
@@ -212,19 +221,7 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 					</Button>
 				</form>
 			)}
-			{/* <div ref={editorDomRef} className={`h-full w-full${error ? " hidden" : ""}`} /> */}
-			{error ? (
-				<div className="border border-red-500 p-2 text-red-500">
-					<div>Error initializing editor: {error}</div>
-					<Button onClick={retryInitialization} type="button">
-						Retry
-					</Button>
-				</div>
-			) : isLoading ? (
-				<div className="p-2">Initializing collaborative editor...</div>
-			) : (
-				<div ref={editorDomRef} className="h-full w-full" />
-			)}
+			<div ref={editorDomRef} className="h-full w-full" />
 			<p className="m-0 text-sm text-(--text-secondary)">{TAB_USAGE_HINT}</p>
 		</div>
 	);
