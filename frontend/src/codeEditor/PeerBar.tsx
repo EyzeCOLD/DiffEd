@@ -1,15 +1,14 @@
 import type {JSX} from "react";
 import type {SessionMember} from "#shared/src/types";
-import {CollabPeersPool} from "./peerDocs";
 
 type PeerBarProps = {
 	peers: SessionMember[];
-	selectedOwnerId: number | null;
+	readyPeerIds: ReadonlySet<number>;
+	selectedPeerId: number | null;
 	onSelect: (ownerId: number) => void;
-	pool: CollabPeersPool;
 };
 
-export default function PeerBar({peers, selectedOwnerId, onSelect, pool}: PeerBarProps): JSX.Element {
+export default function PeerBar({peers, readyPeerIds, selectedPeerId, onSelect}: PeerBarProps): JSX.Element {
 	return (
 		<div className="flex flex-row items-center gap-2 p-2 bg-surface">
 			{peers.length === 0 ? (
@@ -17,18 +16,18 @@ export default function PeerBar({peers, selectedOwnerId, onSelect, pool}: PeerBa
 			) : (
 				<div role="tablist" aria-label="Peers" className="flex flex-row items-center gap-2">
 					{peers.map((peer) => {
-						const ready = pool.isReady(peer.userId);
-						const selected = peer.userId === selectedOwnerId;
+						const ready = readyPeerIds.has(peer.id);
+						const selected = peer.id === selectedPeerId;
 						const borderClass = selected ? "border-accent" : "border-transparent";
 						const stateClass = ready ? "cursor-pointer" : "opacity-50 cursor-wait";
 						return (
 							<button
-								key={peer.userId}
+								key={peer.id}
 								type="button"
 								role="tab"
 								aria-selected={selected}
 								disabled={!ready}
-								onClick={() => onSelect(peer.userId)}
+								onClick={() => onSelect(peer.id)}
 								className={`px-2 py-1 border ${borderClass} ${stateClass}`}
 							>
 								{peer.username}

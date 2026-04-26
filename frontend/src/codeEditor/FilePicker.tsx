@@ -8,10 +8,9 @@ import NewFile from "../fileBrowser/NewFile";
 
 type FilePickerProps = {
 	connection: CollabConnection;
-	onPicked: () => void;
 };
 
-export default function FilePicker({connection, onPicked}: FilePickerProps): JSX.Element {
+export default function FilePicker({connection}: FilePickerProps): JSX.Element {
 	const [files, setFiles] = useState<UserFile[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [pickingId, setPickingId] = useState<string | null>(null);
@@ -40,8 +39,7 @@ export default function FilePicker({connection, onPicked}: FilePickerProps): JSX
 		setPickingId(file.id);
 		try {
 			await pickFile(connection, file.id);
-			onPicked();
-		} catch (err) {
+					} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to pick file");
 		} finally {
 			setPickingId(null);
@@ -50,8 +48,7 @@ export default function FilePicker({connection, onPicked}: FilePickerProps): JSX
 
 	async function handleNewFile(fileId: string) {
 		await pickFile(connection, fileId);
-		onPicked();
-	}
+			}
 
 	if (error) {
 		return (

@@ -14,6 +14,7 @@ export default function EditorPage() {
 
 	const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [joining, setJoining] = useState(true);
 
 	const connection = useMemo(() => (sessionId ? new CollabConnection(sessionId) : null), [sessionId]);
 
@@ -28,6 +29,7 @@ export default function EditorPage() {
 					return;
 				}
 				setSessionInfo(response.data);
+				setJoining(false);
 			})
 			.catch((err) => {
 				if (!cancelled) setErrorMessage(err instanceof Error ? err.message : "Failed to load session");
@@ -40,10 +42,10 @@ export default function EditorPage() {
 	useEffect(() => {
 		if (!connection) return;
 		const unsubscribe = connection.subscribeMembers((event) => {
+			setJoining(false);
 			setSessionInfo({
 				id: event.sessionId,
 				members: event.members,
-				isCurrentUserMember: event.members.some((m) => m.userId === user.id),
 			});
 		});
 		return unsubscribe;
@@ -59,24 +61,12 @@ export default function EditorPage() {
 	if (errorMessage) return <div className="p-4 text-red-500">{errorMessage}</div>;
 	if (!sessionInfo || !connection) return <div>Loading...</div>;
 
-	const isMember = sessionInfo.isCurrentUserMember;
+	if (joining) return <div>Joining session...</div>;
+
+	const isMember = sessionInfo.members.some((member) => member.id === user.id);
 
 	if (!isMember) {
-		return (
-			<FilePicker
-				connection={connection}
-				onPicked={() => {
-					setSessionInfo((prev) => {
-						if (!prev || prev.members.some((m) => m.userId === user.id)) return prev;
-						return {
-							id: prev.id,
-							members: [...prev.members, {userId: user.id, username: user.username}],
-							isCurrentUserMember: true,
-						};
-					});
-				}}
-			/>
-		);
+		return <FilePicker connection={connection} />;
 	}
 
 	return <SharedEditor connection={connection} myOwnerId={user.id} initialMembers={sessionInfo.members} />;

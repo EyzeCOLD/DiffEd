@@ -6,6 +6,8 @@ import type {Request, Response, NextFunction} from "express";
 import {timestampedLog} from "../logging.js";
 import sessionConfig from "../sessionConfig.js";
 import type {
+	User,
+	UserFile,
 	CollabRequest,
 	DocumentResponse,
 	ErrorResponse,
@@ -88,7 +90,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 	async function cacheUsername(shared: SharedSession, userId: number): Promise<void> {
 		if (shared.usernames.has(userId)) return;
 		try {
-			const result = await db.query<{username: string}>("SELECT username FROM users WHERE id = $1", [userId]);
+			const result = await db.query<Pick<User, "username">>("SELECT username FROM users WHERE id = $1", [userId]);
 			const username = result.rows[0]?.username ?? `user${userId}`;
 			shared.usernames.set(userId, username);
 		} catch (error) {
@@ -101,9 +103,9 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		const members: SessionMember[] = [];
 		for (const ownerId of shared.owners.keys()) {
 			await cacheUsername(shared, ownerId);
-			members.push({userId: ownerId, username: shared.usernames.get(ownerId)!});
+			members.push({id: ownerId, username: shared.usernames.get(ownerId)!});
 		}
-		return {id: shared.sessionId, members, isCurrentUserMember: false};
+		return {id: shared.sessionId, members};
 	}
 
 	async function broadcastMembers(shared: SharedSession): Promise<void> {
@@ -114,7 +116,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 	async function loadOwnerSlot(userId: number, fileId: string): Promise<PerOwnerDocState | undefined> {
 		try {
-			const result = await db.query<{name: string; content: string}>(
+			const result = await db.query<Pick<UserFile, "name" | "content">>(
 				"SELECT name, content FROM files WHERE id = $1 AND owner_id = $2",
 				[fileId, userId],
 			);
@@ -263,13 +265,10 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		return sessionId;
 	}
 
-	async function getSessionInfo(sessionId: string, userId?: number): Promise<SessionInfo | undefined> {
+	async function getSessionInfo(sessionId: string): Promise<SessionInfo | undefined> {
 		const shared = sessions.get(sessionId);
 		if (!shared) return undefined;
 		const info = await buildSessionInfo(shared);
-		if (userId !== undefined) {
-			info.isCurrentUserMember = shared.owners.has(userId);
-		}
 		return info;
 	}
 

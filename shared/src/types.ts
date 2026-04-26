@@ -57,15 +57,11 @@ export type CollabRequest = CollabRequestPayload & {
 	sessionId: string;
 };
 
-export type SessionMember = {
-	userId: number;
-	username: string;
-};
+export type SessionMember = Pick<User, "id" | "username">;
 
 export type SessionInfo = {
 	id: string;
 	members: SessionMember[];
-	isCurrentUserMember: boolean;
 };
 
 export type MembersChangedEvent = {

@@ -15,7 +15,7 @@ export type PeerDocEvent = {
 
 type PeerState = {
 	member: SessionMember;
-	doc: PeerDoc | undefined;
+	doc?: PeerDoc;
 	aborted: boolean;
 };
 
@@ -28,44 +28,44 @@ export class CollabPeersPool {
 	private myOwnerId: number;
 	private peerSlots = new Map<number, PeerState>();
 	private docListeners = new Set<(ownerId: number, event: PeerDocEvent) => void>();
-	private peersListeners = new Set<(peers: SessionMember[]) => void>();
+	private membersListeners = new Set<(members: SessionMember[]) => void>();
 	private unsubscribeMembers: () => void;
 
 	constructor(connection: CollabConnection, myOwnerId: number, initialMembers: SessionMember[]) {
 		this.connection = connection;
 		this.myOwnerId = myOwnerId;
-		this.syncPeerSlots(initialMembers.filter((m) => m.userId !== myOwnerId));
+		this.syncPeerSlots(initialMembers.filter((m) => m.id !== myOwnerId));
 		this.unsubscribeMembers = connection.subscribeMembers((event) => {
-			const peers = event.members.filter((m) => m.userId !== this.myOwnerId);
-			this.syncPeerSlots(peers);
-			for (const fn of this.peersListeners) fn(peers);
+			const members = event.members.filter((m) => m.id !== this.myOwnerId);
+			this.syncPeerSlots(members);
+			for (const fn of this.membersListeners) fn(members);
 		});
 	}
 
-	getPeers(): SessionMember[] {
+	getMembers(): SessionMember[] {
 		return [...this.peerSlots.values()].map((s) => s.member);
 	}
 
-	onPeersChange(fn: (peers: SessionMember[]) => void): () => void {
-		this.peersListeners.add(fn);
-		return () => this.peersListeners.delete(fn);
+	onMembersChange(fn: (members: SessionMember[]) => void): () => void {
+		this.membersListeners.add(fn);
+		return () => this.membersListeners.delete(fn);
 	}
 
 	private syncPeerSlots(peers: SessionMember[]): void {
-		const peerIds = new Set(peers.map((p) => p.userId));
+		const peerIds = new Set(peers.map((p) => p.id));
 		for (const id of [...this.peerSlots.keys()]) {
 			if (!peerIds.has(id)) this.removePeer(id);
 		}
 		for (const member of peers) {
-			if (!this.peerSlots.has(member.userId)) this.addPeer(member);
+			if (!this.peerSlots.has(member.id)) this.addPeer(member);
 		}
 	}
 
 	private addPeer(member: SessionMember): void {
-		if (this.peerSlots.has(member.userId)) return;
+		if (this.peerSlots.has(member.id)) return;
 		const state: PeerState = {member, doc: undefined, aborted: false};
-		this.peerSlots.set(member.userId, state);
-		void this.runPeer(member.userId, state);
+		this.peerSlots.set(member.id, state);
+		this.runPeer(member.id, state);
 	}
 
 	private removePeer(id: number): void {
@@ -83,7 +83,7 @@ export class CollabPeersPool {
 		return this.peerSlots.get(ownerId)?.doc !== undefined;
 	}
 
-	onShadowUpdate(fn: (ownerId: number, event: PeerDocEvent) => void): () => void {
+	onDocUpdate(fn: (ownerId: number, event: PeerDocEvent) => void): () => void {
 		this.docListeners.add(fn);
 		return () => {
 			this.docListeners.delete(fn);
@@ -97,7 +97,7 @@ export class CollabPeersPool {
 		}
 		this.peerSlots.clear();
 		this.docListeners.clear();
-		this.peersListeners.clear();
+		this.membersListeners.clear();
 	}
 
 	private notify(ownerId: number, event: PeerDocEvent): void {

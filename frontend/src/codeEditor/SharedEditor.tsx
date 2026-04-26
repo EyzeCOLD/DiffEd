@@ -19,7 +19,7 @@ const INITIAL_DOC_MAX_ATTEMPTS = 2;
 const INITIAL_DOC_RETRY_DELAY_MS = 250;
 const RETRYABLE_INITIAL_DOC_MESSAGES = [
 	"Timed out connecting to collaboration server",
-	"Timed out waiting for collab response",
+	// "Timed out waiting for collab response",
 	"Collab connection closed",
 ];
 
@@ -49,19 +49,19 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
 	const [pool] = useState(() => new CollabPeersPool(connection, myOwnerId, initialMembers));
-	const [peers, setPeers] = useState<SessionMember[]>(() => pool.getPeers());
+	const [members, setMembers] = useState<SessionMember[]>(() => pool.getMembers());
 
 	useEffect(() => () => pool.dispose(), [pool]);
 
-	useEffect(() => pool.onPeersChange(setPeers), [pool]);
+	useEffect(() => pool.onMembersChange(setMembers), [pool]);
 
 	const basePeerId = useMemo(() => {
-		if (selectedPeerId !== null && peers.some((p) => p.userId === selectedPeerId)) {
+		if (selectedPeerId !== null && members.some((p) => p.id === selectedPeerId)) {
 			return selectedPeerId;
 		}
-		const firstReady = peers.find((p) => readyPeerIds.has(p.userId));
-		return firstReady?.userId ?? null;
-	}, [selectedPeerId, peers, readyPeerIds]);
+		const firstReady = members.find((p) => readyPeerIds.has(p.id));
+		return firstReady?.id ?? null;
+	}, [selectedPeerId, members, readyPeerIds]);
 
 	// When the active peer changes, reset editor state during render rather than inside
 	// the effect (calling setState in an effect body triggers cascading renders).
@@ -74,7 +74,7 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 	}
 
 	useEffect(() => {
-		return pool.onShadowUpdate((ownerId: number, event: PeerDocEvent) => {
+		return pool.onDocUpdate((ownerId: number, event: PeerDocEvent) => {
 			if (ownerId === basePeerId && event.changes !== null) {
 				viewRef.current?.dispatch({effects: updateOriginalDoc.of({doc: event.doc.doc, changes: event.changes})});
 			}
@@ -84,7 +84,7 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 		});
 	}, [pool, basePeerId]);
 
-	const peerInitialDoc = basePeerId === null ? null : (pool.getPeerDoc(basePeerId)?.doc ?? null);
+	const memberInitialDoc = basePeerId === null ? null : (pool.getPeerDoc(basePeerId)?.doc ?? null);
 
 	useEffect(() => {
 		const editorElement = editorDomRef.current;
@@ -126,13 +126,13 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 					langServer.markdown(),
 					...peerExtension(version, connection, myOwnerId),
 				];
-				if (peerInitialDoc !== null) {
+				if (memberInitialDoc !== null) {
 					extensions.push(
 						...unifiedMergeView({
-							original: peerInitialDoc,
+							original: memberInitialDoc,
 							allowInlineDiffs: false,
 							mergeControls: (type, action) => {
-								// We're comparing with the peer as the base doc, meaning the native "accept" would modify the peer's doc locally.
+								// We're comparing with the member as the base doc, meaning the native "accept" would modify the member's doc locally.
 								// We don't want that, so we hide the "accept" button
 								if (type === "accept") {
 									const el = document.createElement("span");
@@ -140,7 +140,7 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 									return el;
 								}
 								// We repurpose the native "reject" button to seem like an "Accept",
-								// because it overrides the diffed doc (which is the user's own doc) based on the peer
+								// because it overrides the diffed doc (which is the user's own doc) based on the member
 								const btn = document.createElement("button");
 								btn.textContent = "Accept";
 								btn.addEventListener("click", action);
@@ -181,7 +181,7 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 			hasUnmounted = true;
 			destroyView();
 		};
-	}, [connection, myOwnerId, peerInitialDoc, basePeerId, retryCount]);
+	}, [connection, myOwnerId, memberInitialDoc, basePeerId, retryCount]);
 
 	function retryInitialization(): void {
 		setError(null);
@@ -197,7 +197,7 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 
 	return (
 		<div className="flex flex-col h-full">
-			<PeerBar peers={peers} selectedOwnerId={basePeerId} onSelect={setSelectedPeerId} pool={pool} />
+			<PeerBar peers={members} readyPeerIds={readyPeerIds} selectedPeerId={basePeerId} onSelect={setSelectedPeerId} />
 			{!isLoading && !error && (
 				<form
 					className="flex gap-2 p-1"
@@ -212,7 +212,7 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 					</Button>
 				</form>
 			)}
-			<div ref={editorDomRef} className={`h-full w-full${error ? " hidden" : ""}`} />
+			{/* <div ref={editorDomRef} className={`h-full w-full${error ? " hidden" : ""}`} /> */}
 			{error ? (
 				<div className="border border-red-500 p-2 text-red-500">
 					<div>Error initializing editor: {error}</div>
@@ -222,7 +222,9 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 				</div>
 			) : isLoading ? (
 				<div className="p-2">Initializing collaborative editor...</div>
-			) : null}
+			) : (
+				<div ref={editorDomRef} className="h-full w-full" />
+			)}
 			<p className="m-0 text-sm text-(--text-secondary)">{TAB_USAGE_HINT}</p>
 		</div>
 	);
