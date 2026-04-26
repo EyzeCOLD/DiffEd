@@ -143,7 +143,7 @@ export class CollabConnection {
 		return new Promise((resolve, reject) => {
 			const timeoutId = setTimeout(() => {
 				this.pendingRequests.delete(id);
-				// reject(new Error(`Timed out waiting for collab response: ${payload.type}`));
+				reject(new Error(`Timed out waiting for collab response: ${payload.type}`));
 			}, REQUEST_TIMEOUT_MS);
 
 			this.pendingRequests.set(id, {resolve, reject, timeoutId});

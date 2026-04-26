@@ -19,7 +19,7 @@ const INITIAL_DOC_MAX_ATTEMPTS = 2;
 const INITIAL_DOC_RETRY_DELAY_MS = 250;
 const RETRYABLE_INITIAL_DOC_MESSAGES = [
 	"Timed out connecting to collaboration server",
-	// "Timed out waiting for collab response",
+	"Timed out waiting for collab response",
 	"Collab connection closed",
 ];
 
