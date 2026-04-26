@@ -39,7 +39,7 @@ export default function FilePicker({connection}: FilePickerProps): JSX.Element {
 		setPickingId(file.id);
 		try {
 			await pickFile(connection, file.id);
-					} catch (err) {
+		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to pick file");
 		} finally {
 			setPickingId(null);
@@ -48,7 +48,7 @@ export default function FilePicker({connection}: FilePickerProps): JSX.Element {
 
 	async function handleNewFile(fileId: string) {
 		await pickFile(connection, fileId);
-			}
+	}
 
 	if (error) {
 		return (
