@@ -19,9 +19,8 @@ import type {
 } from "#shared/src/types.js";
 
 const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
-// Grace period after the last socket leaves before a session is destroyed. Gives users time
-// to reload, recover from a network blip, or navigate back before in-memory state is flushed.
-const SESSION_DESTROY_GRACE_MS = 60_000;
+// Gives users time to refresh, recover from a network blip, or navigate back before collab state is flushed
+const SESSION_DESTROY_GRACE_MS = 3000;
 
 type PerOwnerDocState = {
 	fileId: string;
