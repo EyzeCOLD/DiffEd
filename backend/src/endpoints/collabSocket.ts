@@ -123,7 +123,10 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 	}
 
 	async function flushOwnerSlot(slot: PerOwnerState): Promise<void> {
+		// The callback that fired is no longer pending once we start processing it
 		slot.dbSaveDebounceTimer = null;
+		// `isFlushInProgress` prevents overlapping DB writes
+		// `hasUnsavedChanges` skips stale callbacks when there is nothing left to save
 		if (slot.isFlushInProgress || !slot.hasUnsavedChanges) return;
 
 		slot.isFlushInProgress = true;
@@ -410,12 +413,6 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pushFileName": {
-						if (userId !== userId) {
-							sendResponse({
-								error: "You may only rename your own file",
-							} satisfies ErrorResponse);
-							break;
-						}
 						const slot = shared.owners.get(userId);
 						if (!slot) {
 							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
