@@ -1,11 +1,11 @@
 import type {Express, Request, Response} from "express";
-import {type Pool} from "pg";
 import argon2 from "argon2";
 import rateLimit from "express-rate-limit";
 import {timestampedLog} from "#/src/logging.js";
 import {ApiResponse} from "#shared/src/types.js";
 import {isDbError} from "#/src/utils.js";
 import {requireAuth} from "#/src/middleware.js";
+import {getUserByIdentifier} from "#/src/queries/users.js";
 
 const limiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 min (how long to remember requests for)
@@ -13,24 +13,22 @@ const limiter = rateLimit({
 	message: "Too many login attempts, please try again later.",
 });
 
-function loginUser(app: Express, db: Pool) {
+function loginUser(app: Express) {
 	app.post("/api/session", limiter, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
 		const {loginIdentifier, password} = req.body;
+		if (!loginIdentifier || !password) {
+			return res.status(400).json({ok: false, error: "Please fill all the fields"});
+		}
 
-		const query = "SELECT * FROM users WHERE username = $1 OR email = $1";
-		timestampedLog(`DB QUERY >>> ${query}`);
-		timestampedLog(`DB VALUES >>> ${[loginIdentifier]}`);
 		try {
-			const result = await db.query(query, [loginIdentifier]);
-
-			if (!result.rows.length) {
+			const user = await getUserByIdentifier(loginIdentifier);
+			if (!user) {
 				return res.status(401).json({ok: false, error: "Incorrect username or password"});
 			}
 
-			const user = result.rows[0];
-			const match = await argon2.verify(user.hashed_password, password);
+			const match = await argon2.verify(user.password, password);
 
 			if (!match) {
 				return res.status(401).json({ok: false, error: "Incorrect username or password"});

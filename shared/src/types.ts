@@ -12,6 +12,8 @@ export type User = {
 	email: string;
 };
 
+export type UserWithPassword = User & {password: string};
+
 export type SigningUser = {
 	username: string;
 	email: string;
