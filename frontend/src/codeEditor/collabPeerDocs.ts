@@ -21,7 +21,7 @@ const ERROR_RETRY_DELAY_MS = 1000;
 export class CollabPeersPool {
 	private connection: CollabConnection;
 	private myOwnerId: number;
-	private peerSlots = new Map<number, PeerState>();
+	private peers = new Map<number, PeerState>();
 	private onMembersChange: (members: SessionMember[]) => void;
 	private onPeerReady: (ownerId: number, doc: PeerDoc) => void;
 	private peerUpdateListener: ((ownerId: number, doc: PeerDoc, changes: ChangeSet) => void) | null = null;
@@ -55,38 +55,38 @@ export class CollabPeersPool {
 
 	private updatePeerSlots(peers: SessionMember[]): void {
 		const peerIds = new Set(peers.map((peer) => peer.id));
-		for (const id of [...this.peerSlots.keys()]) {
+		for (const id of [...this.peers.keys()]) {
 			if (!peerIds.has(id)) this.removePeer(id);
 		}
 		for (const peer of peers) {
-			if (!this.peerSlots.has(peer.id)) this.addPeer(peer);
+			if (!this.peers.has(peer.id)) this.addPeer(peer);
 		}
 	}
 
 	private addPeer(peer: SessionMember): void {
-		if (this.peerSlots.has(peer.id)) return;
+		if (this.peers.has(peer.id)) return;
 		const state: PeerState = {member: peer, doc: undefined, aborted: false};
-		this.peerSlots.set(peer.id, state);
+		this.peers.set(peer.id, state);
 		this.runPeer(peer.id, state);
 	}
 
 	private removePeer(id: number): void {
-		const state = this.peerSlots.get(id);
+		const state = this.peers.get(id);
 		if (!state) return;
 		state.aborted = true;
-		this.peerSlots.delete(id);
+		this.peers.delete(id);
 	}
 
 	getPeerDoc(ownerId: number): PeerDoc | null {
-		return this.peerSlots.get(ownerId)?.doc ?? null;
+		return this.peers.get(ownerId)?.doc ?? null;
 	}
 
 	dispose(): void {
 		this.unsubscribeMembers();
-		for (const state of this.peerSlots.values()) {
+		for (const state of this.peers.values()) {
 			state.aborted = true;
 		}
-		this.peerSlots.clear();
+		this.peers.clear();
 		this.peerUpdateListener = null;
 	}
 
