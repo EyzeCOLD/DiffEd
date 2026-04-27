@@ -85,16 +85,6 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	});
 
-	async function fetchUsername(userId: number): Promise<string> {
-		try {
-			const result = await db.query<Pick<User, "username">>("SELECT username FROM users WHERE id = $1", [userId]);
-			return result.rows[0]?.username ?? `user${userId}`;
-		} catch (error) {
-			timestampedLog(`Failed to fetch username for user ${userId}: ${String(error)}`);
-			return `user${userId}`;
-		}
-	}
-
 	function buildSessionInfo(shared: SharedSession): SessionInfo {
 		const members = [...shared.owners.values()].map((slot) => ({id: slot.ownerId, username: slot.username}));
 		return {id: shared.sessionId, members};
@@ -108,22 +98,20 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 	async function loadOwnerSlot(userId: number, fileId: string): Promise<PerOwnerState | undefined> {
 		try {
-			const [fileResult, username] = await Promise.all([
-				db.query<Pick<UserFile, "name" | "content">>(
-					"SELECT name, content FROM files WHERE id = $1 AND owner_id = $2",
-					[fileId, userId],
-				),
-				fetchUsername(userId),
-			]);
-			if (fileResult.rowCount !== 1) return undefined;
+			const result = await db.query<Pick<UserFile, "name" | "content"> & Pick<User, "username">>(
+				"SELECT name, content, username FROM files JOIN users ON users.id = owner_id WHERE files.id = $1 AND owner_id = $2",
+				[fileId, userId],
+			);
+			if (result.rowCount !== 1) return undefined;
+			const row = result.rows[0];
 			return {
 				fileId,
 				ownerId: userId,
-				username,
+				username: row.username,
 				updates: [],
-				doc: Text.of((fileResult.rows[0].content ?? "").split("\n")),
+				doc: Text.of(row.content.split("\n")),
 				pending: [],
-				fileName: String(fileResult.rows[0].name ?? ""),
+				fileName: String(row.name),
 				hasUnsavedChanges: false,
 				isFlushInProgress: false,
 				dbSaveDebounceTimer: null,
