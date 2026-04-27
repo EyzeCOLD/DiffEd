@@ -8,11 +8,6 @@ export type PeerDoc = {
 	version: number;
 };
 
-export type PeerDocEvent = {
-	doc: PeerDoc;
-	changes: ChangeSet | null;
-};
-
 type PeerState = {
 	member: SessionMember;
 	doc?: PeerDoc;
@@ -27,45 +22,52 @@ export class CollabPeersPool {
 	private connection: CollabConnection;
 	private myOwnerId: number;
 	private peerSlots = new Map<number, PeerState>();
-	private docListeners = new Set<(ownerId: number, event: PeerDocEvent) => void>();
-	private membersListeners = new Set<(members: SessionMember[]) => void>();
+	private onMembersChange: (members: SessionMember[]) => void;
+	private onPeerReady: (ownerId: number, doc: PeerDoc) => void;
+	private peerUpdateListener: ((ownerId: number, doc: PeerDoc, changes: ChangeSet) => void) | null = null;
 	private unsubscribeMembers: () => void;
 
-	constructor(connection: CollabConnection, myOwnerId: number, initialMembers: SessionMember[]) {
+	constructor(
+		connection: CollabConnection,
+		myOwnerId: number,
+		initialMembers: SessionMember[],
+		onMembersChange: (members: SessionMember[]) => void,
+		onPeerReady: (ownerId: number, doc: PeerDoc) => void,
+	) {
 		this.connection = connection;
 		this.myOwnerId = myOwnerId;
-		this.syncPeerSlots(initialMembers.filter((m) => m.id !== myOwnerId));
+		this.onMembersChange = onMembersChange;
+		this.onPeerReady = onPeerReady;
+		this.updatePeerSlots(initialMembers.filter((m) => m.id !== myOwnerId));
 		this.unsubscribeMembers = connection.subscribeMembers((event) => {
 			const members = event.members.filter((m) => m.id !== this.myOwnerId);
-			this.syncPeerSlots(members);
-			for (const fn of this.membersListeners) fn(members);
+			this.updatePeerSlots(members);
+			this.onMembersChange(members);
 		});
 	}
 
-	getMembers(): SessionMember[] {
-		return [...this.peerSlots.values()].map((s) => s.member);
+	onPeerUpdate(fn: (ownerId: number, doc: PeerDoc, changes: ChangeSet) => void): () => void {
+		this.peerUpdateListener = fn;
+		return () => {
+			this.peerUpdateListener = null;
+		};
 	}
 
-	onMembersChange(fn: (members: SessionMember[]) => void): () => void {
-		this.membersListeners.add(fn);
-		return () => this.membersListeners.delete(fn);
-	}
-
-	private syncPeerSlots(peers: SessionMember[]): void {
-		const peerIds = new Set(peers.map((p) => p.id));
+	private updatePeerSlots(peers: SessionMember[]): void {
+		const peerIds = new Set(peers.map((peer) => peer.id));
 		for (const id of [...this.peerSlots.keys()]) {
 			if (!peerIds.has(id)) this.removePeer(id);
 		}
-		for (const member of peers) {
-			if (!this.peerSlots.has(member.id)) this.addPeer(member);
+		for (const peer of peers) {
+			if (!this.peerSlots.has(peer.id)) this.addPeer(peer);
 		}
 	}
 
-	private addPeer(member: SessionMember): void {
-		if (this.peerSlots.has(member.id)) return;
-		const state: PeerState = {member, doc: undefined, aborted: false};
-		this.peerSlots.set(member.id, state);
-		this.runPeer(member.id, state);
+	private addPeer(peer: SessionMember): void {
+		if (this.peerSlots.has(peer.id)) return;
+		const state: PeerState = {member: peer, doc: undefined, aborted: false};
+		this.peerSlots.set(peer.id, state);
+		this.runPeer(peer.id, state);
 	}
 
 	private removePeer(id: number): void {
@@ -79,31 +81,13 @@ export class CollabPeersPool {
 		return this.peerSlots.get(ownerId)?.doc ?? null;
 	}
 
-	isReady(ownerId: number): boolean {
-		return this.peerSlots.get(ownerId)?.doc !== undefined;
-	}
-
-	onDocUpdate(fn: (ownerId: number, event: PeerDocEvent) => void): () => void {
-		this.docListeners.add(fn);
-		return () => {
-			this.docListeners.delete(fn);
-		};
-	}
-
 	dispose(): void {
 		this.unsubscribeMembers();
 		for (const state of this.peerSlots.values()) {
 			state.aborted = true;
 		}
 		this.peerSlots.clear();
-		this.docListeners.clear();
-		this.membersListeners.clear();
-	}
-
-	private notify(ownerId: number, event: PeerDocEvent): void {
-		for (const listener of this.docListeners) {
-			listener(ownerId, event);
-		}
+		this.peerUpdateListener = null;
 	}
 
 	private async fetchInitialDoc(ownerId: number, state: PeerState): Promise<boolean> {
@@ -113,7 +97,7 @@ export class CollabPeersPool {
 			try {
 				const {doc, version} = await getInitialDocument(this.connection, ownerId);
 				state.doc = {doc, version};
-				this.notify(ownerId, {doc: state.doc, changes: null});
+				this.onPeerReady(ownerId, state.doc);
 				return true;
 			} catch (error) {
 				if (state.aborted) return false;
@@ -144,7 +128,7 @@ export class CollabPeersPool {
 					doc,
 					version: state.doc.version + updates.length,
 				};
-				this.notify(ownerId, {doc: state.doc, changes: composed});
+				this.peerUpdateListener?.(ownerId, state.doc, composed!);
 			} catch (error) {
 				if (state.aborted) return;
 				console.error(`Peer ${ownerId} pull failed:`, error);

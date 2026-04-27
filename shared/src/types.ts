@@ -57,6 +57,13 @@ export type CollabRequest = CollabRequestPayload & {
 	sessionId: string;
 };
 
+export type CollabResponse =
+	| {
+			requestId: number;
+			result: unknown;
+	  }
+	| ErrorResponse;
+
 export type SessionMember = Pick<User, "id" | "username">;
 
 export type SessionInfo = {

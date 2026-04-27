@@ -4,6 +4,7 @@ import {io, type Socket} from "socket.io-client";
 import type {
 	CollabRequest,
 	CollabRequestPayload,
+	CollabResponse,
 	DocumentResponse,
 	ErrorResponse,
 	MembersChangedEvent,
@@ -13,14 +14,7 @@ import type {
 
 const CONNECT_TIMEOUT_MS = 5000;
 const REQUEST_TIMEOUT_MS = 8000;
-const COLLAB_URL = import.meta.env.COLLAB_SERVER_URL || window.location.origin;
-
-type CollabResponse =
-	| {
-			requestId: number;
-			result: unknown;
-	  }
-	| ErrorResponse;
+const COLLAB_URL = window.location.origin;
 
 type PendingRequest = {
 	resolve: (value: unknown) => void;

@@ -4,7 +4,7 @@ import {useEffect, useMemo, useState} from "react";
 import {CollabConnection} from "./collabClient";
 import {apiFetch} from "../utils";
 import FilePicker from "./FilePicker";
-import SharedEditor from "./SharedEditor";
+import Editor from "./Editor";
 import {useCurrentUser} from "../stores/userStore";
 
 export default function EditorPage() {
@@ -59,9 +59,9 @@ export default function EditorPage() {
 
 	if (!sessionId) return <div>Session ID is missing</div>;
 	if (errorMessage) return <div className="p-4 text-red-500">{errorMessage}</div>;
-	if (!sessionInfo || !connection) return <div>Loading...</div>;
-
 	if (joining) return <div>Joining session...</div>;
+
+	if (!connection || !sessionInfo) return <div>Failed to load session</div>;
 
 	const isMember = sessionInfo.members.some((member) => member.id === user.id);
 
@@ -69,5 +69,5 @@ export default function EditorPage() {
 		return <FilePicker connection={connection} />;
 	}
 
-	return <SharedEditor connection={connection} myOwnerId={user.id} initialMembers={sessionInfo.members} />;
+	return <Editor connection={connection} myOwnerId={user.id} initialMembers={sessionInfo.members} />;
 }

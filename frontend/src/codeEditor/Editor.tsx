@@ -3,17 +3,15 @@ import type {JSX} from "react";
 import type {SessionMember} from "#shared/src/types";
 import {EditorState, Transaction} from "@codemirror/state";
 import {EditorView} from "@codemirror/view";
-import {unifiedMergeView, updateOriginalDoc} from "@codemirror/merge";
-import {basicSetup} from "codemirror";
-import keybinds from "./keybinds";
-import langServer from "./langExtensions";
+import {updateOriginalDoc} from "@codemirror/merge";
 import {CollabConnection, getInitialDocument, pushFileName} from "./collabClient";
-import {CollabPeersPool, type PeerDocEvent} from "./peerDocs";
-import {peerExtension} from "./peerExtension";
+import {CollabPeersPool} from "./collabPeerDocs";
+import {getEditorExtensions, langServer} from "./editorConfigs";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
 import {Input} from "../components/Input";
 import {Button} from "../components/Button";
+import {useShowToast} from "../stores/toastStore";
 
 const INITIAL_DOC_MAX_ATTEMPTS = 2;
 const INITIAL_DOC_RETRY_DELAY_MS = 250;
@@ -36,7 +34,8 @@ type SharedEditorProps = {
 	initialMembers: SessionMember[];
 };
 
-export default function SharedEditor({connection, myOwnerId, initialMembers}: SharedEditorProps): JSX.Element {
+export default function Editor({connection, myOwnerId, initialMembers}: SharedEditorProps): JSX.Element {
+	const showToast = useShowToast();
 	const [selectedPeerId, setSelectedPeerId] = useState<number | null>(null);
 	const [readyPeerIds, setReadyPeerIds] = useState<ReadonlySet<number>>(new Set());
 
@@ -48,12 +47,20 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 	const [fileName, setFileName] = useState("");
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
-	const [pool] = useState(() => new CollabPeersPool(connection, myOwnerId, initialMembers));
-	const [members, setMembers] = useState<SessionMember[]>(() => pool.getMembers());
+	const [members, setMembers] = useState<SessionMember[]>(() => initialMembers.filter((m) => m.id !== myOwnerId));
+
+	const [pool] = useState(
+		() =>
+			new CollabPeersPool(
+				connection,
+				myOwnerId,
+				initialMembers,
+				(m) => setMembers(m),
+				(ownerId) => setReadyPeerIds((prev) => new Set([...prev, ownerId])),
+			),
+	);
 
 	useEffect(() => () => pool.dispose(), [pool]);
-
-	useEffect(() => pool.onMembersChange(setMembers), [pool]);
 
 	const basePeerId = useMemo(() => {
 		if (selectedPeerId !== null && members.some((p) => p.id === selectedPeerId)) {
@@ -74,12 +81,9 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 	}
 
 	useEffect(() => {
-		return pool.onDocUpdate((ownerId: number, event: PeerDocEvent) => {
-			if (ownerId === basePeerId && event.changes !== null) {
-				viewRef.current?.dispatch({effects: updateOriginalDoc.of({doc: event.doc.doc, changes: event.changes})});
-			}
-			if (event.changes === null) {
-				setReadyPeerIds((prev) => new Set([...prev, ownerId]));
+		return pool.onPeerUpdate((ownerId, doc, changes) => {
+			if (ownerId === basePeerId) {
+				viewRef.current?.dispatch({effects: updateOriginalDoc.of({doc: doc.doc, changes})});
 			}
 		});
 	}, [pool, basePeerId]);
@@ -120,37 +124,16 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 				if (hasUnmounted) return;
 				setFileName(initialFileName);
 
-				const extensions = [
-					basicSetup,
-					keybinds,
-					langServer.markdown(),
-					...peerExtension(version, connection, myOwnerId),
-				];
-				if (memberInitialDoc !== null) {
-					extensions.push(
-						...unifiedMergeView({
-							original: memberInitialDoc,
-							allowInlineDiffs: false,
-							mergeControls: (type, action) => {
-								// We're comparing with the member as the base doc, meaning the native "accept" would modify the member's doc locally.
-								// We don't want that, so we hide the "accept" button
-								if (type === "accept") {
-									const el = document.createElement("span");
-									el.style.display = "none";
-									return el;
-								}
-								// We repurpose the native "reject" button to seem like an "Accept",
-								// because it overrides the diffed doc (which is the user's own doc) based on the member
-								const btn = document.createElement("button");
-								btn.textContent = "Accept";
-								btn.addEventListener("click", action);
-								return btn;
-							},
-						}),
-					);
-				}
-
-				const state = EditorState.create({doc, extensions});
+				const state = EditorState.create({
+					doc,
+					extensions: getEditorExtensions({
+						langExtension: langServer.markdown(),
+						version,
+						connection,
+						myOwnerId,
+						memberInitialDoc,
+					}),
+				});
 				const editorView = new EditorView({
 					state,
 					parent: editorElement ?? undefined,
@@ -191,8 +174,12 @@ export default function SharedEditor({connection, myOwnerId, initialMembers}: Sh
 
 	async function handleRename(): Promise<void> {
 		if (!connection) return;
-		const response = await pushFileName(connection, fileName);
-		setFileName(response.name);
+		try {
+			const response = await pushFileName(connection, fileName);
+			setFileName(response.name);
+		} catch (err) {
+			showToast("error", errorMessage(err));
+		}
 	}
 
 	return (
