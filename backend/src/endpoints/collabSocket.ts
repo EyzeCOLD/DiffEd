@@ -15,20 +15,20 @@ import type {
 	NameUpdateResponse,
 	SerializedUpdate,
 	SessionInfo,
-	SessionMember,
 } from "#shared/src/types.js";
 
 const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
 // Gives users time to refresh, recover from a network blip, or navigate back before collab state is flushed
 const SESSION_DESTROY_GRACE_MS = 3000;
 
-type PerOwnerDocState = {
-	fileId: string;
+type PerOwnerState = {
 	ownerId: number;
-	updates: Update[];
-	doc: Text;
-	pending: ((value: SerializedUpdate[]) => void)[];
+	username: string;
+	fileId: string;
 	fileName: string;
+	doc: Text;
+	updates: Update[];
+	pending: ((value: SerializedUpdate[]) => void)[];
 	hasUnsavedChanges: boolean;
 	isFlushInProgress: boolean;
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
@@ -36,15 +36,14 @@ type PerOwnerDocState = {
 
 type SharedSession = {
 	sessionId: string;
-	owners: Map<number, PerOwnerDocState>;
+	owners: Map<number, PerOwnerState>;
 	connectedSockets: Map<string, number>;
-	usernames: Map<number, string>;
 	destroyTimer: ReturnType<typeof setTimeout> | null;
 };
 
 export type CollabSocketApi = {
 	createSessionFromFile: (userId: number, fileId: string) => Promise<string>;
-	getSessionInfo: (sessionId: string, userId?: number) => Promise<SessionInfo | undefined>;
+	getSessionInfo: (sessionId: string, userId?: number) => SessionInfo | undefined;
 };
 
 function serializeUpdates(updates: readonly Update[]): SerializedUpdate[] {
@@ -86,47 +85,45 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	});
 
-	async function cacheUsername(shared: SharedSession, userId: number): Promise<void> {
-		if (shared.usernames.has(userId)) return;
+	async function fetchUsername(userId: number): Promise<string> {
 		try {
 			const result = await db.query<Pick<User, "username">>("SELECT username FROM users WHERE id = $1", [userId]);
-			const username = result.rows[0]?.username ?? `user${userId}`;
-			shared.usernames.set(userId, username);
+			return result.rows[0]?.username ?? `user${userId}`;
 		} catch (error) {
 			timestampedLog(`Failed to fetch username for user ${userId}: ${String(error)}`);
-			shared.usernames.set(userId, `user${userId}`);
+			return `user${userId}`;
 		}
 	}
 
-	async function buildSessionInfo(shared: SharedSession): Promise<SessionInfo> {
-		const members: SessionMember[] = [];
-		for (const ownerId of shared.owners.keys()) {
-			await cacheUsername(shared, ownerId);
-			members.push({id: ownerId, username: shared.usernames.get(ownerId)!});
-		}
+	function buildSessionInfo(shared: SharedSession): SessionInfo {
+		const members = [...shared.owners.values()].map((slot) => ({id: slot.ownerId, username: slot.username}));
 		return {id: shared.sessionId, members};
 	}
 
 	async function broadcastMembers(shared: SharedSession): Promise<void> {
-		const info = await buildSessionInfo(shared);
+		const info = buildSessionInfo(shared);
 		const event: MembersChangedEvent = {sessionId: shared.sessionId, members: info.members};
 		sockets.to(sessionRoomName(shared.sessionId)).emit("membersChanged", event);
 	}
 
-	async function loadOwnerSlot(userId: number, fileId: string): Promise<PerOwnerDocState | undefined> {
+	async function loadOwnerSlot(userId: number, fileId: string): Promise<PerOwnerState | undefined> {
 		try {
-			const result = await db.query<Pick<UserFile, "name" | "content">>(
-				"SELECT name, content FROM files WHERE id = $1 AND owner_id = $2",
-				[fileId, userId],
-			);
-			if (result.rowCount !== 1) return undefined;
+			const [fileResult, username] = await Promise.all([
+				db.query<Pick<UserFile, "name" | "content">>(
+					"SELECT name, content FROM files WHERE id = $1 AND owner_id = $2",
+					[fileId, userId],
+				),
+				fetchUsername(userId),
+			]);
+			if (fileResult.rowCount !== 1) return undefined;
 			return {
 				fileId,
 				ownerId: userId,
+				username,
 				updates: [],
-				doc: Text.of((result.rows[0].content ?? "").split("\n")),
+				doc: Text.of((fileResult.rows[0].content ?? "").split("\n")),
 				pending: [],
-				fileName: String(result.rows[0].name ?? ""),
+				fileName: String(fileResult.rows[0].name ?? ""),
 				hasUnsavedChanges: false,
 				isFlushInProgress: false,
 				dbSaveDebounceTimer: null,
@@ -137,7 +134,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	}
 
-	async function flushOwnerSlot(slot: PerOwnerDocState): Promise<void> {
+	async function flushOwnerSlot(slot: PerOwnerState): Promise<void> {
 		slot.dbSaveDebounceTimer = null;
 		if (slot.isFlushInProgress || !slot.hasUnsavedChanges) return;
 
@@ -179,7 +176,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	}
 
-	function scheduleFlush(slot: PerOwnerDocState): void {
+	function scheduleFlush(slot: PerOwnerState): void {
 		slot.hasUnsavedChanges = true;
 		if (slot.dbSaveDebounceTimer) {
 			clearTimeout(slot.dbSaveDebounceTimer);
@@ -187,7 +184,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		slot.dbSaveDebounceTimer = setTimeout(() => void flushOwnerSlot(slot), DATABASE_SAVE_DEBOUNCE_TIME);
 	}
 
-	async function evictSlot(slot: PerOwnerDocState): Promise<void> {
+	async function evictSlot(slot: PerOwnerState): Promise<void> {
 		if (slot.dbSaveDebounceTimer) {
 			clearTimeout(slot.dbSaveDebounceTimer);
 			slot.dbSaveDebounceTimer = null;
@@ -254,21 +251,18 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			sessionId,
 			owners: new Map([[userId, slot]]),
 			connectedSockets: new Map(),
-			usernames: new Map(),
 			destroyTimer: null,
 		};
 		// Give the creator time to navigate and open a socket before we'd auto-clean.
 		scheduleSessionDestroy(shared);
-		await cacheUsername(shared, userId);
 		sessions.set(sessionId, shared);
 		return sessionId;
 	}
 
-	async function getSessionInfo(sessionId: string): Promise<SessionInfo | undefined> {
+	function getSessionInfo(sessionId: string): SessionInfo | undefined {
 		const shared = sessions.get(sessionId);
 		if (!shared) return undefined;
-		const info = await buildSessionInfo(shared);
-		return info;
+		return buildSessionInfo(shared);
 	}
 
 	sockets.on("connection", (socket) => {
@@ -337,7 +331,6 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 							break;
 						}
 						shared.owners.set(userId, slot);
-						await cacheUsername(shared, userId);
 						sendResponse(true);
 						try {
 							await broadcastMembers(shared);

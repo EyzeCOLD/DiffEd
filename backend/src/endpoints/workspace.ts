@@ -31,7 +31,7 @@ function getWorkspace(app: Express, api: CollabSocketApi) {
 		}
 
 		try {
-			const info = await api.getSessionInfo(parsed.data, req.session.userId!);
+			const info = api.getSessionInfo(parsed.data, req.session.userId!);
 			if (!info) {
 				return res.status(404).json({ok: false, error: "Session not found"});
 			}
