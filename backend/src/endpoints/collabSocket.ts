@@ -97,8 +97,8 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 	function buildWorkspaceInfo(shared: Workspace): WorkspaceInfo {
 		const members = [...shared.memberFiles.values()].flatMap((fileId) => {
-			const slot = state.docs.get(fileId);
-			return slot ? [{id: slot.ownerId, username: slot.username}] : [];
+			const doc = state.docs.get(fileId);
+			return doc ? [{id: doc.ownerId, username: doc.username}] : [];
 		});
 		return {id: shared.workspaceId, members};
 	}
@@ -109,7 +109,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		sockets.to(workspaceRoomName(shared.workspaceId)).emit("membersChanged", event);
 	}
 
-	async function loadOwnerSlot(userId: number, fileId: string): Promise<LiveDocState | undefined> {
+	async function loadOwnerDoc(userId: number, fileId: string): Promise<LiveDocState | undefined> {
 		try {
 			const result = await db.query<Pick<UserFile, "name" | "content"> & Pick<User, "username">>(
 				"SELECT name, content, username FROM files JOIN users ON users.id = owner_id WHERE files.id = $1 AND owner_id = $2",
@@ -132,83 +132,81 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 				refCount: 0,
 			};
 		} catch (error) {
-			timestampedLog(`Error loading collab slot for user ${userId}, file ${fileId}: ${String(error)}`);
+			timestampedLog(`Error loading collab doc for user ${userId}, file ${fileId}: ${String(error)}`);
 			return undefined;
 		}
 	}
 
-	async function flushOwnerSlot(slot: LiveDocState): Promise<void> {
+	async function flushDoc(doc: LiveDocState): Promise<void> {
 		// The callback that fired is no longer pending once we start processing it
-		slot.dbSaveDebounceTimer = null;
+		doc.dbSaveDebounceTimer = null;
 		// `isFlushInProgress` prevents overlapping DB writes
 		// `hasUnsavedChanges` skips stale callbacks when there is nothing left to save
-		if (slot.isFlushInProgress || !slot.hasUnsavedChanges) return;
+		if (doc.isFlushInProgress || !doc.hasUnsavedChanges) return;
 
-		slot.isFlushInProgress = true;
-		slot.hasUnsavedChanges = false;
-		const content = slot.doc.toString();
-		const fileName = slot.fileName;
+		doc.isFlushInProgress = true;
+		doc.hasUnsavedChanges = false;
+		const content = doc.doc.toString();
+		const fileName = doc.fileName;
 
 		try {
 			const updateResult = await db.query("UPDATE files SET name = $1, content = $2 WHERE id = $3", [
 				fileName,
 				content,
-				slot.fileId,
+				doc.fileId,
 			]);
 			if (updateResult.rowCount === 0) {
-				timestampedLog(`File deleted while session was active, evicting slot: ${slot.fileId}`);
+				timestampedLog(`File deleted while session was active, evicting doc: ${doc.fileId}`);
 				for (const shared of state.workspaces.values()) {
-					if (shared.memberFiles.get(slot.ownerId) === slot.fileId) {
-						shared.memberFiles.delete(slot.ownerId);
+					if (shared.memberFiles.get(doc.ownerId) === doc.fileId) {
+						shared.memberFiles.delete(doc.ownerId);
 					}
 				}
-				state.docs.delete(slot.fileId);
-				drainPending(slot.pending, []);
-				slot.isFlushInProgress = false;
+				state.docs.delete(doc.fileId);
+				drainPending(doc.pending, []);
+				drainPending(doc.pendingName, doc.fileName);
+				doc.isFlushInProgress = false;
 				return;
 			} else if (updateResult.rowCount! > 1) {
-				timestampedLog(`Multiple files updated for collab slot ${slot.fileId}`);
+				timestampedLog(`Multiple files updated for collab doc ${doc.fileId}`);
 			}
 		} catch (error) {
-			slot.hasUnsavedChanges = true;
-			timestampedLog(`Error persisting collab slot ${slot.fileId}: ${String(error)}`);
+			doc.hasUnsavedChanges = true;
+			timestampedLog(`Error persisting collab doc ${doc.fileId}: ${String(error)}`);
 		}
 
-		slot.isFlushInProgress = false;
+		doc.isFlushInProgress = false;
 
 		// If new changes arrived while we were awaiting the DB, reschedule.
-		if (slot.hasUnsavedChanges && !slot.dbSaveDebounceTimer) {
-			scheduleFlush(slot);
+		if (doc.hasUnsavedChanges && !doc.dbSaveDebounceTimer) {
+			scheduleFlush(doc);
 		}
 	}
 
-	function scheduleFlush(slot: LiveDocState): void {
-		slot.hasUnsavedChanges = true;
-		if (slot.dbSaveDebounceTimer) {
-			clearTimeout(slot.dbSaveDebounceTimer);
+	function scheduleFlush(doc: LiveDocState): void {
+		doc.hasUnsavedChanges = true;
+		if (doc.dbSaveDebounceTimer) {
+			clearTimeout(doc.dbSaveDebounceTimer);
 		}
-		slot.dbSaveDebounceTimer = setTimeout(() => void flushOwnerSlot(slot), DATABASE_SAVE_DEBOUNCE_TIME);
-	}
-
-	async function evictSlot(slot: LiveDocState): Promise<void> {
-		if (slot.dbSaveDebounceTimer) {
-			clearTimeout(slot.dbSaveDebounceTimer);
-			slot.dbSaveDebounceTimer = null;
-		}
-		if (slot.hasUnsavedChanges || slot.isFlushInProgress) {
-			await flushOwnerSlot(slot);
-		}
-		// Release any long-polling pullUpdates/pullFileName waiters so their clients fall through to the next cycle.
-		drainPending(slot.pending, []);
-		drainPending(slot.pendingName, slot.fileName);
+		doc.dbSaveDebounceTimer = setTimeout(() => void flushDoc(doc), DATABASE_SAVE_DEBOUNCE_TIME);
 	}
 
 	async function releaseDocRef(fileId: string): Promise<void> {
-		const slot = state.docs.get(fileId);
-		if (!slot) return;
-		if (--slot.refCount > 0) return;
+		const doc = state.docs.get(fileId);
+		if (!doc || --doc.refCount > 0) return;
+
 		state.docs.delete(fileId);
-		await evictSlot(slot);
+
+		if (doc.dbSaveDebounceTimer) {
+			clearTimeout(doc.dbSaveDebounceTimer);
+			doc.dbSaveDebounceTimer = null;
+		}
+		if (doc.hasUnsavedChanges || doc.isFlushInProgress) {
+			await flushDoc(doc);
+		}
+		// Release any long-polling pullUpdates/pullFileName waiters so their clients fall through to the next cycle.
+		drainPending(doc.pending, []);
+		drainPending(doc.pendingName, doc.fileName);
 	}
 
 	async function destroyWorkspace(shared: Workspace): Promise<void> {
@@ -258,9 +256,9 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 
 		if (!state.docs.has(fileId)) {
-			const slot = await loadOwnerSlot(userId, fileId);
-			if (!slot) throw new Error("File not found or not owned by user");
-			if (!state.docs.has(fileId)) state.docs.set(fileId, slot);
+			const doc = await loadOwnerDoc(userId, fileId);
+			if (!doc) throw new Error("File not found or not owned by user");
+			if (!state.docs.has(fileId)) state.docs.set(fileId, doc);
 		}
 		state.docs.get(fileId)!.refCount++;
 
@@ -344,12 +342,12 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 							break;
 						}
 						if (!state.docs.has(data.fileId)) {
-							const slot = await loadOwnerSlot(userId, data.fileId);
-							if (!slot) {
+							const doc = await loadOwnerDoc(userId, data.fileId);
+							if (!doc) {
 								sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
 								break;
 							}
-							if (!state.docs.has(data.fileId)) state.docs.set(data.fileId, slot);
+							if (!state.docs.has(data.fileId)) state.docs.set(data.fileId, doc);
 						}
 						state.docs.get(data.fileId)!.refCount++;
 						shared.memberFiles.set(userId, data.fileId);
@@ -378,28 +376,28 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "getInitialDocument": {
-						const slot = state.docs.get(shared.memberFiles.get(data.ownerId) ?? "");
-						if (!slot) {
-							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
+						const doc = state.docs.get(shared.memberFiles.get(data.ownerId) ?? "");
+						if (!doc) {
+							sendResponse({error: "Doc empty"} satisfies ErrorResponse);
 							break;
 						}
 						sendResponse({
-							version: slot.updates.length,
-							doc: slot.doc.toString(),
-							fileName: slot.fileName,
+							version: doc.updates.length,
+							doc: doc.doc.toString(),
+							fileName: doc.fileName,
 						} satisfies DocumentResponse);
 						break;
 					}
 					case "pullUpdates": {
-						const slot = state.docs.get(shared.memberFiles.get(data.ownerId) ?? "");
-						if (!slot) {
-							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
+						const doc = state.docs.get(shared.memberFiles.get(data.ownerId) ?? "");
+						if (!doc) {
+							sendResponse({error: "Doc empty"} satisfies ErrorResponse);
 							break;
 						}
-						if (data.version < slot.updates.length) {
-							sendResponse(serializeUpdates(slot.updates.slice(data.version)));
-						} else if (data.version === slot.updates.length) {
-							slot.pending.push((newUpdates: SerializedUpdate[]) => {
+						if (data.version < doc.updates.length) {
+							sendResponse(serializeUpdates(doc.updates.slice(data.version)));
+						} else if (data.version === doc.updates.length) {
+							doc.pending.push((newUpdates: SerializedUpdate[]) => {
 								sendResponse(newUpdates satisfies SerializedUpdate[]);
 							});
 						} else {
@@ -408,15 +406,15 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pushUpdates": {
-						const slot = state.docs.get(shared.memberFiles.get(userId) ?? "");
-						if (!slot) {
-							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
+						const doc = state.docs.get(shared.memberFiles.get(userId) ?? "");
+						if (!doc) {
+							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
 							break;
 						}
 
-						if (slot.ownerId !== userId) {
+						if (doc.ownerId !== userId) {
 							sendResponse({
-								error: "You may only push updates to your own slot",
+								error: "You may only push updates to your own doc",
 							} satisfies ErrorResponse);
 							break;
 						}
@@ -426,52 +424,52 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 							changes: ChangeSet.fromJSON(json.changes),
 						}));
 
-						if (data.version !== slot.updates.length) {
-							received = rebaseUpdates(received, slot.updates.slice(data.version));
+						if (data.version !== doc.updates.length) {
+							received = rebaseUpdates(received, doc.updates.slice(data.version));
 						}
 
 						for (const update of received) {
-							slot.updates.push(update);
-							slot.doc = update.changes.apply(slot.doc);
+							doc.updates.push(update);
+							doc.doc = update.changes.apply(doc.doc);
 						}
 
 						sendResponse(true);
-						scheduleFlush(slot);
+						scheduleFlush(doc);
 
 						if (received.length) {
-							drainPending(slot.pending, serializeUpdates(received));
+							drainPending(doc.pending, serializeUpdates(received));
 						}
 						break;
 					}
 					case "pullFileName": {
-						const slot = state.docs.get(shared.memberFiles.get(userId) ?? "");
-						if (!slot) {
-							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
+						const doc = state.docs.get(shared.memberFiles.get(userId) ?? "");
+						if (!doc) {
+							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
 							break;
 						}
-						if (slot.ownerId !== userId) {
+						if (doc.ownerId !== userId) {
 							sendResponse({error: "You may only pull your own file name"} satisfies ErrorResponse);
 							break;
 						}
-						slot.pendingName.push((name) => sendResponse({name} satisfies NameUpdateResponse));
+						doc.pendingName.push((name) => sendResponse({name} satisfies NameUpdateResponse));
 						break;
 					}
 					case "pushFileName": {
-						const slot = state.docs.get(shared.memberFiles.get(userId) ?? "");
-						if (!slot) {
-							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
+						const doc = state.docs.get(shared.memberFiles.get(userId) ?? "");
+						if (!doc) {
+							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
 							break;
 						}
 						if (typeof data.name !== "string") {
 							sendResponse({error: "Invalid file name"} satisfies ErrorResponse);
 							break;
 						}
-						if (data.name !== slot.fileName) {
-							slot.fileName = data.name;
-							scheduleFlush(slot);
-							drainPending(slot.pendingName, slot.fileName);
+						if (data.name !== doc.fileName) {
+							doc.fileName = data.name;
+							scheduleFlush(doc);
+							drainPending(doc.pendingName, doc.fileName);
 						}
-						sendResponse({name: slot.fileName} satisfies NameUpdateResponse);
+						sendResponse({name: doc.fileName} satisfies NameUpdateResponse);
 						break;
 					}
 				}
