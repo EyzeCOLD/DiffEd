@@ -4,7 +4,7 @@ import type {WorkspaceMember} from "#shared/src/types";
 import {EditorState, Transaction} from "@codemirror/state";
 import {EditorView} from "@codemirror/view";
 import {updateOriginalDoc} from "@codemirror/merge";
-import {CollabConnection, getInitialDocument, pushFileName} from "./collabClient";
+import {CollabConnection, getInitialDocument, pushFileName, pullFileName} from "./collabClient";
 import {CollabPeersPool} from "./collabPeerDocs";
 import {getEditorExtensions, langServer} from "./editorConfigs";
 import PeerBar from "./PeerBar";
@@ -59,6 +59,23 @@ export default function Editor({connection, myOwnerId, initialMembers}: SharedEd
 				(ownerId) => setReadyPeerIds((prev) => new Set([...prev, ownerId])),
 			),
 	);
+
+	useEffect(() => {
+		let done = false;
+		(async () => {
+			while (!done) {
+				try {
+					const name = await pullFileName(connection);
+					if (!done) setFileName(name);
+				} catch {
+					if (!done) await delay(1000);
+				}
+			}
+		})();
+		return () => {
+			done = true;
+		};
+	}, [connection]);
 
 	useEffect(() => () => pool.dispose(), [pool]);
 

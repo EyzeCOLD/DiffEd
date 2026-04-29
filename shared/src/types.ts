@@ -49,6 +49,9 @@ export type CollabRequestPayload =
 			fileId: string;
 	  }
 	| {
+			type: "pullFileName";
+	  }
+	| {
 			type: "leaveWorkspace";
 	  };
 

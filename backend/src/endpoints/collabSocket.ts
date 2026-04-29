@@ -29,16 +29,23 @@ type LiveDocState = {
 	doc: Text;
 	updates: Update[];
 	pending: ((value: SerializedUpdate[]) => void)[];
+	pendingName: ((name: string) => void)[];
 	hasUnsavedChanges: boolean;
 	isFlushInProgress: boolean;
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
+	refCount: number;
 };
 
 type Workspace = {
 	workspaceId: string;
-	owners: Map<number, LiveDocState>;
+	memberFiles: Map<number, string>;
 	connectedSockets: Map<string, number>;
 	destroyTimer: ReturnType<typeof setTimeout> | null;
+};
+
+type CollabSocketState = {
+	workspaces: Map<string, Workspace>;
+	docs: Map<string, LiveDocState>;
 };
 
 export type CollabSocketApi = {
@@ -64,7 +71,10 @@ function workspaceRoomName(workspaceId: string): string {
 }
 
 export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
-	const workspaces = new Map<string, Workspace>();
+	const state: CollabSocketState = {
+		workspaces: new Map(),
+		docs: new Map(),
+	};
 
 	// After this runs, socket.request.session is populated from the session store exactly as it would be for an HTTP request.
 	function middlewareAdapter(expressMiddleware: (req: Request, res: Response, next: NextFunction) => void) {
@@ -86,7 +96,10 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 	});
 
 	function buildWorkspaceInfo(shared: Workspace): WorkspaceInfo {
-		const members = [...shared.owners.values()].map((slot) => ({id: slot.ownerId, username: slot.username}));
+		const members = [...shared.memberFiles.values()].flatMap((fileId) => {
+			const slot = state.docs.get(fileId);
+			return slot ? [{id: slot.ownerId, username: slot.username}] : [];
+		});
 		return {id: shared.workspaceId, members};
 	}
 
@@ -111,10 +124,12 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 				updates: [],
 				doc: Text.of(row.content.split("\n")),
 				pending: [],
+				pendingName: [],
 				fileName: String(row.name),
 				hasUnsavedChanges: false,
 				isFlushInProgress: false,
 				dbSaveDebounceTimer: null,
+				refCount: 0,
 			};
 		} catch (error) {
 			timestampedLog(`Error loading collab slot for user ${userId}, file ${fileId}: ${String(error)}`);
@@ -142,12 +157,12 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			]);
 			if (updateResult.rowCount === 0) {
 				timestampedLog(`File deleted while session was active, evicting slot: ${slot.fileId}`);
-				for (const shared of workspaces.values()) {
-					if (shared.owners.get(slot.ownerId) === slot) {
-						shared.owners.delete(slot.ownerId);
-						break;
+				for (const shared of state.workspaces.values()) {
+					if (shared.memberFiles.get(slot.ownerId) === slot.fileId) {
+						shared.memberFiles.delete(slot.ownerId);
 					}
 				}
+				state.docs.delete(slot.fileId);
 				drainPending(slot.pending, []);
 				slot.isFlushInProgress = false;
 				return;
@@ -183,15 +198,24 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		if (slot.hasUnsavedChanges || slot.isFlushInProgress) {
 			await flushOwnerSlot(slot);
 		}
-		// Release any long-polling pullUpdates waiters so their clients fall through to the next cycle.
+		// Release any long-polling pullUpdates/pullFileName waiters so their clients fall through to the next cycle.
 		drainPending(slot.pending, []);
+		drainPending(slot.pendingName, slot.fileName);
+	}
+
+	async function releaseDocRef(fileId: string): Promise<void> {
+		const slot = state.docs.get(fileId);
+		if (!slot) return;
+		if (--slot.refCount > 0) return;
+		state.docs.delete(fileId);
+		await evictSlot(slot);
 	}
 
 	async function destroyWorkspace(shared: Workspace): Promise<void> {
-		for (const slot of shared.owners.values()) {
-			await evictSlot(slot);
+		state.workspaces.delete(shared.workspaceId);
+		for (const fileId of shared.memberFiles.values()) {
+			await releaseDocRef(fileId);
 		}
-		workspaces.delete(shared.workspaceId);
 	}
 
 	function scheduleWorkspaceDestroy(shared: Workspace): void {
@@ -227,31 +251,34 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 	async function createWorkspaceFromFile(userId: number, fileId: string): Promise<string> {
 		// Reuse a live workspace where this user already owns this fileId.
-		for (const existing of workspaces.values()) {
-			const slot = existing.owners.get(userId);
-			if (slot && slot.fileId === fileId && existing.connectedSockets.size > 0) {
+		for (const existing of state.workspaces.values()) {
+			if (existing.memberFiles.get(userId) === fileId && existing.connectedSockets.size > 0) {
 				return existing.workspaceId;
 			}
 		}
 
-		const slot = await loadOwnerSlot(userId, fileId);
-		if (!slot) throw new Error("File not found or not owned by user");
+		if (!state.docs.has(fileId)) {
+			const slot = await loadOwnerSlot(userId, fileId);
+			if (!slot) throw new Error("File not found or not owned by user");
+			if (!state.docs.has(fileId)) state.docs.set(fileId, slot);
+		}
+		state.docs.get(fileId)!.refCount++;
 
 		const workspaceId = crypto.randomUUID();
 		const shared: Workspace = {
 			workspaceId: workspaceId,
-			owners: new Map([[userId, slot]]),
+			memberFiles: new Map([[userId, fileId]]),
 			connectedSockets: new Map(),
 			destroyTimer: null,
 		};
 		// Give the creator time to navigate and open a socket before we'd auto-clean.
 		scheduleWorkspaceDestroy(shared);
-		workspaces.set(workspaceId, shared);
+		state.workspaces.set(workspaceId, shared);
 		return workspaceId;
 	}
 
 	function getWorkspaceInfo(workspaceId: string): WorkspaceInfo | undefined {
-		const shared = workspaces.get(workspaceId);
+		const shared = state.workspaces.get(workspaceId);
 		if (!shared) return undefined;
 		return buildWorkspaceInfo(shared);
 	}
@@ -260,17 +287,17 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
 
 		socket.on("disconnect", () => {
-			for (const shared of workspaces.values()) {
+			for (const shared of state.workspaces.values()) {
 				if (!shared.connectedSockets.has(socket.id)) continue;
 				const userId = socket.data.userId as number;
 				detachSocketFromWorkspace(socket.id, shared);
 				// Only evict if this user has no other sockets still connected to this workspace
 				const stillConnected = [...shared.connectedSockets.values()].some((id) => id === userId);
-				if (!stillConnected && shared.owners.has(userId)) {
+				if (!stillConnected && shared.memberFiles.has(userId)) {
 					void (async () => {
-						const slot = shared.owners.get(userId);
-						if (slot) await evictSlot(slot);
-						shared.owners.delete(userId);
+						const fileId = shared.memberFiles.get(userId)!;
+						shared.memberFiles.delete(userId);
+						await releaseDocRef(fileId);
 						if (shared.connectedSockets.size > 0) {
 							await broadcastMembers(shared);
 						}
@@ -294,7 +321,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 					return;
 				}
 
-				const shared = workspaces.get(workspaceId);
+				const shared = state.workspaces.get(workspaceId);
 				if (!shared) {
 					sendResponse({error: "Workspace not found"} satisfies ErrorResponse);
 					return;
@@ -306,7 +333,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 				switch (type) {
 					case "pickFile": {
-						if (shared.owners.has(userId)) {
+						if (shared.memberFiles.has(userId)) {
 							sendResponse({
 								error: "You have already picked a file for this session",
 							} satisfies ErrorResponse);
@@ -316,12 +343,16 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 							sendResponse({error: "Invalid file ID"} satisfies ErrorResponse);
 							break;
 						}
-						const slot = await loadOwnerSlot(userId, data.fileId);
-						if (!slot) {
-							sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
-							break;
+						if (!state.docs.has(data.fileId)) {
+							const slot = await loadOwnerSlot(userId, data.fileId);
+							if (!slot) {
+								sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
+								break;
+							}
+							if (!state.docs.has(data.fileId)) state.docs.set(data.fileId, slot);
 						}
-						shared.owners.set(userId, slot);
+						state.docs.get(data.fileId)!.refCount++;
+						shared.memberFiles.set(userId, data.fileId);
 						sendResponse(true);
 						try {
 							await broadcastMembers(shared);
@@ -331,10 +362,10 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "leaveWorkspace": {
-						const slot = shared.owners.get(userId);
-						if (slot) {
-							await evictSlot(slot);
-							shared.owners.delete(userId);
+						const fileId = shared.memberFiles.get(userId);
+						if (fileId) {
+							shared.memberFiles.delete(userId);
+							await releaseDocRef(fileId);
 						}
 						socket.leave(workspaceRoomName(workspaceId));
 						shared.connectedSockets.delete(socket.id);
@@ -347,7 +378,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "getInitialDocument": {
-						const slot = shared.owners.get(data.ownerId);
+						const slot = state.docs.get(shared.memberFiles.get(data.ownerId) ?? "");
 						if (!slot) {
 							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
 							break;
@@ -360,7 +391,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pullUpdates": {
-						const slot = shared.owners.get(data.ownerId);
+						const slot = state.docs.get(shared.memberFiles.get(data.ownerId) ?? "");
 						if (!slot) {
 							sendResponse({error: "Slot empty"} satisfies ErrorResponse);
 							break;
@@ -377,7 +408,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pushUpdates": {
-						const slot = shared.owners.get(userId);
+						const slot = state.docs.get(shared.memberFiles.get(userId) ?? "");
 						if (!slot) {
 							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
 							break;
@@ -412,8 +443,21 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						}
 						break;
 					}
+					case "pullFileName": {
+						const slot = state.docs.get(shared.memberFiles.get(userId) ?? "");
+						if (!slot) {
+							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
+							break;
+						}
+						if (slot.ownerId !== userId) {
+							sendResponse({error: "You may only pull your own file name"} satisfies ErrorResponse);
+							break;
+						}
+						slot.pendingName.push((name) => sendResponse({name} satisfies NameUpdateResponse));
+						break;
+					}
 					case "pushFileName": {
-						const slot = shared.owners.get(userId);
+						const slot = state.docs.get(shared.memberFiles.get(userId) ?? "");
 						if (!slot) {
 							sendResponse({error: "No file picked for your slot"} satisfies ErrorResponse);
 							break;
@@ -425,6 +469,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						if (data.name !== slot.fileName) {
 							slot.fileName = data.name;
 							scheduleFlush(slot);
+							drainPending(slot.pendingName, slot.fileName);
 						}
 						sendResponse({name: slot.fileName} satisfies NameUpdateResponse);
 						break;

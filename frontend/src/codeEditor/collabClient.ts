@@ -199,6 +199,11 @@ export async function pushFileName(connection: CollabConnection, name: string): 
 	return (await connection.request({type: "pushFileName", name})) as NameUpdateResponse;
 }
 
+export async function pullFileName(connection: CollabConnection): Promise<string> {
+	const result = (await connection.request({type: "pullFileName"})) as NameUpdateResponse;
+	return result.name;
+}
+
 export async function pickFile(connection: CollabConnection, fileId: string): Promise<void> {
 	await connection.request({type: "pickFile", fileId});
 }
