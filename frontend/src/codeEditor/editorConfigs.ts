@@ -1,6 +1,6 @@
 import {defaultKeymap, insertTab} from "@codemirror/commands";
 import {type Extension, Text} from "@codemirror/state";
-import {keymap} from "@codemirror/view";
+import {keymap, EditorView} from "@codemirror/view";
 import {unifiedMergeView} from "@codemirror/merge";
 import {markdown} from "@codemirror/lang-markdown";
 import {languages} from "@codemirror/language-data";
@@ -44,6 +44,10 @@ export function getEditorExtensions({
 
 	if (memberInitialDoc) {
 		extensions.push(
+			EditorView.theme({
+				// Hide mergeControl buttons on chunks that only have additions by self
+				"& .cm-deletedChunk:not(:has(.cm-deletedLine)) .cm-chunkButtons": {display: "none"},
+			}),
 			...unifiedMergeView({
 				original: memberInitialDoc,
 				allowInlineDiffs: false,
