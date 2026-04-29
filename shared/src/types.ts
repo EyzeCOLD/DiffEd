@@ -1,70 +1,70 @@
 // id here for testing
 export type UserFile = {
-	id: string;
-	name: string;
-	content: string;
-	owner_id: number;
+    id: string;
+    name: string;
+    content: string;
+    owner_id: number;
 };
 
 export type User = {
-	id: number;
-	username: string;
-	email: string;
+    id: number;
+    username: string;
+    email: string;
 };
 
-export type UserWithPassword = User & {password: string};
+export type UserWithPassword = User & { hashed_password: string };
 
 export type SigningUser = {
-	username: string;
-	email: string;
-	password: string;
+    username: string;
+    email: string;
+    password: string;
 };
 
 export type ErrorResponse = {
-	error: string;
+    error: string;
 };
 
 export type SerializedUpdate = {
-	clientID: string;
-	changes: unknown;
+    clientID: string;
+    changes: unknown;
 };
 
 export type CollabRequestPayload =
-	| {
-			type: "getInitialDocument";
-	  }
-	| {
-			type: "pullUpdates";
-			version: number;
-	  }
-	| {
-			type: "pushUpdates";
-			version: number;
-			updates: SerializedUpdate[];
-	  }
-	| {
-			type: "pushFileName";
-			name: string;
-	  };
+    | {
+        type: "getInitialDocument";
+    }
+    | {
+        type: "pullUpdates";
+        version: number;
+    }
+    | {
+        type: "pushUpdates";
+        version: number;
+        updates: SerializedUpdate[];
+    }
+    | {
+        type: "pushFileName";
+        name: string;
+    };
 
 export type CollabRequest = CollabRequestPayload & {
-	id: number;
-	fileId: string;
+    id: number;
+    fileId: string;
 };
 
 export type DocumentResponse =
-	| {
-			version: number;
-			doc: string;
-	  }
-	| ErrorResponse;
+    | {
+        version: number;
+        doc: string;
+    }
+    | ErrorResponse;
 
 export type NameUpdateResponse =
-	| {
-			name: string;
-	  }
-	| ErrorResponse;
+    | {
+        name: string;
+    }
+    | ErrorResponse;
 
-export type ApiSuccess<T> = {ok: true; data: T};
-export type ApiError = {ok: false; error: string};
+export type ApiSuccess<T> = { ok: true; data: T };
+export type ApiError = { ok: false; error: string };
 export type ApiResponse<T> = ApiSuccess<T> | ApiError;
