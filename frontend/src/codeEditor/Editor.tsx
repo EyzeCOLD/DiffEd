@@ -66,9 +66,8 @@ export default function Editor({connection, myOwnerId, initialMembers}: SharedEd
 		if (selectedPeerId !== null && members.some((p) => p.id === selectedPeerId)) {
 			return selectedPeerId;
 		}
-		const firstReady = members.find((p) => readyPeerIds.has(p.id));
-		return firstReady?.id ?? null;
-	}, [selectedPeerId, members, readyPeerIds]);
+		return null;
+	}, [selectedPeerId, members]);
 
 	// When the active peer changes, reset editor state during render rather than inside
 	// the effect (calling setState in an effect body triggers cascading renders).
@@ -184,7 +183,12 @@ export default function Editor({connection, myOwnerId, initialMembers}: SharedEd
 
 	return (
 		<div className="flex flex-col h-full">
-			<PeerBar peers={members} readyPeerIds={readyPeerIds} selectedPeerId={basePeerId} onSelect={setSelectedPeerId} />
+			<PeerBar
+				peers={members}
+				readyPeerIds={readyPeerIds}
+				selectedPeerId={selectedPeerId}
+				onSelect={setSelectedPeerId}
+			/>
 			{error ? (
 				<div className="border border-red-500 p-2 text-red-500">
 					<div>Error initializing editor: {error}</div>

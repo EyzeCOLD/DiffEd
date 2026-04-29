@@ -5,7 +5,7 @@ type PeerBarProps = {
 	peers: SessionMember[];
 	readyPeerIds: ReadonlySet<number>;
 	selectedPeerId: number | null;
-	onSelect: (ownerId: number) => void;
+	onSelect: (ownerId: number | null) => void;
 };
 
 export default function PeerBar({peers, readyPeerIds, selectedPeerId, onSelect}: PeerBarProps): JSX.Element {
@@ -15,6 +15,15 @@ export default function PeerBar({peers, readyPeerIds, selectedPeerId, onSelect}:
 				<span>Solo mode — share this URL to collaborate.</span>
 			) : (
 				<div role="tablist" aria-label="Peers" className="flex flex-row items-center gap-2">
+					<button
+						type="button"
+						role="tab"
+						aria-selected={selectedPeerId === null}
+						onClick={() => onSelect(null)}
+						className={`px-2 py-1 border ${selectedPeerId === null ? "border-accent" : "border-transparent"} cursor-pointer`}
+					>
+						Solo
+					</button>
 					{peers.map((peer) => {
 						const ready = readyPeerIds.has(peer.id);
 						const selected = peer.id === selectedPeerId;
