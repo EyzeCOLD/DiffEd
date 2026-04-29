@@ -163,7 +163,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 		// If new changes arrived while we were awaiting the DB, reschedule.
 		if (slot.hasUnsavedChanges && !slot.dbSaveDebounceTimer) {
-			slot.dbSaveDebounceTimer = setTimeout(() => void flushOwnerSlot(slot), DATABASE_SAVE_DEBOUNCE_TIME);
+			scheduleFlush(slot);
 		}
 	}
 
