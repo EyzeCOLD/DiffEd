@@ -38,10 +38,10 @@ export class CollabPeersPool {
 		this.myOwnerId = myOwnerId;
 		this.onMembersChange = onMembersChange;
 		this.onPeerReady = onPeerReady;
-		this.updatePeerSlots(initialMembers.filter((m) => m.id !== myOwnerId));
+		this.updatePeersList(initialMembers.filter((m) => m.id !== myOwnerId));
 		this.unsubscribeMembers = connection.subscribeMembers((event) => {
 			const members = event.members.filter((m) => m.id !== this.myOwnerId);
-			this.updatePeerSlots(members);
+			this.updatePeersList(members);
 			this.onMembersChange(members);
 		});
 	}
@@ -53,7 +53,7 @@ export class CollabPeersPool {
 		};
 	}
 
-	private updatePeerSlots(peers: WorkspaceMember[]): void {
+	private updatePeersList(peers: WorkspaceMember[]): void {
 		const peerIds = new Set(peers.map((peer) => peer.id));
 		for (const id of [...this.peers.keys()]) {
 			if (!peerIds.has(id)) this.removePeer(id);
