@@ -14,14 +14,14 @@ import type {
 	MembersChangedEvent,
 	NameUpdateResponse,
 	SerializedUpdate,
-	SessionInfo,
+	WorkspaceInfo,
 } from "#shared/src/types.js";
 
 const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
 // Gives users time to refresh, recover from a network blip, or navigate back before collab state is flushed
-const SESSION_DESTROY_GRACE_MS = 3000;
+const WORKSPACE_DESTROY_GRACE_MS = 3000;
 
-type PerOwnerState = {
+type LiveDocState = {
 	ownerId: number;
 	username: string;
 	fileId: string;
@@ -34,16 +34,16 @@ type PerOwnerState = {
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
 };
 
-type SharedSession = {
-	sessionId: string;
-	owners: Map<number, PerOwnerState>;
+type Workspace = {
+	workspaceId: string;
+	owners: Map<number, LiveDocState>;
 	connectedSockets: Map<string, number>;
 	destroyTimer: ReturnType<typeof setTimeout> | null;
 };
 
 export type CollabSocketApi = {
-	createSessionFromFile: (userId: number, fileId: string) => Promise<string>;
-	getSessionInfo: (sessionId: string, userId?: number) => SessionInfo | undefined;
+	createWorkspaceFromFile: (userId: number, fileId: string) => Promise<string>;
+	getWorkspaceInfo: (workspaceId: string, userId?: number) => WorkspaceInfo | undefined;
 };
 
 function serializeUpdates(updates: readonly Update[]): SerializedUpdate[] {
@@ -59,12 +59,12 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 	}
 }
 
-function sessionRoomName(sessionId: string): string {
-	return `session:${sessionId}`;
+function workspaceRoomName(workspaceId: string): string {
+	return `workspace:${workspaceId}`;
 }
 
 export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
-	const sessions = new Map<string, SharedSession>();
+	const workspaces = new Map<string, Workspace>();
 
 	// After this runs, socket.request.session is populated from the session store exactly as it would be for an HTTP request.
 	function middlewareAdapter(expressMiddleware: (req: Request, res: Response, next: NextFunction) => void) {
@@ -85,18 +85,18 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	});
 
-	function buildSessionInfo(shared: SharedSession): SessionInfo {
+	function buildWorkspaceInfo(shared: Workspace): WorkspaceInfo {
 		const members = [...shared.owners.values()].map((slot) => ({id: slot.ownerId, username: slot.username}));
-		return {id: shared.sessionId, members};
+		return {id: shared.workspaceId, members};
 	}
 
-	async function broadcastMembers(shared: SharedSession): Promise<void> {
-		const info = buildSessionInfo(shared);
-		const event: MembersChangedEvent = {sessionId: shared.sessionId, members: info.members};
-		sockets.to(sessionRoomName(shared.sessionId)).emit("membersChanged", event);
+	async function broadcastMembers(shared: Workspace): Promise<void> {
+		const info = buildWorkspaceInfo(shared);
+		const event: MembersChangedEvent = {workspaceId: shared.workspaceId, members: info.members};
+		sockets.to(workspaceRoomName(shared.workspaceId)).emit("membersChanged", event);
 	}
 
-	async function loadOwnerSlot(userId: number, fileId: string): Promise<PerOwnerState | undefined> {
+	async function loadOwnerSlot(userId: number, fileId: string): Promise<LiveDocState | undefined> {
 		try {
 			const result = await db.query<Pick<UserFile, "name" | "content"> & Pick<User, "username">>(
 				"SELECT name, content, username FROM files JOIN users ON users.id = owner_id WHERE files.id = $1 AND owner_id = $2",
@@ -122,7 +122,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	}
 
-	async function flushOwnerSlot(slot: PerOwnerState): Promise<void> {
+	async function flushOwnerSlot(slot: LiveDocState): Promise<void> {
 		// The callback that fired is no longer pending once we start processing it
 		slot.dbSaveDebounceTimer = null;
 		// `isFlushInProgress` prevents overlapping DB writes
@@ -142,7 +142,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			]);
 			if (updateResult.rowCount === 0) {
 				timestampedLog(`File deleted while session was active, evicting slot: ${slot.fileId}`);
-				for (const shared of sessions.values()) {
+				for (const shared of workspaces.values()) {
 					if (shared.owners.get(slot.ownerId) === slot) {
 						shared.owners.delete(slot.ownerId);
 						break;
@@ -167,7 +167,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	}
 
-	function scheduleFlush(slot: PerOwnerState): void {
+	function scheduleFlush(slot: LiveDocState): void {
 		slot.hasUnsavedChanges = true;
 		if (slot.dbSaveDebounceTimer) {
 			clearTimeout(slot.dbSaveDebounceTimer);
@@ -175,7 +175,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		slot.dbSaveDebounceTimer = setTimeout(() => void flushOwnerSlot(slot), DATABASE_SAVE_DEBOUNCE_TIME);
 	}
 
-	async function evictSlot(slot: PerOwnerState): Promise<void> {
+	async function evictSlot(slot: LiveDocState): Promise<void> {
 		if (slot.dbSaveDebounceTimer) {
 			clearTimeout(slot.dbSaveDebounceTimer);
 			slot.dbSaveDebounceTimer = null;
@@ -187,84 +187,84 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		drainPending(slot.pending, []);
 	}
 
-	async function destroySession(shared: SharedSession): Promise<void> {
+	async function destroyWorkspace(shared: Workspace): Promise<void> {
 		for (const slot of shared.owners.values()) {
 			await evictSlot(slot);
 		}
-		sessions.delete(shared.sessionId);
+		workspaces.delete(shared.workspaceId);
 	}
 
-	function scheduleSessionDestroy(shared: SharedSession): void {
+	function scheduleWorkspaceDestroy(shared: Workspace): void {
 		if (shared.destroyTimer) return;
 		shared.destroyTimer = setTimeout(() => {
 			shared.destroyTimer = null;
 			// Someone reconnected during the grace window — skip destruction.
 			if (shared.connectedSockets.size > 0) return;
-			void destroySession(shared);
-		}, SESSION_DESTROY_GRACE_MS);
+			void destroyWorkspace(shared);
+		}, WORKSPACE_DESTROY_GRACE_MS);
 	}
 
-	function cancelSessionDestroy(shared: SharedSession): void {
+	function cancelWorkspaceDestroy(shared: Workspace): void {
 		if (!shared.destroyTimer) return;
 		clearTimeout(shared.destroyTimer);
 		shared.destroyTimer = null;
 	}
 
-	function attachSocketToSession(socket: Socket, shared: SharedSession, userId: number): void {
+	function attachSocketToWorkspace(socket: Socket, shared: Workspace, userId: number): void {
 		if (shared.connectedSockets.has(socket.id)) return;
-		cancelSessionDestroy(shared);
+		cancelWorkspaceDestroy(shared);
 		shared.connectedSockets.set(socket.id, userId);
-		socket.join(sessionRoomName(shared.sessionId));
+		socket.join(workspaceRoomName(shared.workspaceId));
 	}
 
-	function detachSocketFromSession(socketId: string, shared: SharedSession): void {
+	function detachSocketFromWorkspace(socketId: string, shared: Workspace): void {
 		if (!shared.connectedSockets.has(socketId)) return;
 		shared.connectedSockets.delete(socketId);
 		if (shared.connectedSockets.size === 0) {
-			scheduleSessionDestroy(shared);
+			scheduleWorkspaceDestroy(shared);
 		}
 	}
 
-	async function createSessionFromFile(userId: number, fileId: string): Promise<string> {
-		// Reuse a live session where this user already owns this fileId.
-		for (const existing of sessions.values()) {
+	async function createWorkspaceFromFile(userId: number, fileId: string): Promise<string> {
+		// Reuse a live workspace where this user already owns this fileId.
+		for (const existing of workspaces.values()) {
 			const slot = existing.owners.get(userId);
 			if (slot && slot.fileId === fileId && existing.connectedSockets.size > 0) {
-				return existing.sessionId;
+				return existing.workspaceId;
 			}
 		}
 
 		const slot = await loadOwnerSlot(userId, fileId);
 		if (!slot) throw new Error("File not found or not owned by user");
 
-		const sessionId = crypto.randomUUID();
-		const shared: SharedSession = {
-			sessionId,
+		const workspaceId = crypto.randomUUID();
+		const shared: Workspace = {
+			workspaceId: workspaceId,
 			owners: new Map([[userId, slot]]),
 			connectedSockets: new Map(),
 			destroyTimer: null,
 		};
 		// Give the creator time to navigate and open a socket before we'd auto-clean.
-		scheduleSessionDestroy(shared);
-		sessions.set(sessionId, shared);
-		return sessionId;
+		scheduleWorkspaceDestroy(shared);
+		workspaces.set(workspaceId, shared);
+		return workspaceId;
 	}
 
-	function getSessionInfo(sessionId: string): SessionInfo | undefined {
-		const shared = sessions.get(sessionId);
+	function getWorkspaceInfo(workspaceId: string): WorkspaceInfo | undefined {
+		const shared = workspaces.get(workspaceId);
 		if (!shared) return undefined;
-		return buildSessionInfo(shared);
+		return buildWorkspaceInfo(shared);
 	}
 
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
 
 		socket.on("disconnect", () => {
-			for (const shared of sessions.values()) {
+			for (const shared of workspaces.values()) {
 				if (!shared.connectedSockets.has(socket.id)) continue;
 				const userId = socket.data.userId as number;
-				detachSocketFromSession(socket.id, shared);
-				// Only evict if this user has no other sockets still connected to this session
+				detachSocketFromWorkspace(socket.id, shared);
+				// Only evict if this user has no other sockets still connected to this workspace
 				const stillConnected = [...shared.connectedSockets.values()].some((id) => id === userId);
 				if (!stillConnected && shared.owners.has(userId)) {
 					void (async () => {
@@ -281,7 +281,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		});
 
 		socket.on("collabRequest", async (data: CollabRequest) => {
-			const {requestId, type, sessionId} = data;
+			const {requestId, type, workspaceId} = data;
 			const userId = socket.data.userId as number;
 
 			function sendResponse(result: unknown) {
@@ -289,20 +289,20 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			}
 
 			try {
-				if (!sessionId || typeof sessionId !== "string") {
-					sendResponse({error: "Missing sessionId"} satisfies ErrorResponse);
+				if (!workspaceId || typeof workspaceId !== "string") {
+					sendResponse({error: "Missing workspaceId"} satisfies ErrorResponse);
 					return;
 				}
 
-				const shared = sessions.get(sessionId);
+				const shared = workspaces.get(workspaceId);
 				if (!shared) {
-					sendResponse({error: "Session not found"} satisfies ErrorResponse);
+					sendResponse({error: "Workspace not found"} satisfies ErrorResponse);
 					return;
 				}
 
 				if (!socket.connected) return;
 
-				attachSocketToSession(socket, shared, userId);
+				attachSocketToWorkspace(socket, shared, userId);
 
 				switch (type) {
 					case "pickFile": {
@@ -330,17 +330,17 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						}
 						break;
 					}
-					case "leaveSession": {
+					case "leaveWorkspace": {
 						const slot = shared.owners.get(userId);
 						if (slot) {
 							await evictSlot(slot);
 							shared.owners.delete(userId);
 						}
-						socket.leave(sessionRoomName(sessionId));
+						socket.leave(workspaceRoomName(workspaceId));
 						shared.connectedSockets.delete(socket.id);
 						sendResponse(true);
 						if (shared.connectedSockets.size === 0) {
-							await destroySession(shared);
+							await destroyWorkspace(shared);
 						} else {
 							await broadcastMembers(shared);
 						}
@@ -437,5 +437,5 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		});
 	});
 
-	return {createSessionFromFile, getSessionInfo};
+	return {createWorkspaceFromFile, getWorkspaceInfo};
 }

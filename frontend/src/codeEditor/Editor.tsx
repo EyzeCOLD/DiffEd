@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from "react";
 import type {JSX} from "react";
-import type {SessionMember} from "#shared/src/types";
+import type {WorkspaceMember} from "#shared/src/types";
 import {EditorState, Transaction} from "@codemirror/state";
 import {EditorView} from "@codemirror/view";
 import {updateOriginalDoc} from "@codemirror/merge";
@@ -31,7 +31,7 @@ function errorMessage(err: unknown): string {
 type SharedEditorProps = {
 	connection: CollabConnection;
 	myOwnerId: number;
-	initialMembers: SessionMember[];
+	initialMembers: WorkspaceMember[];
 };
 
 export default function Editor({connection, myOwnerId, initialMembers}: SharedEditorProps): JSX.Element {
@@ -47,7 +47,7 @@ export default function Editor({connection, myOwnerId, initialMembers}: SharedEd
 	const [fileName, setFileName] = useState("");
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
-	const [members, setMembers] = useState<SessionMember[]>(() => initialMembers.filter((m) => m.id !== myOwnerId));
+	const [members, setMembers] = useState<WorkspaceMember[]>(() => initialMembers.filter((m) => m.id !== myOwnerId));
 
 	const [pool] = useState(
 		() =>

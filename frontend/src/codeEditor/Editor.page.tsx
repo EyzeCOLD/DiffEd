@@ -1,5 +1,5 @@
 import {useParams} from "react-router";
-import type {SessionInfo} from "#shared/src/types";
+import type {WorkspaceInfo} from "#shared/src/types";
 import {useEffect, useMemo, useState} from "react";
 import {CollabConnection} from "./collabClient";
 import {apiFetch} from "../utils";
@@ -9,19 +9,19 @@ import {useCurrentUser} from "../stores/userStore";
 
 export default function EditorPage() {
 	const params = useParams();
-	const sessionId = params.sessionId;
+	const workspaceId = params.workspaceId;
 	const user = useCurrentUser()!;
 
-	const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+	const [sessionInfo, setSessionInfo] = useState<WorkspaceInfo | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [joining, setJoining] = useState(true);
 
-	const connection = useMemo(() => (sessionId ? new CollabConnection(sessionId) : null), [sessionId]);
+	const connection = useMemo(() => (workspaceId ? new CollabConnection(workspaceId) : null), [workspaceId]);
 
 	useEffect(() => {
-		if (!sessionId) return;
+		if (!workspaceId) return;
 		let cancelled = false;
-		apiFetch<SessionInfo>(`/api/workspace/${sessionId}`)
+		apiFetch<WorkspaceInfo>(`/api/workspace/${workspaceId}`)
 			.then((response) => {
 				if (cancelled) return;
 				if (!response.ok) {
@@ -37,14 +37,14 @@ export default function EditorPage() {
 		return () => {
 			cancelled = true;
 		};
-	}, [sessionId]);
+	}, [workspaceId]);
 
 	useEffect(() => {
 		if (!connection) return;
 		const unsubscribe = connection.subscribeMembers((event) => {
 			setJoining(false);
 			setSessionInfo({
-				id: event.sessionId,
+				id: event.workspaceId,
 				members: event.members,
 			});
 		});
@@ -57,7 +57,7 @@ export default function EditorPage() {
 		};
 	}, [connection]);
 
-	if (!sessionId) return <div>Session ID is missing</div>;
+	if (!workspaceId) return <div>Session ID is missing</div>;
 	if (errorMessage) return <div className="p-4 text-red-500">{errorMessage}</div>;
 	if (joining) return <div>Joining session...</div>;
 

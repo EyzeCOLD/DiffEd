@@ -1,8 +1,8 @@
 import type {JSX} from "react";
-import type {SessionMember} from "#shared/src/types";
+import type {WorkspaceMember} from "#shared/src/types";
 
 type PeerBarProps = {
-	peers: SessionMember[];
+	peers: WorkspaceMember[];
 	readyPeerIds: ReadonlySet<number>;
 	selectedPeerId: number | null;
 	onSelect: (ownerId: number | null) => void;

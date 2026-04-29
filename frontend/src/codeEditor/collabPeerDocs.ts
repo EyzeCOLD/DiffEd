@@ -1,5 +1,5 @@
 import {ChangeSet, Text} from "@codemirror/state";
-import type {SessionMember} from "#shared/src/types";
+import type {WorkspaceMember} from "#shared/src/types";
 import {CollabConnection, getInitialDocument, pullUpdates} from "./collabClient";
 import {delay} from "../utils";
 
@@ -9,7 +9,7 @@ export type PeerDoc = {
 };
 
 type PeerState = {
-	member: SessionMember;
+	member: WorkspaceMember;
 	doc?: PeerDoc;
 	aborted: boolean;
 };
@@ -22,7 +22,7 @@ export class CollabPeersPool {
 	private connection: CollabConnection;
 	private myOwnerId: number;
 	private peers = new Map<number, PeerState>();
-	private onMembersChange: (members: SessionMember[]) => void;
+	private onMembersChange: (members: WorkspaceMember[]) => void;
 	private onPeerReady: (ownerId: number, doc: PeerDoc) => void;
 	private peerUpdateListener: ((ownerId: number, doc: PeerDoc, changes: ChangeSet) => void) | null = null;
 	private unsubscribeMembers: () => void;
@@ -30,8 +30,8 @@ export class CollabPeersPool {
 	constructor(
 		connection: CollabConnection,
 		myOwnerId: number,
-		initialMembers: SessionMember[],
-		onMembersChange: (members: SessionMember[]) => void,
+		initialMembers: WorkspaceMember[],
+		onMembersChange: (members: WorkspaceMember[]) => void,
 		onPeerReady: (ownerId: number, doc: PeerDoc) => void,
 	) {
 		this.connection = connection;
@@ -53,7 +53,7 @@ export class CollabPeersPool {
 		};
 	}
 
-	private updatePeerSlots(peers: SessionMember[]): void {
+	private updatePeerSlots(peers: WorkspaceMember[]): void {
 		const peerIds = new Set(peers.map((peer) => peer.id));
 		for (const id of [...this.peers.keys()]) {
 			if (!peerIds.has(id)) this.removePeer(id);
@@ -63,7 +63,7 @@ export class CollabPeersPool {
 		}
 	}
 
-	private addPeer(peer: SessionMember): void {
+	private addPeer(peer: WorkspaceMember): void {
 		if (this.peers.has(peer.id)) return;
 		const state: PeerState = {member: peer, doc: undefined, aborted: false};
 		this.peers.set(peer.id, state);

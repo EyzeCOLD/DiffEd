@@ -49,12 +49,12 @@ export type CollabRequestPayload =
 			fileId: string;
 	  }
 	| {
-			type: "leaveSession";
+			type: "leaveWorkspace";
 	  };
 
 export type CollabRequest = CollabRequestPayload & {
 	requestId: number;
-	sessionId: string;
+	workspaceId: string;
 };
 
 export type CollabResponse =
@@ -64,16 +64,16 @@ export type CollabResponse =
 	  }
 	| ErrorResponse;
 
-export type SessionMember = Pick<User, "id" | "username">;
+export type WorkspaceMember = Pick<User, "id" | "username">;
 
-export type SessionInfo = {
+export type WorkspaceInfo = {
 	id: string;
-	members: SessionMember[];
+	members: WorkspaceMember[];
 };
 
 export type MembersChangedEvent = {
-	sessionId: string;
-	members: SessionMember[];
+	workspaceId: string;
+	members: WorkspaceMember[];
 };
 
 export type DocumentResponse = {

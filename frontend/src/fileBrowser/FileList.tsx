@@ -21,7 +21,7 @@ function FileList({
 
 	async function startSessionFromFile(file: UserFile) {
 		try {
-			const response = await apiFetch<{sessionId: string}>("/api/workspace", {
+			const response = await apiFetch<{workspaceId: string}>("/api/workspace", {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},
 				body: JSON.stringify({fileId: file.id}),
@@ -30,7 +30,7 @@ function FileList({
 				showToast("error", response.error);
 				return;
 			}
-			navigate(`/collab/${response.data.sessionId}`);
+			navigate(`/collab/${response.data.workspaceId}`);
 		} catch (err) {
 			showToast("error", err instanceof Error ? err.message : "Failed to open file");
 		}

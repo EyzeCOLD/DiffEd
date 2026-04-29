@@ -25,7 +25,7 @@ createRoot(document.getElementById("root")!).render(
 				<Route element={<UserLayout />}>
 					<Route path="/dashboard" element={<Dashboard />} />
 					<Route path="/filebrowser" element={<FileBrowserPage />} />
-					<Route path="/collab/:sessionId" element={<EditorPage />} />
+					<Route path="/collab/:workspaceId" element={<EditorPage />} />
 					<Route path="/account" element={<UserManagementPage />} />
 				</Route>
 			</Routes>

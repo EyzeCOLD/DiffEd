@@ -27,13 +27,13 @@ export type MembersHandler = (event: MembersChangedEvent) => void;
 /** Wrapper for socket.io connection to communicate with our collab server */
 export class CollabConnection {
 	private socket: Socket | null = null;
-	private sessionId: string;
+	private workspaceId: string;
 	private requestId = 0;
 	private pendingRequests = new Map<number, PendingRequest>();
 	private membersHandlers = new Set<MembersHandler>();
 
-	constructor(sessionId: string) {
-		this.sessionId = sessionId;
+	constructor(workspaceId: string) {
+		this.workspaceId = workspaceId;
 	}
 
 	private getOrCreateSocket(): Socket {
@@ -69,7 +69,7 @@ export class CollabConnection {
 		});
 
 		this.socket.on("membersChanged", (event: MembersChangedEvent) => {
-			if (event.sessionId !== this.sessionId) return;
+			if (event.workspaceId !== this.workspaceId) return;
 			for (const handler of this.membersHandlers) {
 				handler(event);
 			}
@@ -141,7 +141,7 @@ export class CollabConnection {
 			}, REQUEST_TIMEOUT_MS);
 
 			this.pendingRequests.set(id, {resolve, reject, timeoutId});
-			const request: CollabRequest = {requestId: id, sessionId: this.sessionId, ...payload};
+			const request: CollabRequest = {requestId: id, workspaceId: this.workspaceId, ...payload};
 			socket.emit("collabRequest", request);
 		});
 	}
@@ -203,6 +203,6 @@ export async function pickFile(connection: CollabConnection, fileId: string): Pr
 	await connection.request({type: "pickFile", fileId});
 }
 
-export async function leaveSession(connection: CollabConnection): Promise<void> {
-	await connection.request({type: "leaveSession"});
+export async function leaveWorkspace(connection: CollabConnection): Promise<void> {
+	await connection.request({type: "leaveWorkspace"});
 }

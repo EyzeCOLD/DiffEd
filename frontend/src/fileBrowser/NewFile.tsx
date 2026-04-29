@@ -32,7 +32,7 @@ function NewFile({onCreated}: NewFileProps): JSX.Element {
 			return;
 		}
 
-		const workspaceResult = await apiFetch<{sessionId: string}>("/api/workspace", {
+		const workspaceResult = await apiFetch<{workspaceId: string}>("/api/workspace", {
 			method: "POST",
 			body: JSON.stringify({fileId: fileResult.data}),
 			headers: [["Content-Type", "application/json"] as [string, string]],
@@ -44,7 +44,7 @@ function NewFile({onCreated}: NewFileProps): JSX.Element {
 		}
 
 		showToast("success", "New file created!");
-		navigate(`/collab/${workspaceResult.data.sessionId}`);
+		navigate(`/collab/${workspaceResult.data.workspaceId}`);
 	}
 
 	return (
