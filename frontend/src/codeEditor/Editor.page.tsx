@@ -1,7 +1,7 @@
 import {useParams} from "react-router";
 import type {WorkspaceInfo} from "#shared/src/types";
 import {useEffect, useMemo, useState} from "react";
-import {CollabConnection} from "./collabClient";
+import {CollabConnection, leaveWorkspace} from "./collabClient";
 import {apiFetch} from "../utils";
 import FilePicker from "./FilePicker";
 import Editor from "./Editor";
@@ -52,8 +52,10 @@ export default function EditorPage() {
 	}, [connection, user.id]);
 
 	useEffect(() => {
+		if (!connection) return;
 		return function cleanup() {
-			connection?.disconnect();
+			void leaveWorkspace(connection);
+			connection.disconnect();
 		};
 	}, [connection]);
 

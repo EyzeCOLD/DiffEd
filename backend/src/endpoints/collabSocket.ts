@@ -19,7 +19,7 @@ import type {
 
 const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
 // Gives users time to refresh, recover from a network blip, or navigate back before collab state is flushed
-const WORKSPACE_DESTROY_GRACE_MS = 3000;
+const WORKSPACE_DESTROY_GRACE_MS = 10_000;
 
 type LiveDocState = {
 	ownerId: number;
