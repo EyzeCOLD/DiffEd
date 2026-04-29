@@ -1,76 +1,76 @@
-import {Button} from "../components/Button";
-import {Input} from "../components/Input";
-import {useState, useEffect} from "react";
-import type {SubmitEvent} from "react";
-import {useNavigate} from "react-router";
-import {getSession, apiFetch} from "#/src/utils.ts";
-import {useShowToast} from "#/src/layout/toastStore.ts";
-import type {ApiResponse} from "#shared/src/types.js";
+import { Button } from "../components/Button";
+import { Input } from "../components/Input";
+import { useState, useEffect } from "react";
+import type { SubmitEvent } from "react";
+import { useNavigate } from "react-router";
+import { getSession, apiFetch } from "#/src/utils.ts";
+import { useShowToast } from "#/src/layout/toastStore.ts";
+import type { ApiResponse } from "#shared/src/types.js";
 
 export default function LoginPage() {
-	const [loginIdentifier, setLoginIdentifier] = useState("");
-	const [loginPassword, setLoginPassword] = useState("");
-	const navigate = useNavigate();
-	const showToast = useShowToast();
+    const [loginIdentifier, setLoginIdentifier] = useState("");
+    const [loginPassword, setLoginPassword] = useState("");
+    const navigate = useNavigate();
+    const showToast = useShowToast();
 
-	useEffect(() => {
-		getSession().then((isLoggedIn) => {
-			if (isLoggedIn) {
-				navigate("/dashboard");
-			}
-		});
-	}, [navigate]);
+    useEffect(() => {
+        getSession().then((isLoggedIn) => {
+            if (isLoggedIn) {
+                navigate("/dashboard");
+            }
+        });
+    }, [navigate]);
 
-	async function login(event: SubmitEvent<HTMLFormElement>) {
-		event.preventDefault();
+    async function login(event: SubmitEvent<HTMLFormElement>) {
+        event.preventDefault();
 
-		if (!loginIdentifier || !loginPassword) {
-			return showToast("error", "Please fill all the fields.");
-		}
+        if (!loginIdentifier || !loginPassword) {
+            return showToast("error", "Please fill all the fields.");
+        }
 
-		const response: ApiResponse<null> = await apiFetch("/api/session", {
-			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			credentials: "include",
-			body: JSON.stringify({loginIdentifier, password: loginPassword}),
-		});
-		if (!response.ok) {
-			return showToast("error", `Login failed. ${response.error}`);
-		}
-		showToast("success", "Login successful");
-		navigate("/dashboard");
-	}
+        const response: ApiResponse<null> = await apiFetch("/api/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ loginIdentifier, password: loginPassword }),
+        });
+        if (!response.ok) {
+            return showToast("error", `Login failed. ${response.error}`);
+        }
+        showToast("success", "Login successful");
+        navigate("/dashboard");
+    }
 
-	//should we use maxlength for the input fields?
-	return (
-		<div>
-			<div>Welcome to the login page</div>
-			<form onSubmit={login}>
-				<div>
-					<Input
-						placeholder="username or email"
-						value={loginIdentifier}
-						onChange={(e) => setLoginIdentifier(e.target.value)}
-					/>
-				</div>
-				<div>
-					<Input
-						placeholder="password"
-						type="password"
-						value={loginPassword}
-						onChange={(e) => setLoginPassword(e.target.value)}
-					/>
-				</div>
-				<div>
-					<Button type="submit">Log In</Button>
-				</div>
-			</form>
-			<div>
-				Don't have an account? Create one&nbsp;
-				<button onClick={() => navigate("/signup")} className="hover:text-accent font-bold underline cursor-pointer">
-					here
-				</button>
-			</div>
-		</div>
-	);
+    //should we use maxlength for the input fields?
+    return (
+        <div>
+            <div>Welcome to the login page</div>
+            <form onSubmit={login}>
+                <div>
+                    <Input
+                        placeholder="username or email"
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <Input
+                        placeholder="password"
+                        type="password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <Button type="submit">Log In</Button>
+                </div>
+            </form>
+            <div>
+                Don't have an account? Create one&nbsp;
+                <button onClick={() => navigate("/signup")} className="hover:text-accent font-bold underline cursor-pointer">
+                    here
+                </button>
+            </div>
+        </div>
+    );
 }

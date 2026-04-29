@@ -35,15 +35,12 @@ function loginUser(app: Express) {
             }
             // Generate a session and add requesting users id to the session
             req.session.regenerate((error) => {
-                if (error) {
-                    return res.status(500).json({ ok: false, error: "Session error" });
-                }
+                if (error) return res.status(500).json({ ok: false, error: "Session error" });
 
                 req.session.userId = user.id;
                 req.session.save((error) => {
                     if (error) return res.status(500).json({ ok: false, error: "Session save failed" });
                 });
-                console.log("I'm here!!")
             });
             res.status(200).json({ ok: true, data: null });
         } catch (error: unknown) {
