@@ -1,20 +1,20 @@
 import path from "node:path";
 import express from "express";
-import {createServer} from "node:http";
-import {Server} from "socket.io";
+import { createServer } from "node:http";
+import { Server } from "socket.io";
 import helmetSecurity from "helmet";
-import {postgres} from "./postgres.js";
+import { postgres } from "./postgres.js";
 import sessionConfig from "./sessionConfig.js";
-import {timestampedLog} from "./logging.js";
+import { timestampedLog } from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import UserEndpoints from "./endpoints/users.js";
 import SessionEndpoints from "./endpoints/sessions.js";
 
-import {collabSocket} from "./endpoints/collabSocket.js";
+import { collabSocket } from "./endpoints/collabSocket.js";
 
 const api = express();
 const server = createServer(api);
-const sockets = new Server(server, {cors: {origin: "*"}});
+const sockets = new Server(server, { cors: { origin: "*" } });
 collabSocket(sockets, postgres);
 
 api.use(sessionConfig);
@@ -38,10 +38,10 @@ SessionEndpoints.logoutUser(api);
 SessionEndpoints.getSession(api);
 
 // Catch-all to serve the frontend, needed for subroutes.
-api.get("/*splat", function (_, response) {
-	response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));
+api.get("/*splat", function(_, response) {
+    response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));
 });
 
 server.listen(3000, () => {
-	timestampedLog("Server online at http://localhost:8080");
+    timestampedLog("Server online at http://localhost:8080");
 });
