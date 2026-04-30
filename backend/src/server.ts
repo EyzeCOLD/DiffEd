@@ -13,36 +13,36 @@ import workspaceEndpoints from "./endpoints/workspace.js";
 
 import {collabSocket} from "./endpoints/collabSocket.js";
 
-const api = express();
-const server = createServer(api);
+const app = express();
+const server = createServer(app);
 const sockets = new Server(server, {cors: {origin: "*"}});
 const collabApi = collabSocket(sockets, postgres);
 
-api.use(sessionConfig);
-api.use(express.static("../frontend/dist"));
-api.use(express.json());
-api.use(helmetSecurity());
+app.use(sessionConfig);
+app.use(express.static("../frontend/dist"));
+app.use(express.json());
+app.use(helmetSecurity());
 
-Endpoints.getFiles(api, postgres);
-Endpoints.getFileById(api, postgres);
-Endpoints.createNewFile(api, postgres);
-Endpoints.uploadFiles(api, postgres);
-Endpoints.deleteFile(api, postgres);
-Endpoints.downloadFile(api, postgres);
+Endpoints.getFiles(app, postgres);
+Endpoints.getFileById(app, postgres);
+Endpoints.createNewFile(app, postgres);
+Endpoints.uploadFiles(app, postgres);
+Endpoints.deleteFile(app, postgres);
+Endpoints.downloadFile(app, postgres);
 
-UserEndpoints.signupUser(api, postgres);
-UserEndpoints.modifyUser(api, postgres);
-UserEndpoints.deleteUser(api, postgres);
-UserEndpoints.getUser(api, postgres);
-SessionEndpoints.loginUser(api, postgres);
-SessionEndpoints.logoutUser(api);
-SessionEndpoints.getSession(api);
+UserEndpoints.signupUser(app, postgres);
+UserEndpoints.modifyUser(app, postgres);
+UserEndpoints.deleteUser(app, postgres);
+UserEndpoints.getUser(app, postgres);
+SessionEndpoints.loginUser(app, postgres);
+SessionEndpoints.logoutUser(app);
+SessionEndpoints.getSession(app);
 
-workspaceEndpoints.createWorkspace(api, collabApi);
-workspaceEndpoints.getWorkspace(api, collabApi);
+workspaceEndpoints.createWorkspace(app, collabApi);
+workspaceEndpoints.getWorkspace(app, collabApi);
 
 // Catch-all to serve the frontend, needed for subroutes.
-api.get("/*splat", function (_, response) {
+app.get("/*splat", function (_, response) {
 	response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));
 });
 
