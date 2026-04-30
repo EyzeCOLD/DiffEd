@@ -206,8 +206,20 @@ export default function Editor({connection, myOwnerId, initialMembers}: SharedEd
 				selectedPeerId={selectedPeerId}
 				onSelect={setSelectedPeerId}
 			/>
+			<form
+				className="flex gap-2 p-1"
+				onSubmit={(e) => {
+					e.preventDefault();
+					void handleRename();
+				}}
+			>
+				<Input type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} />
+				<Button type="submit" className="border px-2">
+					Rename
+				</Button>
+			</form>
 			{error ? (
-				<div className="border border-red-500 p-2 text-red-500">
+				<div className="border border-error-accent p-2 text-error-accent">
 					<div>Error initializing editor: {error}</div>
 					<Button onClick={retryInitialization} type="button">
 						Retry
@@ -215,20 +227,7 @@ export default function Editor({connection, myOwnerId, initialMembers}: SharedEd
 				</div>
 			) : isLoading ? (
 				<div className="p-2">Initializing collaborative editor...</div>
-			) : (
-				<form
-					className="flex gap-2 p-1"
-					onSubmit={(e) => {
-						e.preventDefault();
-						void handleRename();
-					}}
-				>
-					<Input type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} />
-					<Button type="submit" className="border px-2">
-						Rename
-					</Button>
-				</form>
-			)}
+			) : null}
 			<div ref={editorDomRef} className="h-full w-full" />
 			<p className="m-0 text-sm text-(--text-secondary)">{TAB_USAGE_HINT}</p>
 		</div>
