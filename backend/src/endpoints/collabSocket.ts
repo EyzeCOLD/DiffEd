@@ -240,6 +240,16 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	}
 
+	async function removeUserFromWorkspace(workspace: Workspace, userId: number): Promise<void> {
+		const fileId = workspace.memberFiles.get(userId);
+		if (!fileId) return;
+		workspace.memberFiles.delete(userId);
+		await releaseDocRef(fileId);
+		if (workspace.connectedSockets.size > 0) {
+			await broadcastMembers(workspace);
+		}
+	}
+
 	async function createWorkspaceFromFile(userId: number, fileId: string): Promise<string> {
 		// Reuse a live workspace where this user already owns this fileId.
 		for (const existing of state.workspaces.values()) {
@@ -284,15 +294,8 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 				detachSocketFromWorkspace(socket.id, workspace);
 				// Only evict if this user has no other sockets still connected to this workspace
 				const stillConnected = [...workspace.connectedSockets.values()].some((id) => id === userId);
-				if (!stillConnected && workspace.memberFiles.has(userId)) {
-					void (async () => {
-						const fileId = workspace.memberFiles.get(userId)!;
-						workspace.memberFiles.delete(userId);
-						await releaseDocRef(fileId);
-						if (workspace.connectedSockets.size > 0) {
-							await broadcastMembers(workspace);
-						}
-					})();
+				if (!stillConnected) {
+					void removeUserFromWorkspace(workspace, userId);
 				}
 				break;
 			}
@@ -353,18 +356,12 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "leaveWorkspace": {
-						const fileId = workspace.memberFiles.get(userId);
-						if (fileId) {
-							workspace.memberFiles.delete(userId);
-							await releaseDocRef(fileId);
-						}
 						socket.leave(buildWorkspaceName(workspaceId));
 						workspace.connectedSockets.delete(socket.id);
+						await removeUserFromWorkspace(workspace, userId);
 						sendResponse(true);
 						if (workspace.connectedSockets.size === 0) {
 							await destroyWorkspace(workspace);
-						} else {
-							await broadcastMembers(workspace);
 						}
 						break;
 					}
