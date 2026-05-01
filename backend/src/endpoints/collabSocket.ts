@@ -226,15 +226,8 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}, WORKSPACE_DESTROY_GRACE_MS);
 	}
 
-	function cancelWorkspaceDestroy(workspace: Workspace): void {
-		if (!workspace.destroyTimer) return;
-		clearTimeout(workspace.destroyTimer);
-		workspace.destroyTimer = null;
-	}
-
 	function attachSocketToWorkspace(socket: Socket, workspace: Workspace, userId: number): void {
 		if (workspace.connectedSockets.has(socket.id)) return;
-		cancelWorkspaceDestroy(workspace);
 		workspace.connectedSockets.set(socket.id, userId);
 		socket.join(buildWorkspaceName(workspace.workspaceId));
 	}
