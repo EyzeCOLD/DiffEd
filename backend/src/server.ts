@@ -11,12 +11,12 @@ import UserEndpoints from "./endpoints/users.js";
 import SessionEndpoints from "./endpoints/sessions.js";
 import workspaceEndpoints from "./endpoints/workspace.js";
 
-import {collabSocket} from "./endpoints/collabSocket.js";
+import {initCollabSocket} from "./endpoints/collabSocket.js";
 
 const app = express();
 const server = createServer(app);
 const sockets = new Server(server, {cors: {origin: "*"}});
-const collabApi = collabSocket(sockets, postgres);
+const collabApi = initCollabSocket(sockets, postgres);
 
 app.use(sessionConfig);
 app.use(express.static("../frontend/dist"));

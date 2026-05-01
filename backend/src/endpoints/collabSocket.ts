@@ -28,7 +28,7 @@ type LiveDocState = {
 	fileName: string;
 	doc: Text;
 	updates: Update[];
-	pending: ((value: SerializedUpdate[]) => void)[];
+	pendingUpdates: ((value: SerializedUpdate[]) => void)[];
 	pendingName: ((name: string) => void)[];
 	hasUnsavedChanges: boolean;
 	isFlushInProgress: boolean;
@@ -66,11 +66,11 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 	}
 }
 
-function workspaceRoomName(workspaceId: string): string {
+function buildWorkspaceName(workspaceId: string): string {
 	return `workspace:${workspaceId}`;
 }
 
-export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
+export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 	const state: CollabSocketState = {
 		workspaces: new Map(),
 		docs: new Map(),
@@ -95,18 +95,18 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		}
 	});
 
-	function buildWorkspaceInfo(shared: Workspace): WorkspaceInfo {
-		const members = [...shared.memberFiles.values()].flatMap((fileId) => {
+	function buildWorkspaceInfo(workspace: Workspace): WorkspaceInfo {
+		const members = [...workspace.memberFiles.values()].flatMap((fileId) => {
 			const doc = state.docs.get(fileId);
 			return doc ? [{id: doc.ownerId, username: doc.username}] : [];
 		});
-		return {id: shared.workspaceId, members};
+		return {id: workspace.workspaceId, members};
 	}
 
-	async function broadcastMembers(shared: Workspace): Promise<void> {
-		const info = buildWorkspaceInfo(shared);
-		const event: MembersChangedEvent = {workspaceId: shared.workspaceId, members: info.members};
-		sockets.to(workspaceRoomName(shared.workspaceId)).emit("membersChanged", event);
+	async function broadcastMembers(workspace: Workspace): Promise<void> {
+		const info = buildWorkspaceInfo(workspace);
+		const event: MembersChangedEvent = {workspaceId: workspace.workspaceId, members: info.members};
+		sockets.to(buildWorkspaceName(workspace.workspaceId)).emit("membersChanged", event);
 	}
 
 	async function loadOwnerDoc(userId: number, fileId: string): Promise<LiveDocState | undefined> {
@@ -123,7 +123,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 				username: row.username,
 				updates: [],
 				doc: Text.of(row.content.split("\n")),
-				pending: [],
+				pendingUpdates: [],
 				pendingName: [],
 				fileName: String(row.name),
 				hasUnsavedChanges: false,
@@ -157,13 +157,13 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			]);
 			if (updateResult.rowCount === 0) {
 				timestampedLog(`File deleted while session was active, evicting doc: ${doc.fileId}`);
-				for (const shared of state.workspaces.values()) {
-					if (shared.memberFiles.get(doc.ownerId) === doc.fileId) {
-						shared.memberFiles.delete(doc.ownerId);
+				for (const workspace of state.workspaces.values()) {
+					if (workspace.memberFiles.get(doc.ownerId) === doc.fileId) {
+						workspace.memberFiles.delete(doc.ownerId);
 					}
 				}
 				state.docs.delete(doc.fileId);
-				drainPending(doc.pending, []);
+				drainPending(doc.pendingUpdates, []);
 				drainPending(doc.pendingName, doc.fileName);
 				doc.isFlushInProgress = false;
 				return;
@@ -172,7 +172,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			}
 		} catch (error) {
 			doc.hasUnsavedChanges = true;
-			timestampedLog(`Error persisting collab doc ${doc.fileId}: ${String(error)}`);
+			timestampedLog(`Error saving collab doc ${doc.fileId}: ${String(error)}`);
 		}
 
 		doc.isFlushInProgress = false;
@@ -205,45 +205,45 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			await flushDoc(doc);
 		}
 		// Release any long-polling pullUpdates/pullFileName waiters so their clients fall through to the next cycle.
-		drainPending(doc.pending, []);
+		drainPending(doc.pendingUpdates, []);
 		drainPending(doc.pendingName, doc.fileName);
 	}
 
-	async function destroyWorkspace(shared: Workspace): Promise<void> {
-		state.workspaces.delete(shared.workspaceId);
-		for (const fileId of shared.memberFiles.values()) {
+	async function destroyWorkspace(workspace: Workspace): Promise<void> {
+		state.workspaces.delete(workspace.workspaceId);
+		for (const fileId of workspace.memberFiles.values()) {
 			await releaseDocRef(fileId);
 		}
 	}
 
-	function scheduleWorkspaceDestroy(shared: Workspace): void {
-		if (shared.destroyTimer) return;
-		shared.destroyTimer = setTimeout(() => {
-			shared.destroyTimer = null;
+	function scheduleWorkspaceDestroy(workspace: Workspace): void {
+		if (workspace.destroyTimer) return;
+		workspace.destroyTimer = setTimeout(() => {
+			workspace.destroyTimer = null;
 			// Someone reconnected during the grace window — skip destruction.
-			if (shared.connectedSockets.size > 0) return;
-			void destroyWorkspace(shared);
+			if (workspace.connectedSockets.size > 0) return;
+			void destroyWorkspace(workspace);
 		}, WORKSPACE_DESTROY_GRACE_MS);
 	}
 
-	function cancelWorkspaceDestroy(shared: Workspace): void {
-		if (!shared.destroyTimer) return;
-		clearTimeout(shared.destroyTimer);
-		shared.destroyTimer = null;
+	function cancelWorkspaceDestroy(workspace: Workspace): void {
+		if (!workspace.destroyTimer) return;
+		clearTimeout(workspace.destroyTimer);
+		workspace.destroyTimer = null;
 	}
 
-	function attachSocketToWorkspace(socket: Socket, shared: Workspace, userId: number): void {
-		if (shared.connectedSockets.has(socket.id)) return;
-		cancelWorkspaceDestroy(shared);
-		shared.connectedSockets.set(socket.id, userId);
-		socket.join(workspaceRoomName(shared.workspaceId));
+	function attachSocketToWorkspace(socket: Socket, workspace: Workspace, userId: number): void {
+		if (workspace.connectedSockets.has(socket.id)) return;
+		cancelWorkspaceDestroy(workspace);
+		workspace.connectedSockets.set(socket.id, userId);
+		socket.join(buildWorkspaceName(workspace.workspaceId));
 	}
 
-	function detachSocketFromWorkspace(socketId: string, shared: Workspace): void {
-		if (!shared.connectedSockets.has(socketId)) return;
-		shared.connectedSockets.delete(socketId);
-		if (shared.connectedSockets.size === 0) {
-			scheduleWorkspaceDestroy(shared);
+	function detachSocketFromWorkspace(socketId: string, workspace: Workspace): void {
+		if (!workspace.connectedSockets.has(socketId)) return;
+		workspace.connectedSockets.delete(socketId);
+		if (workspace.connectedSockets.size === 0) {
+			scheduleWorkspaceDestroy(workspace);
 		}
 	}
 
@@ -263,41 +263,41 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		state.docs.get(fileId)!.refCount++;
 
 		const workspaceId = crypto.randomUUID();
-		const shared: Workspace = {
+		const workspace: Workspace = {
 			workspaceId: workspaceId,
 			memberFiles: new Map([[userId, fileId]]),
 			connectedSockets: new Map(),
 			destroyTimer: null,
 		};
 		// Give the creator time to navigate and open a socket before we'd auto-clean.
-		scheduleWorkspaceDestroy(shared);
-		state.workspaces.set(workspaceId, shared);
+		scheduleWorkspaceDestroy(workspace);
+		state.workspaces.set(workspaceId, workspace);
 		return workspaceId;
 	}
 
 	function getWorkspaceInfo(workspaceId: string): WorkspaceInfo | undefined {
-		const shared = state.workspaces.get(workspaceId);
-		if (!shared) return undefined;
-		return buildWorkspaceInfo(shared);
+		const workspace = state.workspaces.get(workspaceId);
+		if (!workspace) return undefined;
+		return buildWorkspaceInfo(workspace);
 	}
 
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
 
 		socket.on("disconnect", () => {
-			for (const shared of state.workspaces.values()) {
-				if (!shared.connectedSockets.has(socket.id)) continue;
+			for (const workspace of state.workspaces.values()) {
+				if (!workspace.connectedSockets.has(socket.id)) continue;
 				const userId = socket.data.userId as number;
-				detachSocketFromWorkspace(socket.id, shared);
+				detachSocketFromWorkspace(socket.id, workspace);
 				// Only evict if this user has no other sockets still connected to this workspace
-				const stillConnected = [...shared.connectedSockets.values()].some((id) => id === userId);
-				if (!stillConnected && shared.memberFiles.has(userId)) {
+				const stillConnected = [...workspace.connectedSockets.values()].some((id) => id === userId);
+				if (!stillConnected && workspace.memberFiles.has(userId)) {
 					void (async () => {
-						const fileId = shared.memberFiles.get(userId)!;
-						shared.memberFiles.delete(userId);
+						const fileId = workspace.memberFiles.get(userId)!;
+						workspace.memberFiles.delete(userId);
 						await releaseDocRef(fileId);
-						if (shared.connectedSockets.size > 0) {
-							await broadcastMembers(shared);
+						if (workspace.connectedSockets.size > 0) {
+							await broadcastMembers(workspace);
 						}
 					})();
 				}
@@ -319,19 +319,19 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 					return;
 				}
 
-				const shared = state.workspaces.get(workspaceId);
-				if (!shared) {
+				const workspace = state.workspaces.get(workspaceId);
+				if (!workspace) {
 					sendResponse({error: "Workspace not found"} satisfies ErrorResponse);
 					return;
 				}
 
 				if (!socket.connected) return;
 
-				attachSocketToWorkspace(socket, shared, userId);
+				attachSocketToWorkspace(socket, workspace, userId);
 
 				switch (type) {
 					case "pickFile": {
-						if (shared.memberFiles.has(userId)) {
+						if (workspace.memberFiles.has(userId)) {
 							sendResponse({
 								error: "You have already picked a file for this session",
 							} satisfies ErrorResponse);
@@ -350,33 +350,33 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 							if (!state.docs.has(data.fileId)) state.docs.set(data.fileId, doc);
 						}
 						state.docs.get(data.fileId)!.refCount++;
-						shared.memberFiles.set(userId, data.fileId);
+						workspace.memberFiles.set(userId, data.fileId);
 						sendResponse(true);
 						try {
-							await broadcastMembers(shared);
+							await broadcastMembers(workspace);
 						} catch (err) {
 							timestampedLog(`Failed to broadcast members after pickFile: ${String(err)}`);
 						}
 						break;
 					}
 					case "leaveWorkspace": {
-						const fileId = shared.memberFiles.get(userId);
+						const fileId = workspace.memberFiles.get(userId);
 						if (fileId) {
-							shared.memberFiles.delete(userId);
+							workspace.memberFiles.delete(userId);
 							await releaseDocRef(fileId);
 						}
-						socket.leave(workspaceRoomName(workspaceId));
-						shared.connectedSockets.delete(socket.id);
+						socket.leave(buildWorkspaceName(workspaceId));
+						workspace.connectedSockets.delete(socket.id);
 						sendResponse(true);
-						if (shared.connectedSockets.size === 0) {
-							await destroyWorkspace(shared);
+						if (workspace.connectedSockets.size === 0) {
+							await destroyWorkspace(workspace);
 						} else {
-							await broadcastMembers(shared);
+							await broadcastMembers(workspace);
 						}
 						break;
 					}
 					case "getInitialDocument": {
-						const doc = state.docs.get(shared.memberFiles.get(data.ownerId) ?? "");
+						const doc = state.docs.get(workspace.memberFiles.get(data.ownerId) ?? "");
 						if (!doc) {
 							sendResponse({error: "Doc empty"} satisfies ErrorResponse);
 							break;
@@ -389,7 +389,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pullUpdates": {
-						const doc = state.docs.get(shared.memberFiles.get(data.ownerId) ?? "");
+						const doc = state.docs.get(workspace.memberFiles.get(data.ownerId) ?? "");
 						if (!doc) {
 							sendResponse({error: "Doc empty"} satisfies ErrorResponse);
 							break;
@@ -397,7 +397,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						if (data.version < doc.updates.length) {
 							sendResponse(serializeUpdates(doc.updates.slice(data.version)));
 						} else if (data.version === doc.updates.length) {
-							doc.pending.push((newUpdates: SerializedUpdate[]) => {
+							doc.pendingUpdates.push((newUpdates: SerializedUpdate[]) => {
 								sendResponse(newUpdates satisfies SerializedUpdate[]);
 							});
 						} else {
@@ -406,7 +406,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pushUpdates": {
-						const doc = state.docs.get(shared.memberFiles.get(userId) ?? "");
+						const doc = state.docs.get(workspace.memberFiles.get(userId) ?? "");
 						if (!doc) {
 							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
 							break;
@@ -437,12 +437,12 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						scheduleFlush(doc);
 
 						if (received.length) {
-							drainPending(doc.pending, serializeUpdates(received));
+							drainPending(doc.pendingUpdates, serializeUpdates(received));
 						}
 						break;
 					}
 					case "pullFileName": {
-						const doc = state.docs.get(shared.memberFiles.get(userId) ?? "");
+						const doc = state.docs.get(workspace.memberFiles.get(userId) ?? "");
 						if (!doc) {
 							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
 							break;
@@ -455,7 +455,7 @@ export function collabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						break;
 					}
 					case "pushFileName": {
-						const doc = state.docs.get(shared.memberFiles.get(userId) ?? "");
+						const doc = state.docs.get(workspace.memberFiles.get(userId) ?? "");
 						if (!doc) {
 							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
 							break;
