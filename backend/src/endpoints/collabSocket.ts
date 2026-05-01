@@ -109,7 +109,12 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		sockets.to(buildWorkspaceName(workspace.workspaceId)).emit("membersChanged", event);
 	}
 
-	async function loadOwnerDoc(userId: number, fileId: string): Promise<LiveDocState | undefined> {
+	async function loadDoc(userId: number, fileId: string): Promise<LiveDocState | undefined> {
+		const cached = state.docs.get(fileId);
+		if (cached) {
+			cached.refCount++;
+			return cached;
+		}
 		try {
 			const result = await db.query<Pick<UserFile, "name" | "content"> & Pick<User, "username">>(
 				"SELECT name, content, username FROM files JOIN users ON users.id = owner_id WHERE files.id = $1 AND owner_id = $2",
@@ -117,7 +122,13 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			);
 			if (result.rowCount !== 1) return undefined;
 			const row = result.rows[0];
-			return {
+			// Another caller might've raced us while waiting for the DB - if so, reuse their loaded doc
+			const existing = state.docs.get(fileId);
+			if (existing) {
+				existing.refCount++;
+				return existing;
+			}
+			const doc: LiveDocState = {
 				fileId,
 				ownerId: userId,
 				username: row.username,
@@ -129,8 +140,10 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 				hasUnsavedChanges: false,
 				isFlushInProgress: false,
 				dbSaveDebounceTimer: null,
-				refCount: 0,
+				refCount: 1,
 			};
+			state.docs.set(fileId, doc);
+			return doc;
 		} catch (error) {
 			timestampedLog(`Error loading collab doc for user ${userId}, file ${fileId}: ${String(error)}`);
 			return undefined;
@@ -258,12 +271,8 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			}
 		}
 
-		if (!state.docs.has(fileId)) {
-			const doc = await loadOwnerDoc(userId, fileId);
-			if (!doc) throw new Error("File not found or not owned by user");
-			if (!state.docs.has(fileId)) state.docs.set(fileId, doc);
-		}
-		state.docs.get(fileId)!.refCount++;
+		const doc = await loadDoc(userId, fileId);
+		if (!doc) throw new Error("File not found or not owned by user");
 
 		const workspaceId = crypto.randomUUID();
 		const workspace: Workspace = {
@@ -337,15 +346,11 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 							sendResponse({error: "Invalid file ID"} satisfies ErrorResponse);
 							break;
 						}
-						if (!state.docs.has(data.fileId)) {
-							const doc = await loadOwnerDoc(userId, data.fileId);
-							if (!doc) {
-								sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
-								break;
-							}
-							if (!state.docs.has(data.fileId)) state.docs.set(data.fileId, doc);
+						const doc = await loadDoc(userId, data.fileId);
+						if (!doc) {
+							sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
+							break;
 						}
-						state.docs.get(data.fileId)!.refCount++;
 						workspace.memberFiles.set(userId, data.fileId);
 						sendResponse(true);
 						try {
