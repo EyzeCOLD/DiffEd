@@ -33,16 +33,11 @@ function getWorkspace(app: Express, api: CollabSocketApi) {
 				return res.status(400).json({ok: false, error: "Invalid workspace ID"});
 			}
 
-			try {
-				const info = api.getWorkspaceInfo(parsed.data, req.session.userId!);
-				if (!info) {
-					return res.status(404).json({ok: false, error: "Workspace not found"});
-				}
-				return res.status(200).json({ok: true, data: info});
-			} catch (error) {
-				timestampedLog(`Failed to get workspace: ${String(error)}`);
-				return res.status(500).json({ok: false, error: "Internal server error"});
+			const info = api.getWorkspaceInfo(parsed.data, req.session.userId!);
+			if (!info) {
+				return res.status(404).json({ok: false, error: "Workspace not found"});
 			}
+			return res.status(200).json({ok: true, data: info});
 		},
 	);
 }

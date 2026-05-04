@@ -20,20 +20,16 @@ function FileList({
 	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
 
 	async function startSessionFromFile(file: UserFile) {
-		try {
-			const response = await apiFetch<{workspaceId: string}>("/api/workspace", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({fileId: file.id}),
-			});
-			if (!response.ok) {
-				showToast("error", response.error);
-				return;
-			}
-			navigate(`/collab/${response.data.workspaceId}`);
-		} catch (err) {
-			showToast("error", err instanceof Error ? err.message : "Failed to open file");
+		const response = await apiFetch<{workspaceId: string}>("/api/workspace", {
+			method: "POST",
+			headers: {"Content-Type": "application/json"},
+			body: JSON.stringify({fileId: file.id}),
+		});
+		if (!response.ok) {
+			showToast("error", response.error);
+			return;
 		}
+		navigate(`/collab/${response.data.workspaceId}`);
 	}
 
 	async function handleDownload(file: UserFile) {
