@@ -17,7 +17,7 @@ function FileList({
 	const showToast = useShowToast();
 
 	if (!fileList) return <p>Loading really slow...</p>;
-	if (fileList.length === 0) return <p>You lead a fileless existence.</p>;
+	if (fileList.length === 0) return <p>No files to show.</p>;
 
 	async function startSessionFromFile(file: UserFile) {
 		const response = await apiFetch<{workspaceId: string}>("/api/workspace", {
