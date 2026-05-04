@@ -6,25 +6,51 @@ import type {Request, Response, NextFunction} from "express";
 import {timestampedLog} from "../logging.js";
 import sessionConfig from "../sessionConfig.js";
 import type {
+	User,
+	UserFile,
 	CollabRequest,
 	DocumentResponse,
 	ErrorResponse,
+	MembersChangedEvent,
 	NameUpdateResponse,
 	SerializedUpdate,
-	UserFile,
+	WorkspaceInfo,
 } from "#shared/src/types.js";
 
 const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
+// Gives users time to refresh, recover from a network blip, or navigate back before collab state is flushed
+const WORKSPACE_DESTROY_GRACE_MS = 10_000;
 
-type CollabSession = {
-	updates: Update[];
-	doc: Text;
-	pending: ((value: SerializedUpdate[]) => void)[];
+type LiveDocState = {
+	ownerId: number;
+	username: string;
+	fileId: string;
 	fileName: string;
-	connectedSockets: Set<string>;
+	doc: Text;
+	updates: Update[];
+	pendingUpdates: ((value: SerializedUpdate[]) => void)[];
+	pendingName: ((name: string) => void)[];
 	hasUnsavedChanges: boolean;
 	isFlushInProgress: boolean;
 	dbSaveDebounceTimer: ReturnType<typeof setTimeout> | null;
+	refCount: number;
+};
+
+type Workspace = {
+	workspaceId: string;
+	memberFiles: Map<number, string>;
+	connectedSockets: Map<string, number>;
+	destroyTimer: ReturnType<typeof setTimeout> | null;
+};
+
+type CollabSocketState = {
+	workspaces: Map<string, Workspace>;
+	docs: Map<string, LiveDocState>;
+};
+
+export type CollabSocketApi = {
+	createWorkspaceFromFile: (userId: number, fileId: string) => Promise<string>;
+	getWorkspaceInfo: (workspaceId: string, userId?: number) => WorkspaceInfo | undefined;
 };
 
 function serializeUpdates(updates: readonly Update[]): SerializedUpdate[] {
@@ -40,8 +66,15 @@ function drainPending<T>(pending: Array<(value: T) => void>, value: T): void {
 	}
 }
 
-function collabSocket(sockets: Server, db: Pool) {
-	const sessions = new Map<string, CollabSession>();
+function buildWorkspaceName(workspaceId: string): string {
+	return `workspace:${workspaceId}`;
+}
+
+export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
+	const state: CollabSocketState = {
+		workspaces: new Map(),
+		docs: new Map(),
+	};
 
 	// After this runs, socket.request.session is populated from the session store exactly as it would be for an HTTP request.
 	function middlewareAdapter(expressMiddleware: (req: Request, res: Response, next: NextFunction) => void) {
@@ -51,7 +84,7 @@ function collabSocket(sockets: Server, db: Pool) {
 	}
 	sockets.use(middlewareAdapter(sessionConfig));
 
-	// Populates socket.data.userId for authentication, or rejects the connection if there is no authenticated user. This runs after the session Express middleware,
+	// Populates socket.data.userId for authentication, or rejects the connection if there is no authenticated user.
 	sockets.use((socket, next) => {
 		const userId = (socket.request as Request).session?.userId;
 		if (!userId) {
@@ -62,199 +95,304 @@ function collabSocket(sockets: Server, db: Pool) {
 		}
 	});
 
-	async function getSession(fileId: string, userId: number): Promise<CollabSession | undefined> {
-		const session = sessions.get(fileId);
-		if (session) {
-			return session;
-		}
-
-		let doc = Text.empty;
-		let fileName = "";
-		try {
-			const result = await db.query<Pick<UserFile, "name" | "content">>(
-				"SELECT name, content FROM files WHERE id = $1 AND owner_id = $2",
-				[fileId, userId],
-			);
-			if (!result.rowCount) {
-				sessions.delete(fileId);
-				return undefined;
-			} else if (result.rowCount === 1) {
-				doc = Text.of((result.rows[0].content ?? "").split("\n"));
-				fileName = String(result.rows[0].name ?? fileName);
-			} else {
-				timestampedLog(`Found ${result.rowCount} for collab document ${fileId}`);
-				sessions.delete(fileId);
-				return undefined;
-			}
-		} catch (error) {
-			timestampedLog(`Error loading collab document ${fileId}: ${String(error)}`);
-			sessions.delete(fileId);
-			return undefined;
-		}
-
-		const created: CollabSession = {
-			updates: [],
-			doc,
-			pending: [],
-			fileName,
-			connectedSockets: new Set(),
-			hasUnsavedChanges: false,
-			isFlushInProgress: false,
-			dbSaveDebounceTimer: null,
-		};
-
-		sessions.set(fileId, created);
-		return created;
+	function buildWorkspaceInfo(workspace: Workspace): WorkspaceInfo {
+		const members = [...workspace.memberFiles.values()].flatMap((fileId) => {
+			const doc = state.docs.get(fileId);
+			return doc ? [{id: doc.ownerId, username: doc.username}] : [];
+		});
+		return {id: workspace.workspaceId, members};
 	}
 
-	async function flushSession(fileId: string) {
-		const session = sessions.get(fileId);
-		if (!session) {
-			return;
-		}
+	async function broadcastMembers(workspace: Workspace): Promise<void> {
+		const info = buildWorkspaceInfo(workspace);
+		const event: MembersChangedEvent = {workspaceId: workspace.workspaceId, members: info.members};
+		sockets.to(buildWorkspaceName(workspace.workspaceId)).emit("membersChanged", event);
+	}
 
+	async function loadDoc(userId: number, fileId: string): Promise<LiveDocState | undefined> {
+		const cached = state.docs.get(fileId);
+		if (cached) {
+			cached.refCount++;
+			return cached;
+		}
+		try {
+			const result = await db.query<Pick<UserFile, "name" | "content"> & Pick<User, "username">>(
+				"SELECT name, content, username FROM files JOIN users ON users.id = owner_id WHERE files.id = $1 AND owner_id = $2",
+				[fileId, userId],
+			);
+			if (result.rowCount !== 1) return undefined;
+			const row = result.rows[0];
+			// Another caller might've raced us while waiting for the DB - if so, reuse their loaded doc
+			const existing = state.docs.get(fileId);
+			if (existing) {
+				existing.refCount++;
+				return existing;
+			}
+			const doc: LiveDocState = {
+				fileId,
+				ownerId: userId,
+				username: row.username,
+				updates: [],
+				doc: Text.of(row.content.split("\n")),
+				pendingUpdates: [],
+				pendingName: [],
+				fileName: String(row.name),
+				hasUnsavedChanges: false,
+				isFlushInProgress: false,
+				dbSaveDebounceTimer: null,
+				refCount: 1,
+			};
+			state.docs.set(fileId, doc);
+			return doc;
+		} catch (error) {
+			timestampedLog(`Error loading collab doc for user ${userId}, file ${fileId}: ${String(error)}`);
+			return undefined;
+		}
+	}
+
+	async function flushDoc(doc: LiveDocState): Promise<void> {
 		// The callback that fired is no longer pending once we start processing it
-		session.dbSaveDebounceTimer = null;
+		doc.dbSaveDebounceTimer = null;
 		// `isFlushInProgress` prevents overlapping DB writes
 		// `hasUnsavedChanges` skips stale callbacks when there is nothing left to save
-		if (session.isFlushInProgress || !session.hasUnsavedChanges) {
-			return;
-		}
+		if (doc.isFlushInProgress || !doc.hasUnsavedChanges) return;
 
-		session.isFlushInProgress = true;
-
-		session.hasUnsavedChanges = false;
-		const content = session.doc.toString();
-		const fileName = session.fileName;
+		doc.isFlushInProgress = true;
+		doc.hasUnsavedChanges = false;
+		const content = doc.doc.toString();
+		const fileName = doc.fileName;
 
 		try {
 			const updateResult = await db.query("UPDATE files SET name = $1, content = $2 WHERE id = $3", [
 				fileName,
 				content,
-				fileId,
+				doc.fileId,
 			]);
 			if (updateResult.rowCount === 0) {
-				timestampedLog(`No file found to update for collab document ${fileId}`);
-				sessions.delete(fileId);
-				session.isFlushInProgress = false;
+				timestampedLog(`File deleted while session was active, evicting doc: ${doc.fileId}`);
+				for (const workspace of state.workspaces.values()) {
+					if (workspace.memberFiles.get(doc.ownerId) === doc.fileId) {
+						workspace.memberFiles.delete(doc.ownerId);
+					}
+				}
+				state.docs.delete(doc.fileId);
+				drainPending(doc.pendingUpdates, []);
+				drainPending(doc.pendingName, doc.fileName);
+				doc.isFlushInProgress = false;
 				return;
 			} else if (updateResult.rowCount! > 1) {
-				timestampedLog(`Multiple files updated for collab document ${fileId}`);
-				sessions.delete(fileId);
-				session.isFlushInProgress = false;
-				return;
+				timestampedLog(`Multiple files updated for collab doc ${doc.fileId}`);
 			}
 		} catch (error) {
-			session.hasUnsavedChanges = true;
-			timestampedLog(`Error persisting collab document ${fileId}: ${String(error)}`);
+			doc.hasUnsavedChanges = true;
+			timestampedLog(`Error saving collab doc ${doc.fileId}: ${String(error)}`);
 		}
 
-		session.isFlushInProgress = false;
+		doc.isFlushInProgress = false;
 
-		// If new changes arrived while we were awaiting the DB, keep the session alive until that work is persisted;
-		// otherwise, a stale timer can be cleared and the empty session deleted once no clients remain.
-		if (session.hasUnsavedChanges) {
-			if (!session.dbSaveDebounceTimer) {
-				session.dbSaveDebounceTimer = setTimeout(() => {
-					void flushSession(fileId);
-				}, DATABASE_SAVE_DEBOUNCE_TIME);
+		// If new changes arrived while we were awaiting the DB, reschedule.
+		if (doc.hasUnsavedChanges && !doc.dbSaveDebounceTimer) {
+			scheduleFlush(doc);
+		}
+	}
+
+	function scheduleFlush(doc: LiveDocState): void {
+		doc.hasUnsavedChanges = true;
+		if (doc.dbSaveDebounceTimer) {
+			clearTimeout(doc.dbSaveDebounceTimer);
+		}
+		doc.dbSaveDebounceTimer = setTimeout(() => void flushDoc(doc), DATABASE_SAVE_DEBOUNCE_TIME);
+	}
+
+	async function releaseDocRef(fileId: string): Promise<void> {
+		const doc = state.docs.get(fileId);
+		if (!doc || --doc.refCount > 0) return;
+
+		state.docs.delete(fileId);
+
+		if (doc.dbSaveDebounceTimer) {
+			clearTimeout(doc.dbSaveDebounceTimer);
+			doc.dbSaveDebounceTimer = null;
+		}
+		if (doc.hasUnsavedChanges || doc.isFlushInProgress) {
+			await flushDoc(doc);
+		}
+		// Release any long-polling pullUpdates/pullFileName waiters so their clients fall through to the next cycle.
+		drainPending(doc.pendingUpdates, []);
+		drainPending(doc.pendingName, doc.fileName);
+	}
+
+	async function destroyWorkspace(workspace: Workspace): Promise<void> {
+		state.workspaces.delete(workspace.workspaceId);
+		for (const fileId of workspace.memberFiles.values()) {
+			await releaseDocRef(fileId);
+		}
+	}
+
+	function scheduleWorkspaceDestroy(workspace: Workspace): void {
+		if (workspace.destroyTimer) return;
+		workspace.destroyTimer = setTimeout(() => {
+			workspace.destroyTimer = null;
+			// Someone reconnected during the grace window — skip destruction.
+			if (workspace.connectedSockets.size > 0) return;
+			void destroyWorkspace(workspace);
+		}, WORKSPACE_DESTROY_GRACE_MS);
+	}
+
+	function attachSocketToWorkspace(socket: Socket, workspace: Workspace, userId: number): void {
+		if (workspace.connectedSockets.has(socket.id)) return;
+		workspace.connectedSockets.set(socket.id, userId);
+		socket.join(buildWorkspaceName(workspace.workspaceId));
+	}
+
+	function detachSocketFromWorkspace(socketId: string, workspace: Workspace): void {
+		if (!workspace.connectedSockets.has(socketId)) return;
+		workspace.connectedSockets.delete(socketId);
+		if (workspace.connectedSockets.size === 0) {
+			scheduleWorkspaceDestroy(workspace);
+		}
+	}
+
+	async function removeUserFromWorkspace(workspace: Workspace, userId: number): Promise<void> {
+		const fileId = workspace.memberFiles.get(userId);
+		if (!fileId) return;
+		workspace.memberFiles.delete(userId);
+		await releaseDocRef(fileId);
+		if (workspace.connectedSockets.size > 0) {
+			await broadcastMembers(workspace);
+		}
+	}
+
+	async function createWorkspaceFromFile(userId: number, fileId: string): Promise<string> {
+		// Reuse a live workspace where this user already owns this fileId.
+		for (const existing of state.workspaces.values()) {
+			if (existing.memberFiles.get(userId) === fileId && existing.connectedSockets.size > 0) {
+				return existing.workspaceId;
 			}
-			return;
 		}
 
-		if (session.connectedSockets.size === 0) {
-			if (session.dbSaveDebounceTimer) {
-				clearTimeout(session.dbSaveDebounceTimer);
-				session.dbSaveDebounceTimer = null;
-			}
-			sessions.delete(fileId);
-		}
+		const doc = await loadDoc(userId, fileId);
+		if (!doc) throw new Error("File not found or not owned by user");
+
+		const workspaceId = crypto.randomUUID();
+		const workspace: Workspace = {
+			workspaceId: workspaceId,
+			memberFiles: new Map([[userId, fileId]]),
+			connectedSockets: new Map(),
+			destroyTimer: null,
+		};
+		// Give the creator time to navigate and open a socket before we'd auto-clean.
+		scheduleWorkspaceDestroy(workspace);
+		state.workspaces.set(workspaceId, workspace);
+		return workspaceId;
 	}
 
-	function scheduleFlush(fileId: string, session: CollabSession) {
-		session.hasUnsavedChanges = true;
-		if (session.dbSaveDebounceTimer) {
-			clearTimeout(session.dbSaveDebounceTimer);
-		}
-		session.dbSaveDebounceTimer = setTimeout(() => {
-			void flushSession(fileId);
-		}, DATABASE_SAVE_DEBOUNCE_TIME);
-	}
-
-	function attachSocketToSession(socketId: string, session: CollabSession) {
-		session.connectedSockets.add(socketId);
-	}
-
-	function detachSocketFromSession(fileId: string, session: CollabSession, socketId: string) {
-		session.connectedSockets.delete(socketId);
-
-		if (session.connectedSockets.size > 0) {
-			return;
-		}
-
-		if (session.dbSaveDebounceTimer) {
-			clearTimeout(session.dbSaveDebounceTimer);
-			session.dbSaveDebounceTimer = null;
-		}
-
-		if (session.isFlushInProgress || session.hasUnsavedChanges) {
-			void flushSession(fileId);
-			return;
-		}
-
-		sessions.delete(fileId);
+	function getWorkspaceInfo(workspaceId: string): WorkspaceInfo | undefined {
+		const workspace = state.workspaces.get(workspaceId);
+		if (!workspace) return undefined;
+		return buildWorkspaceInfo(workspace);
 	}
 
 	sockets.on("connection", (socket) => {
 		timestampedLog(`Client ${socket.id} connected to collab socket`);
-		// userId is guaranteed to be set — the auth middleware above rejects unauthenticated connections
-		const userId: number = socket.data.userId;
 
 		socket.on("disconnect", () => {
-			for (const [fileId, session] of sessions.entries()) {
-				if (session.connectedSockets.has(socket.id)) {
-					detachSocketFromSession(fileId, session, socket.id);
-					break;
+			for (const workspace of state.workspaces.values()) {
+				if (!workspace.connectedSockets.has(socket.id)) continue;
+				const userId = socket.data.userId as number;
+				detachSocketFromWorkspace(socket.id, workspace);
+				// Only evict if this user has no other sockets still connected to this workspace
+				const stillConnected = [...workspace.connectedSockets.values()].some((id) => id === userId);
+				if (!stillConnected) {
+					void removeUserFromWorkspace(workspace, userId);
 				}
+				break;
 			}
 		});
 
 		socket.on("collabRequest", async (data: CollabRequest) => {
-			const {id, type, fileId} = data;
+			const {requestId, type, workspaceId} = data;
+			const userId = socket.data.userId as number;
 
 			function sendResponse(result: unknown) {
-				socket.emit("collabResponse", {id, result});
+				socket.emit("collabResponse", {requestId, result});
 			}
 
 			try {
-				if (!fileId || fileId.length === 0) {
-					sendResponse({error: "Empty file ID"} satisfies ErrorResponse);
+				if (!workspaceId || typeof workspaceId !== "string") {
+					sendResponse({error: "Missing workspaceId"} satisfies ErrorResponse);
 					return;
 				}
 
-				const session = await getSession(fileId, userId);
-				if (!session) {
-					sendResponse({error: "File does not exist"} satisfies ErrorResponse);
+				const workspace = state.workspaces.get(workspaceId);
+				if (!workspace) {
+					sendResponse({error: "Workspace not found"} satisfies ErrorResponse);
 					return;
 				}
 
-				if (!socket.connected) {
-					return;
-				}
+				if (!socket.connected) return;
 
-				attachSocketToSession(socket.id, session);
+				attachSocketToWorkspace(socket, workspace, userId);
 
 				switch (type) {
-					case "pullUpdates": {
-						console.log(`Client ${socket.id} requested updates for file ${fileId} since version ${data.version}`);
-						if (session.doc.length < 0) {
-							sendResponse({error: "Document is in invalid state"} satisfies ErrorResponse);
-							return;
+					case "pickFile": {
+						if (workspace.memberFiles.has(userId)) {
+							sendResponse({
+								error: "You have already picked a file for this session",
+							} satisfies ErrorResponse);
+							break;
 						}
-						if (data.version < session.updates.length) {
-							sendResponse(serializeUpdates(session.updates.slice(data.version)));
-						} else if (data.version === session.updates.length) {
-							session.pending.push((newUpdates: SerializedUpdate[]) => {
+						if (!data.fileId || typeof data.fileId !== "string") {
+							sendResponse({error: "Invalid file ID"} satisfies ErrorResponse);
+							break;
+						}
+						const doc = await loadDoc(userId, data.fileId);
+						if (!doc) {
+							sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
+							break;
+						}
+						workspace.memberFiles.set(userId, data.fileId);
+						sendResponse(true);
+						try {
+							await broadcastMembers(workspace);
+						} catch (err) {
+							timestampedLog(`Failed to broadcast members after pickFile: ${String(err)}`);
+						}
+						break;
+					}
+					case "leaveWorkspace": {
+						socket.leave(buildWorkspaceName(workspaceId));
+						workspace.connectedSockets.delete(socket.id);
+						await removeUserFromWorkspace(workspace, userId);
+						sendResponse(true);
+						if (workspace.connectedSockets.size === 0) {
+							await destroyWorkspace(workspace);
+						}
+						break;
+					}
+					case "getInitialDocument": {
+						const doc = state.docs.get(workspace.memberFiles.get(data.ownerId) ?? "");
+						if (!doc) {
+							sendResponse({error: "Doc empty"} satisfies ErrorResponse);
+							break;
+						}
+						sendResponse({
+							version: doc.updates.length,
+							doc: doc.doc.toString(),
+							fileName: doc.fileName,
+						} satisfies DocumentResponse);
+						break;
+					}
+					case "pullUpdates": {
+						const doc = state.docs.get(workspace.memberFiles.get(data.ownerId) ?? "");
+						if (!doc) {
+							sendResponse({error: "Doc empty"} satisfies ErrorResponse);
+							break;
+						}
+						if (data.version < doc.updates.length) {
+							sendResponse(serializeUpdates(doc.updates.slice(data.version)));
+						} else if (data.version === doc.updates.length) {
+							doc.pendingUpdates.push((newUpdates: SerializedUpdate[]) => {
 								sendResponse(newUpdates satisfies SerializedUpdate[]);
 							});
 						} else {
@@ -263,59 +401,79 @@ function collabSocket(sockets: Server, db: Pool) {
 						break;
 					}
 					case "pushUpdates": {
+						const doc = state.docs.get(workspace.memberFiles.get(userId) ?? "");
+						if (!doc) {
+							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
+							break;
+						}
+
+						if (doc.ownerId !== userId) {
+							sendResponse({
+								error: "You may only push updates to your own doc",
+							} satisfies ErrorResponse);
+							break;
+						}
+
 						let received: readonly Update[] = data.updates.map((json: SerializedUpdate) => ({
 							clientID: json.clientID,
 							changes: ChangeSet.fromJSON(json.changes),
 						}));
 
-						if (data.version !== session.updates.length) {
-							received = rebaseUpdates(received, session.updates.slice(data.version));
+						if (data.version !== doc.updates.length) {
+							received = rebaseUpdates(received, doc.updates.slice(data.version));
 						}
 
 						for (const update of received) {
-							session.updates.push(update);
-							session.doc = update.changes.apply(session.doc);
+							doc.updates.push(update);
+							doc.doc = update.changes.apply(doc.doc);
 						}
 
 						sendResponse(true);
-						scheduleFlush(fileId, session);
+						scheduleFlush(doc);
 
 						if (received.length) {
-							drainPending(session.pending, serializeUpdates(received));
+							drainPending(doc.pendingUpdates, serializeUpdates(received));
 						}
 						break;
 					}
-					case "getInitialDocument": {
-						sendResponse({
-							version: session.updates.length,
-							doc: session.doc.toString(),
-						} satisfies DocumentResponse);
+					case "pullFileName": {
+						const doc = state.docs.get(workspace.memberFiles.get(userId) ?? "");
+						if (!doc) {
+							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
+							break;
+						}
+						if (doc.ownerId !== userId) {
+							sendResponse({error: "You may only pull your own file name"} satisfies ErrorResponse);
+							break;
+						}
+						doc.pendingName.push((name) => sendResponse({name} satisfies NameUpdateResponse));
 						break;
 					}
 					case "pushFileName": {
-						const nextNameRaw = data.name;
-						if (typeof nextNameRaw !== "string") {
+						const doc = state.docs.get(workspace.memberFiles.get(userId) ?? "");
+						if (!doc) {
+							sendResponse({error: "No file picked for your doc"} satisfies ErrorResponse);
+							break;
+						}
+						if (typeof data.name !== "string") {
 							sendResponse({error: "Invalid file name"} satisfies ErrorResponse);
-							return;
+							break;
 						}
-
-						if (nextNameRaw !== session.fileName) {
-							session.fileName = nextNameRaw;
-							scheduleFlush(fileId, session);
+						if (data.name !== doc.fileName) {
+							doc.fileName = data.name;
+							scheduleFlush(doc);
+							drainPending(doc.pendingName, doc.fileName);
 						}
-
-						sendResponse({
-							name: session.fileName,
-						} satisfies NameUpdateResponse);
+						sendResponse({name: doc.fileName} satisfies NameUpdateResponse);
 						break;
 					}
 				}
 			} catch (error) {
-				timestampedLog(`Error handling collab request (${type}): ${error}`);
+				timestampedLog(`Error handling collab request (${type}): ${String(error)}`);
 				sendResponse({error: String(error)} satisfies ErrorResponse);
 			}
 		});
 	});
-}
 
-export {collabSocket};
+	return {createWorkspaceFromFile, getWorkspaceInfo};
+}

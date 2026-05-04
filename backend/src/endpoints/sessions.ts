@@ -3,7 +3,7 @@ import {type Pool} from "pg";
 import argon2 from "argon2";
 import rateLimit from "express-rate-limit";
 import {timestampedLog} from "#/src/logging.js";
-import {ApiResponse} from "#shared/src/types.js";
+import {ApiResponse, User} from "#shared/src/types.js";
 import {isDbError} from "#/src/utils.js";
 import {requireAuth} from "#/src/middleware.js";
 
@@ -14,7 +14,7 @@ const limiter = rateLimit({
 });
 
 function loginUser(app: Express, db: Pool) {
-	app.post("/api/session", limiter, async (req: Request, res: Response<ApiResponse<null>>) => {
+	app.post("/api/session", limiter, async (req: Request, res: Response<ApiResponse<User>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
 		const {loginIdentifier, password} = req.body;
@@ -46,7 +46,7 @@ function loginUser(app: Express, db: Pool) {
 				req.session.save((error) => {
 					if (error) return res.status(500).json({ok: false, error: "Session save failed"});
 
-					res.status(200).json({ok: true, data: null});
+					res.status(200).json({ok: true, data: {id: user.id, username: user.username, email: user.email}});
 				});
 			});
 		} catch (error: unknown) {

@@ -3,7 +3,8 @@ import {useNavigate} from "react-router";
 import {z} from "zod";
 import {Button} from "#/src/components/Button";
 import {Input} from "#/src/components/Input";
-import {useShowToast} from "#/src/layout/toastStore";
+import {useShowToast} from "#/src/stores/toastStore";
+import {useCurrentUser, useSetUser, useUpdateUser} from "#/src/stores/userStore";
 import {apiFetch} from "#/src/utils.js";
 import type {ApiResponse, User} from "#shared/src/types.js";
 
@@ -300,42 +301,36 @@ function Delete() {
 }
 
 export default function UserManagementPage() {
-	const [user, setUser] = useState("");
-	const [email, setEmail] = useState("");
-	const [loading, setLoading] = useState(true);
+	const currentUser = useCurrentUser();
+	const setUser = useSetUser();
+	const updateUser = useUpdateUser();
+	const [loading, setLoading] = useState(!currentUser);
 	const showToast = useShowToast();
 	const navigate = useNavigate();
 
-	async function getUserData() {
-		const response: ApiResponse<User> = await apiFetch("/api/user", {
-			method: "GET",
-			headers: {"Content-Type": "application/json"},
-			credentials: "include",
-		});
-
-		if (!response.ok) {
-			showToast("error", `Error fetching user data: ${response.error}`);
-			return;
-		}
-		setUser(response.data.username);
-		setEmail(response.data.email);
-		setLoading(false);
-	}
-
 	useEffect(() => {
-		getUserData();
+		if (currentUser) return;
+
+		apiFetch<User>("/api/user", {method: "GET", credentials: "include"}).then((response) => {
+			if (!response.ok) {
+				showToast("error", `Error fetching user data: ${response.error}`);
+				return;
+			}
+			setUser(response.data);
+			setLoading(false);
+		});
 	}, [navigate]);
 
-	return loading ? (
+	return loading || !currentUser ? (
 		<div>Loading...</div>
 	) : (
 		<div>
 			<div>User Management</div>
 			<div>
-				<Username initialValue={user} onUpdate={(newUsername: string) => setUser(newUsername)} />
+				<Username initialValue={currentUser.username} onUpdate={(username) => updateUser({username})} />
 			</div>
 			<div>
-				<Email initialValue={email} onUpdate={(newEmail: string) => setEmail(newEmail)} />
+				<Email initialValue={currentUser.email} onUpdate={(email) => updateUser({email})} />
 			</div>
 			<div>
 				<Password />

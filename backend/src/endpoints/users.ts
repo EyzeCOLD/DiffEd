@@ -162,7 +162,7 @@ function getUser(app: Express, db: Pool) {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
 		const id = req.session.userId;
-		const query = "SELECT username, email FROM users WHERE id = $1";
+		const query = "SELECT id, username, email FROM users WHERE id = $1";
 		timestampedLog(`DB QUERY >>> ${query}`);
 		timestampedLog(`DB VALUES >>> ${[id]}`);
 		try {

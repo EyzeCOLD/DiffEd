@@ -1,5 +1,9 @@
 import type {ApiResponse} from "#shared/src/types.js";
 
+export function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Wrapper for fetch() that handles all the weird cases when we don't get out
 // own beautiful ApiResponse from the server
 export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promise<ApiResponse<T>> {

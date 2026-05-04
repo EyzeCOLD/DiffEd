@@ -1,6 +1,6 @@
 import {useState, useRef} from "react";
 import {Button} from "../components/Button";
-import {useShowToast} from "#/src/layout/toastStore.ts";
+import {useShowToast} from "#/src/stores/toastStore";
 import {Input} from "../components/Input";
 import {apiFetch} from "#/src/utils.js";
 import type {ApiResponse} from "#shared/src/types.ts";

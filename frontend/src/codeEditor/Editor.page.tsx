@@ -1,80 +1,75 @@
-import CodeEditor from "./CodeEditor";
-import {useNavigate, useParams} from "react-router";
-import type {UserFile} from "#shared/src/types";
+import {useParams} from "react-router";
+import type {WorkspaceInfo} from "#shared/src/types";
 import {useEffect, useMemo, useState} from "react";
-import {CollabConnection, pushFileName} from "./collabClient";
-import {Input} from "#/src/components/Input";
+import {CollabConnection, leaveWorkspace} from "./collabClient";
+import {apiFetch} from "../utils";
+import FilePicker from "./FilePicker";
+import Editor from "./Editor";
+import {useCurrentUser} from "../stores/userStore";
 
 export default function EditorPage() {
-	const [fileData, setFileData] = useState<UserFile | null>(null);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const navigate = useNavigate();
 	const params = useParams();
-	const fileId = params.fileId;
-	const connection = useMemo(() => (fileId ? new CollabConnection(fileId) : null), [fileId]);
+	const workspaceId = params.workspaceId;
+	const user = useCurrentUser()!;
 
-	function setFileName(name: string) {
-		setFileData((previous) => (previous ? {...previous, name} : previous));
-	}
+	const [sessionInfo, setSessionInfo] = useState<WorkspaceInfo | null>(null);
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [joining, setJoining] = useState(true);
+
+	const connection = useMemo(() => (workspaceId ? new CollabConnection(workspaceId) : null), [workspaceId]);
 
 	useEffect(() => {
-		fetch(`/api/files/${params.fileId}`)
+		if (!workspaceId) return;
+		let cancelled = false;
+		apiFetch<WorkspaceInfo>(`/api/workspace/${workspaceId}`)
 			.then((response) => {
-				if (!response.ok) throw `${params.fileId}`;
-				return response.json();
+				if (cancelled) return;
+				if (!response.ok) {
+					setErrorMessage(response.error);
+					return;
+				}
+				setSessionInfo(response.data);
+				setJoining(false);
 			})
-			.then((data) => {
-				setFileData(data);
-			})
-			.catch((error) => {
-				console.error("Error fetching file:", error);
-				// kick user out on error eg. file stops existing
-				navigate("/filebrowser");
+			.catch((err) => {
+				if (!cancelled) setErrorMessage(err instanceof Error ? err.message : "Failed to load session");
 			});
-	}, [params.fileId]);
+		return () => {
+			cancelled = true;
+		};
+	}, [workspaceId]);
 
 	useEffect(() => {
+		if (!connection) return;
+		const unsubscribe = connection.subscribeMembers((event) => {
+			setJoining(false);
+			setSessionInfo({
+				id: event.workspaceId,
+				members: event.members,
+			});
+		});
+		return unsubscribe;
+	}, [connection, user.id]);
+
+	useEffect(() => {
+		if (!connection) return;
 		return function cleanup() {
-			connection?.disconnect();
+			void leaveWorkspace(connection);
+			connection.disconnect();
 		};
 	}, [connection]);
 
-	if (!params.fileId) {
-		return <div>File ID is missing</div>;
+	if (!workspaceId) return <div>Session ID is missing</div>;
+	if (errorMessage) return <div className="p-4 text-red-500">{errorMessage}</div>;
+	if (joining) return <div>Joining session...</div>;
+
+	if (!connection || !sessionInfo) return <div>Failed to load session</div>;
+
+	const isMember = sessionInfo.members.some((member) => member.id === user.id);
+
+	if (!isMember) {
+		return <FilePicker connection={connection} />;
 	}
 
-	return fileData && fileId && connection ? (
-		<>
-			<label>
-				{"File Name: "}
-				<Input
-					aria-label="File name"
-					type="text"
-					value={fileData.name}
-					onChange={async (e) => {
-						const nextName = e.target.value;
-						setFileName(nextName);
-
-						try {
-							const updated = await pushFileName(connection, nextName);
-							if ("error" in updated) {
-								setErrorMessage(`Failed to update file name: ${updated.error}`);
-								return;
-							}
-						} catch (error) {
-							console.error("Failed to push file name:", error);
-						}
-					}}
-				/>
-			</label>
-			{errorMessage && <div className="text-red-500">{errorMessage}</div>}
-			<CodeEditor
-				fileId={fileId}
-				connection={connection}
-				onChange={(value) => setFileData({...fileData, content: value})}
-			/>
-		</>
-	) : (
-		<div>Loading...</div>
-	);
+	return <Editor connection={connection} myOwnerId={user.id} initialMembers={sessionInfo.members} />;
 }
