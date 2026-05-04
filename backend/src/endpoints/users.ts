@@ -5,17 +5,7 @@ import {isDbError, isUniqueViolation} from "#/src/utils.js";
 import type {ApiResponse, User} from "#shared/src/types.js";
 import {timestampedLog} from "#/src/logging.js";
 import {requireAuth} from "#/src/middleware.js";
-import {
-	getUserById,
-	getUserByUsername,
-	getUserByEmail,
-	createUser,
-	updateUsername,
-	deleteUserById,
-	updateEmail,
-	getHashedPasswordById,
-	updatePassword,
-} from "#/src/queries/users.js";
+import * as userQueryService from "#/src/queries/users.js";
 
 function signupUser(app: Express) {
 	app.post("/api/user", async (req: Request, res: Response<ApiResponse<null>>) => {
@@ -34,7 +24,7 @@ function signupUser(app: Express) {
 
 			/* createUser returns id. Let's keep this call here if it is ever needed */
 			//const id = await createUser({username, email} as User, hash);
-			await createUser({username, email} as User, hash);
+			await userQueryService.createUser({username, email} as User, hash);
 			res.status(201).json({ok: true, data: null});
 		} catch (error: unknown) {
 			if (isDbError(error) && isUniqueViolation(error)) {
@@ -61,7 +51,7 @@ function modifyUser(app: Express) {
 		}
 
 		try {
-			const user = await getUserById(id);
+			const user = await userQueryService.getUserById(id);
 			if (!user) {
 				throw new Error(`User with id: ${id} not found in database`);
 			}
@@ -76,12 +66,13 @@ function modifyUser(app: Express) {
 					return res.status(400).json({ok: false, error: "No changes made: New username same as current username"});
 				}
 
-				const usernameExists = await getUserByUsername(username);
+				const usernameExists = await userQueryService.getUserByUsername(username);
 				if (usernameExists) {
 					return res.status(409).json({ok: false, error: "Username already taken"});
 				}
 
-				if ((await updateUsername(username, id)) == false) throw new Error(`Could not update username for id: ${id}`);
+				if ((await userQueryService.updateUsername(username, id)) == false)
+					throw new Error(`Could not update username for id: ${id}`);
 			}
 
 			if (email) {
@@ -93,12 +84,13 @@ function modifyUser(app: Express) {
 				if (user!.email === email) {
 					return res.status(400).json({ok: false, error: "No changes made: New email same as old email"});
 				}
-				const emailExists = await getUserByEmail(email);
+				const emailExists = await userQueryService.getUserByEmail(email);
 				if (emailExists) {
 					return res.status(409).json({ok: false, error: "Email already taken"});
 				}
 
-				if ((await updateEmail(email, id)) == false) throw new Error(`Could not update email for id: ${id}`);
+				if ((await userQueryService.updateEmail(email, id)) == false)
+					throw new Error(`Could not update email for id: ${id}`);
 			}
 
 			if (newPassword) {
@@ -107,7 +99,7 @@ function modifyUser(app: Express) {
 					return res.status(400).json({ok: false, error: parsedPassword.error.issues[0].message});
 				}
 
-				const currentPassword = await getHashedPasswordById(id);
+				const currentPassword = await userQueryService.getHashedPasswordById(id);
 				if (!currentPassword) {
 					throw new Error(`Could not fetch password from database for id: ${id}`);
 				}
@@ -124,7 +116,8 @@ function modifyUser(app: Express) {
 					type: argon2.argon2id,
 				});
 
-				if ((await updatePassword(hash, id)) == false) throw new Error(`Could not update password for id :${id}`);
+				if ((await userQueryService.updatePassword(hash, id)) == false)
+					throw new Error(`Could not update password for id :${id}`);
 			}
 
 			res.status(200).json({ok: true, data: null});
@@ -145,7 +138,7 @@ function deleteUser(app: Express) {
 
 		const id = req.session.userId!;
 		try {
-			if ((await deleteUserById(id)) === false) {
+			if ((await userQueryService.deleteUserById(id)) === false) {
 				throw new Error(`Could not delete user with id: ${id}`);
 			}
 			res.clearCookie("connect.sid");
@@ -167,7 +160,7 @@ function getUser(app: Express) {
 
 		const id = req.session.userId!;
 		try {
-			const user = await getUserById(id);
+			const user = await userQueryService.getUserById(id);
 			if (!user) {
 				throw new Error("No query result");
 			}
