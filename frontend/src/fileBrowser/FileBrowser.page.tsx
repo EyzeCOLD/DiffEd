@@ -24,10 +24,7 @@ function FileBrowserPage() {
 	}, [fileList, filter, sortDescending]);
 
 	const paginated = processed.slice(page * FILES_PER_PAGE, (page + 1) * FILES_PER_PAGE);
-
-	// Black magic to achieve integer division in JS.
-	// The most performant way according to A Guy In Stack Overflow
-	const totalPages = fileList ? Math.ceil(fileList.length / FILES_PER_PAGE) : 0;
+	const totalPages = processed ? Math.ceil(processed.length / FILES_PER_PAGE) : 0;
 
 	async function refreshFileList() {
 		const response: ApiResponse<UserFile[]> = await apiFetch("/api/files");
@@ -56,7 +53,12 @@ function FileBrowserPage() {
 			<div>
 				<Button onClick={() => setSortDescending((s) => !s)}>Toggle sort direction</Button>
 			</div>
-			<FileList fileList={paginated} refreshFileList={refreshFileList} />
+			<FileList
+				fileList={paginated}
+				refreshFileList={refreshFileList}
+				onSortChange={setSortDescending}
+				descending={sortDescending}
+			/>
 			{totalPages ? <Paginator currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
 			<NewFile />
 			<FileUploader refreshFileList={refreshFileList} />
@@ -71,7 +73,7 @@ type paginatorProps = {
 };
 
 function Paginator({currentPage, totalPages, onPageChange}: paginatorProps) {
-	const pageNumbers = (() => {
+	function generatePageNumbers() {
 		if (totalPages <= 7) {
 			return Array.from({length: totalPages}, (_, i) => i + 1);
 		}
@@ -84,7 +86,9 @@ function Paginator({currentPage, totalPages, onPageChange}: paginatorProps) {
 		if (currentPage < totalPages - 2) pages.push("...");
 		pages.push(totalPages);
 		return pages;
-	})();
+	}
+
+	const pageNumbers = generatePageNumbers();
 
 	return (
 		<div>

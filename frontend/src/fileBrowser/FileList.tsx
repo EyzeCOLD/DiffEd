@@ -6,13 +6,14 @@ import {apiFetch} from "#/src/utils.js";
 import {useShowToast} from "#/src/stores/toastStore";
 import {Button} from "#/src/components/Button";
 
-function FileList({
-	fileList,
-	refreshFileList,
-}: {
-	fileList: UserFile[] | null;
+type fileListProps = {
+	fileList: UserFile[];
 	refreshFileList: () => void;
-}): JSX.Element {
+	onSortChange: (sort: boolean) => void;
+	descending: boolean;
+};
+
+function FileList({fileList, refreshFileList, onSortChange, descending}: fileListProps): JSX.Element {
 	const navigate = useNavigate();
 	const showToast = useShowToast();
 
@@ -94,7 +95,12 @@ function FileList({
 	return (
 		<table id="file list">
 			<thead>
-				<th>filename</th>
+				<th>
+					filename
+					<Button className="bg-transparent" onClick={() => onSortChange(!descending)}>
+						{descending ? "▾" : "▴"}
+					</Button>
+				</th>
 				<th>download</th>
 				<th>delete</th>
 			</thead>
