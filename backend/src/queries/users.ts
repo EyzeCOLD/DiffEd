@@ -109,11 +109,11 @@ async function deleteUserById(id: number): Promise<boolean> {
 	return result.rowCount! > 0;
 }
 
-export {
+export default {
 	getUserById,
 	getUserByUsername,
 	getUserByEmail,
-	getUserWithPasswordByIdentifier as getUserByIdentifier,
+	getUserWithPasswordByIdentifier,
 	createUser,
 	updateUsername,
 	deleteUserById,

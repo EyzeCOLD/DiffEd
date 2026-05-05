@@ -5,7 +5,7 @@ import {timestampedLog} from "#/src/logging.js";
 import {ApiResponse, User} from "#shared/src/types.js";
 import {isDbError} from "#/src/utils.js";
 import {requireAuth} from "#/src/middleware.js";
-import {getUserByIdentifier} from "#/src/queries/users.js";
+import userQueryService from "#/src/queries/users.js";
 
 const limiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 min (how long to remember requests for)
@@ -23,7 +23,7 @@ function loginUser(app: Express) {
 		}
 
 		try {
-			const user = await getUserByIdentifier(loginIdentifier);
+			const user = await userQueryService.getUserWithPasswordByIdentifier(loginIdentifier);
 			if (!user) {
 				return res.status(401).json({ok: false, error: "Incorrect username or password"});
 			}

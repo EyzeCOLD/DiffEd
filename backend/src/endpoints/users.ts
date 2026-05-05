@@ -5,7 +5,7 @@ import {isDbError, isUniqueViolation} from "#/src/utils.js";
 import type {ApiResponse, User} from "#shared/src/types.js";
 import {timestampedLog} from "#/src/logging.js";
 import {requireAuth} from "#/src/middleware.js";
-import * as userQueryService from "#/src/queries/users.js";
+import userQueryService from "#/src/queries/users.js";
 
 function signupUser(app: Express) {
 	app.post("/api/user", async (req: Request, res: Response<ApiResponse<null>>) => {
