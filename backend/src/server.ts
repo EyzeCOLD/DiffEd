@@ -30,11 +30,11 @@ Endpoints.uploadFiles(app, postgres);
 Endpoints.deleteFile(app, postgres);
 Endpoints.downloadFile(app, postgres);
 
-UserEndpoints.signupUser(app, postgres);
-UserEndpoints.modifyUser(app, postgres);
-UserEndpoints.deleteUser(app, postgres);
-UserEndpoints.getUser(app, postgres);
-SessionEndpoints.loginUser(app, postgres);
+UserEndpoints.signupUser(app);
+UserEndpoints.modifyUser(app);
+UserEndpoints.deleteUser(app);
+UserEndpoints.getUser(app);
+SessionEndpoints.loginUser(app);
 SessionEndpoints.logoutUser(app);
 SessionEndpoints.getSession(app);
 

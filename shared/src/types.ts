@@ -12,6 +12,8 @@ export type User = {
 	email: string;
 };
 
+export type UserWithPassword = User & {hashed_password: string};
+
 export type SigningUser = Omit<User, "id"> & {
 	password: string;
 };
