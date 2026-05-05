@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef} from "react";
 import {createPortal} from "react-dom";
-import {useToastStore} from "./toastStore.ts";
+import {useToastStore} from "../stores/toastStore.ts";
 
 const MIN_TOAST_MS = 4000;
 const MS_PER_CHAR = 50;

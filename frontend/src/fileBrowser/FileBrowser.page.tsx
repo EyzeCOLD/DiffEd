@@ -4,7 +4,7 @@ import FileUploader from "./FileUpload";
 import type {UserFile, ApiResponse} from "#shared/src/types";
 import {useState, useEffect} from "react";
 import {apiFetch} from "#/src/utils";
-import {useShowToast} from "#/src/layout/toastStore.ts";
+import {useShowToast} from "#/src/stores/toastStore";
 
 function FileBrowserPage() {
 	const [fileList, setFileList] = useState<UserFile[] | null>(null);

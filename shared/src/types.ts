@@ -14,9 +14,7 @@ export type User = {
 
 export type UserWithPassword = User & {hashed_password: string};
 
-export type SigningUser = {
-	username: string;
-	email: string;
+export type SigningUser = Omit<User, "id"> & {
 	password: string;
 };
 
@@ -32,10 +30,12 @@ export type SerializedUpdate = {
 export type CollabRequestPayload =
 	| {
 			type: "getInitialDocument";
+			ownerId: number;
 	  }
 	| {
 			type: "pullUpdates";
 			version: number;
+			ownerId: number;
 	  }
 	| {
 			type: "pushUpdates";
@@ -45,25 +45,51 @@ export type CollabRequestPayload =
 	| {
 			type: "pushFileName";
 			name: string;
+	  }
+	| {
+			type: "pickFile";
+			fileId: string;
+	  }
+	| {
+			type: "pullFileName";
+	  }
+	| {
+			type: "leaveWorkspace";
 	  };
 
 export type CollabRequest = CollabRequestPayload & {
-	id: number;
-	fileId: string;
+	requestId: number;
+	workspaceId: string;
 };
 
-export type DocumentResponse =
+export type CollabResponse =
 	| {
-			version: number;
-			doc: string;
+			requestId: number;
+			result: unknown;
 	  }
 	| ErrorResponse;
 
-export type NameUpdateResponse =
-	| {
-			name: string;
-	  }
-	| ErrorResponse;
+export type WorkspaceMember = Pick<User, "id" | "username">;
+
+export type WorkspaceInfo = {
+	id: string;
+	members: WorkspaceMember[];
+};
+
+export type MembersChangedEvent = {
+	workspaceId: string;
+	members: WorkspaceMember[];
+};
+
+export type DocumentResponse = {
+	version: number;
+	doc: string;
+	fileName: string;
+};
+
+export type NameUpdateResponse = {
+	name: string;
+};
 
 export type ApiSuccess<T> = {ok: true; data: T};
 export type ApiError = {ok: false; error: string};

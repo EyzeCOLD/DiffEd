@@ -1,7 +1,6 @@
 import {NavLink, useNavigate} from "react-router";
-import {useShowToast} from "./toastStore.ts";
-import {getSession} from "../utils.ts";
-import {useState, useEffect} from "react";
+import {useShowToast} from "../stores/toastStore.ts";
+import {useCurrentUser, useClearUser} from "../stores/userStore.ts";
 import type {MouseEvent} from "react";
 
 function navLinkClass({isActive}: {isActive: boolean}) {
@@ -18,11 +17,7 @@ const contentSkipLink = (
 );
 
 export function PublicTopBar() {
-	const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-	useEffect(() => {
-		getSession().then(setIsLoggedIn);
-	}, []);
+	const currentUser = useCurrentUser();
 
 	return (
 		<nav className="flex items-center justify-between bg-surface px-2 py-2">
@@ -31,7 +26,7 @@ export function PublicTopBar() {
 				Home
 			</NavLink>
 			<div className="flex gap-2">
-				{isLoggedIn ? (
+				{currentUser ? (
 					<NavLink to="/dashboard" className={navLinkClass}>
 						Dashboard
 					</NavLink>
@@ -48,6 +43,7 @@ export function PublicTopBar() {
 export function UserTopBar() {
 	const navigate = useNavigate();
 	const showToast = useShowToast();
+	const clearUser = useClearUser();
 
 	async function logout(event: MouseEvent<HTMLButtonElement>) {
 		event.preventDefault();
@@ -57,6 +53,7 @@ export function UserTopBar() {
 				credentials: "include",
 			});
 			if (response.ok) {
+				clearUser();
 				navigate("/login");
 			} else {
 				const data = await response.json();

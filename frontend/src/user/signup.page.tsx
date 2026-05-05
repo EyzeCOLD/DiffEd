@@ -6,7 +6,7 @@ import type {SubmitEvent} from "react";
 import type {SigningUser, ApiResponse} from "#shared/src/types";
 import {apiFetch, getSession} from "#/src/utils.ts";
 import {z} from "zod";
-import {useShowToast} from "#/src/layout/toastStore.ts";
+import {useShowToast} from "#/src/stores/toastStore";
 
 const emailSchema = z.email();
 
@@ -19,10 +19,8 @@ export default function SignupPage() {
 	const showToast = useShowToast();
 
 	useEffect(() => {
-		getSession().then((isLoggedIn) => {
-			if (isLoggedIn) {
-				navigate("/dashboard");
-			}
+		getSession().then((ok) => {
+			if (ok) navigate("/dashboard");
 		});
 	}, [navigate]);
 

@@ -9,36 +9,40 @@ import {timestampedLog} from "./logging.js";
 import Endpoints from "./endpoints/files.js";
 import UserEndpoints from "./endpoints/users.js";
 import SessionEndpoints from "./endpoints/sessions.js";
+import workspaceEndpoints from "./endpoints/workspace.js";
 
-import {collabSocket} from "./endpoints/collabSocket.js";
+import {initCollabSocket} from "./endpoints/collabSocket.js";
 
-const api = express();
-const server = createServer(api);
+const app = express();
+const server = createServer(app);
 const sockets = new Server(server, {cors: {origin: "*"}});
-collabSocket(sockets, postgres);
+const collabApi = initCollabSocket(sockets, postgres);
 
-api.use(sessionConfig);
-api.use(express.static("../frontend/dist"));
-api.use(express.json());
-api.use(helmetSecurity());
+app.use(sessionConfig);
+app.use(express.static("../frontend/dist"));
+app.use(express.json());
+app.use(helmetSecurity());
 
-Endpoints.getFiles(api, postgres);
-Endpoints.getFileById(api, postgres);
-Endpoints.createNewFile(api, postgres);
-Endpoints.uploadFiles(api, postgres);
-Endpoints.deleteFile(api, postgres);
-Endpoints.downloadFile(api, postgres);
+Endpoints.getFiles(app, postgres);
+Endpoints.getFileById(app, postgres);
+Endpoints.createNewFile(app, postgres);
+Endpoints.uploadFiles(app, postgres);
+Endpoints.deleteFile(app, postgres);
+Endpoints.downloadFile(app, postgres);
 
-UserEndpoints.signupUser(api);
-UserEndpoints.modifyUser(api);
-UserEndpoints.deleteUser(api);
-UserEndpoints.getUser(api);
-SessionEndpoints.loginUser(api);
-SessionEndpoints.logoutUser(api);
-SessionEndpoints.getSession(api);
+UserEndpoints.signupUser(app);
+UserEndpoints.modifyUser(app);
+UserEndpoints.deleteUser(app);
+UserEndpoints.getUser(app);
+SessionEndpoints.loginUser(app);
+SessionEndpoints.logoutUser(app);
+SessionEndpoints.getSession(app);
+
+workspaceEndpoints.createWorkspace(app, collabApi);
+workspaceEndpoints.getWorkspace(app, collabApi);
 
 // Catch-all to serve the frontend, needed for subroutes.
-api.get("/*splat", function (_, response) {
+app.get("/*splat", function (_, response) {
 	response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));
 });
 
