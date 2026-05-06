@@ -2,13 +2,14 @@ import {readFileSync} from "fs";
 import pg from "pg";
 import {timestampedLog} from "./logging.js";
 import argon2 from "argon2";
+import {POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD} from "#/src/env.js";
 
 const maxConnectionAttempts = 3;
 const pgConfig = {
 	host: "postgres",
-	database: process.env.POSTGRES_DB,
-	user: process.env.POSTGRES_USER,
-	password: process.env.POSTGRES_PASSWORD,
+	database: POSTGRES_DB,
+	user: POSTGRES_USER,
+	password: POSTGRES_PASSWORD,
 } as const;
 
 const postgres = new pg.Pool(pgConfig);
