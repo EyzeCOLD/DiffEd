@@ -2,9 +2,8 @@ import {useEffect, useState} from "react";
 import type {JSX} from "react";
 import type {UserFile} from "#shared/src/types";
 import {CollabConnection, pickFile} from "./collabClient";
-import {Button} from "../components/Button";
 import {apiFetch} from "../utils";
-import NewFile from "../fileBrowser/NewFile";
+import FileBrowser from "../fileBrowser/FileBrowser";
 
 type FilePickerProps = {
 	connection: CollabConnection;
@@ -13,7 +12,6 @@ type FilePickerProps = {
 export default function FilePicker({connection}: FilePickerProps): JSX.Element {
 	const [files, setFiles] = useState<UserFile[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [pickingId, setPickingId] = useState<string | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -34,20 +32,12 @@ export default function FilePicker({connection}: FilePickerProps): JSX.Element {
 		};
 	}, []);
 
-	async function handlePick(file: UserFile) {
-		setError(null);
-		setPickingId(file.id);
+	async function handlePick(fileId: string) {
 		try {
-			await pickFile(connection, file.id);
+			await pickFile(connection, fileId);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to pick file");
-		} finally {
-			setPickingId(null);
 		}
-	}
-
-	async function handleNewFile(fileId: string) {
-		await pickFile(connection, fileId);
 	}
 
 	if (error) {
@@ -62,20 +52,7 @@ export default function FilePicker({connection}: FilePickerProps): JSX.Element {
 	return (
 		<div className="p-4 flex flex-col gap-2">
 			<h2 className="text-lg">Pick a file to bring into this session</h2>
-			<NewFile onCreated={handleNewFile} />
-			{files.length === 0 ? (
-				<p>You have no files to bring into this session.</p>
-			) : (
-				<ul className="flex flex-col gap-1">
-					{files.map((file) => (
-						<li key={file.id}>
-							<Button onClick={() => handlePick(file)} disabled={pickingId !== null}>
-								🗎 {file.name}
-							</Button>
-						</li>
-					))}
-				</ul>
-			)}
+			<FileBrowser onFileSelect={handlePick} />
 		</div>
 	);
 }

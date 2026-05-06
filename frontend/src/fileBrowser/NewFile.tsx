@@ -1,18 +1,15 @@
 import {useState, type JSX} from "react";
-import {useNavigate} from "react-router";
 import {Button} from "#/src/components/Button";
 import {useShowToast} from "#/src/stores/toastStore";
 import {Input} from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
 
 type NewFileProps = {
-	// When provided, called with the new file's ID instead of creating a workspace and navigating
-	onCreated?: (fileId: string) => Promise<void>;
+	onFileSelect: (fileId: string) => void;
 };
 
-function NewFile({onCreated}: NewFileProps): JSX.Element {
+function NewFile({onFileSelect}: NewFileProps): JSX.Element {
 	const [newFilename, setNewFilename] = useState<string>();
-	const navigate = useNavigate();
 	const showToast = useShowToast();
 
 	async function openNewFile() {
@@ -26,29 +23,12 @@ function NewFile({onCreated}: NewFileProps): JSX.Element {
 		});
 
 		if (!fileResult.ok) {
-			showToast("error", "File creation failed!");
+			showToast("error", `File creation failed: ${fileResult.error}`);
 			return;
 		}
 		const fileId = fileResult.data[0];
 
-		if (onCreated) {
-			await onCreated(fileId);
-			return;
-		}
-
-		const workspaceResult = await apiFetch<{workspaceId: string}>("/api/workspace", {
-			method: "POST",
-			body: JSON.stringify({fileId: fileId}),
-			headers: [["Content-Type", "application/json"] as [string, string]],
-		});
-
-		if (!workspaceResult.ok) {
-			showToast("error", "Failed to open workspace");
-			return;
-		}
-
-		showToast("success", "New file created!");
-		navigate(`/collab/${workspaceResult.data.workspaceId}`);
+		onFileSelect(fileId);
 	}
 
 	return (

@@ -1,5 +1,4 @@
 import type {UserFile} from "#shared/src/types";
-import {useNavigate} from "react-router";
 import type {JSX} from "react";
 import type {ApiResponse} from "#shared/src/types.js";
 import {apiFetch} from "#/src/utils.js";
@@ -7,31 +6,18 @@ import {useShowToast} from "#/src/stores/toastStore";
 import {Button} from "#/src/components/Button";
 
 type fileListProps = {
+	onFileSelect: (fileId: string) => void;
 	fileList: UserFile[];
 	refreshFileList: () => void;
-	onSortChange: (sort: boolean) => void;
+	onSortToggle: () => void;
 	descending: boolean;
 };
 
-function FileList({fileList, refreshFileList, onSortChange, descending}: fileListProps): JSX.Element {
-	const navigate = useNavigate();
+function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descending}: fileListProps): JSX.Element {
 	const showToast = useShowToast();
 
 	if (!fileList) return <p>Loading really slow...</p>;
 	if (fileList.length === 0) return <p>No files to show.</p>;
-
-	async function startSessionFromFile(file: UserFile) {
-		const response = await apiFetch<{workspaceId: string}>("/api/workspace", {
-			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({fileId: file.id}),
-		});
-		if (!response.ok) {
-			showToast("error", response.error);
-			return;
-		}
-		navigate(`/collab/${response.data.workspaceId}`);
-	}
 
 	async function handleDownload(file: UserFile) {
 		const response: ApiResponse<UserFile> = await apiFetch(`/api/files/${file.id}`);
@@ -77,7 +63,7 @@ function FileList({fileList, refreshFileList, onSortChange, descending}: fileLis
 					<button
 						type="button"
 						className="bg-transparent border-0 p-0 text-inherit cursor-pointer hover:underline"
-						onClick={() => startSessionFromFile(file)}
+						onClick={() => onFileSelect(file.id)}
 					>
 						🗎 {file.name}
 					</button>
@@ -97,7 +83,7 @@ function FileList({fileList, refreshFileList, onSortChange, descending}: fileLis
 			<thead>
 				<th>
 					filename
-					<Button className="bg-transparent" onClick={() => onSortChange(!descending)}>
+					<Button className="bg-transparent" onClick={() => onSortToggle()}>
 						{descending ? "▾" : "▴"}
 					</Button>
 				</th>
