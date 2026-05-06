@@ -100,16 +100,13 @@ function modifyUser(app: Express) {
 				}
 
 				const currentPassword = await userQueryService.getHashedPasswordById(id);
-				if (!currentPassword) {
-					throw new Error(`Could not fetch password from database for id: ${id}`);
-				}
-
-				if (!(await argon2.verify(currentPassword, oldPassword))) {
-					return res.status(400).json({ok: false, error: "Incorrect password"});
-				}
-
-				if (await argon2.verify(currentPassword, newPassword)) {
-					return res.status(400).json({ok: false, error: "New Password can not be the same as old password!"});
+				if (currentPassword) {
+					if (!(await argon2.verify(currentPassword, oldPassword))) {
+						return res.status(400).json({ok: false, error: "Incorrect password"});
+					}
+					if (await argon2.verify(currentPassword, newPassword)) {
+						return res.status(400).json({ok: false, error: "New Password can not be the same as old password!"});
+					}
 				}
 
 				const hash = await argon2.hash(newPassword, {
