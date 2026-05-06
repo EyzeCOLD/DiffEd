@@ -16,7 +16,6 @@ type fileListProps = {
 function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descending}: fileListProps): JSX.Element {
 	const showToast = useShowToast();
 
-	if (!fileList) return <p>Loading really slow...</p>;
 	if (fileList.length === 0) return <p>No files to show.</p>;
 
 	async function handleDownload(file: UserFile) {

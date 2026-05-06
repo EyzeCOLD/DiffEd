@@ -29,7 +29,7 @@ function Paginator({currentPage, totalPages, onPageChange}: paginatorProps) {
 			<Button onClick={() => onPageChange(Math.max(0, currentPage - 1))}>«</Button>
 			{pageNumbers.map((p) => {
 				if (p === "...") {
-					return <Button>{p}</Button>;
+					return <span>...</span>;
 				} else if (p === currentPage + 1) {
 					return <Button className="underline underline-offset-2 font-bold">{p}</Button>;
 				}
