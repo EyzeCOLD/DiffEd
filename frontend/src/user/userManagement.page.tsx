@@ -264,6 +264,51 @@ function Password() {
 	);
 }
 
+function GithubLink({githubLinked}: {githubLinked: boolean}) {
+	const [isLoading, setIsLoading] = useState(false);
+	const updateUser = useUpdateUser();
+	const showToast = useShowToast();
+
+	async function handleUnlink() {
+		setIsLoading(true);
+		try {
+			const response: ApiResponse<null> = await apiFetch("/api/auth/github/link", {
+				method: "DELETE",
+				credentials: "include",
+			});
+			if (!response.ok) throw new Error(response.error);
+			updateUser({github_linked: false});
+			showToast("success", "GitHub account unlinked");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	if (githubLinked) {
+		return (
+			<div>
+				<span>GitHub: Linked</span>
+				&nbsp;
+				<Button onClick={handleUnlink} disabled={isLoading} aria-label="Unlink GitHub account">
+					{isLoading ? "Unlinking..." : "Unlink"}
+				</Button>
+			</div>
+		);
+	}
+
+	return (
+		<div>
+			<a href="/api/auth/github?action=link_account">
+				<Button type="button" aria-label="Link GitHub account">
+					Link GitHub
+				</Button>
+			</a>
+		</div>
+	);
+}
+
 function Delete() {
 	const navigate = useNavigate();
 	const showToast = useShowToast();
@@ -334,6 +379,9 @@ export default function UserManagementPage() {
 			</div>
 			<div>
 				<Password />
+			</div>
+			<div>
+				<GithubLink githubLinked={!!currentUser.github_linked} />
 			</div>
 			<div>
 				<Delete />
