@@ -1,3 +1,4 @@
+import "./env.js";
 import path from "node:path";
 import express from "express";
 import {createServer} from "node:http";
