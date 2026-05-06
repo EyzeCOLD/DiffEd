@@ -360,12 +360,6 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 				switch (type) {
 					case "pickFile": {
-						if (workspace.memberFiles.has(userId)) {
-							sendResponse({
-								error: "You have already picked a file for this session",
-							} satisfies ErrorResponse);
-							break;
-						}
 						if (!data.fileId || typeof data.fileId !== "string") {
 							sendResponse({error: "Invalid file ID"} satisfies ErrorResponse);
 							break;
@@ -374,6 +368,16 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						if (!doc) {
 							sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
 							break;
+						}
+						const oldFileId = workspace.memberFiles.get(userId);
+						if (oldFileId) {
+							workspace.memberFiles.delete(userId);
+							try {
+								await broadcastMembers(workspace);
+							} catch (err) {
+								timestampedLog(`Failed to broadcast members after pickFile: ${String(err)}`);
+							}
+							await releaseDocRef(oldFileId);
 						}
 						workspace.memberFiles.set(userId, data.fileId);
 						sendResponse(true);

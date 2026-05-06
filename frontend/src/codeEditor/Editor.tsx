@@ -32,9 +32,10 @@ type SharedEditorProps = {
 	connection: CollabConnection;
 	myOwnerId: number;
 	initialMembers: WorkspaceMember[];
+	onRepickFile: () => void;
 };
 
-export default function Editor({connection, myOwnerId, initialMembers}: SharedEditorProps): JSX.Element {
+export default function Editor({connection, myOwnerId, initialMembers, onRepickFile}: SharedEditorProps): JSX.Element {
 	const showToast = useShowToast();
 	const [selectedPeerId, setSelectedPeerId] = useState<number | null>(null);
 	const [readyPeerIds, setReadyPeerIds] = useState<ReadonlySet<number>>(new Set());
@@ -206,18 +207,23 @@ export default function Editor({connection, myOwnerId, initialMembers}: SharedEd
 				selectedPeerId={selectedPeerId}
 				onSelect={setSelectedPeerId}
 			/>
-			<form
-				className="flex gap-2 p-1"
-				onSubmit={(e) => {
-					e.preventDefault();
-					void handleRename();
-				}}
-			>
-				<Input type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} />
-				<Button type="submit" className="border px-2">
-					Rename
+			<div className="flex items-center justify-between p-1">
+				<form
+					className="flex gap-2"
+					onSubmit={(e) => {
+						e.preventDefault();
+						void handleRename();
+					}}
+				>
+					<Input type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} />
+					<Button type="submit" className="border px-2">
+						Rename
+					</Button>
+				</form>
+				<Button type="button" className="border px-2" onClick={onRepickFile}>
+					Change file
 				</Button>
-			</form>
+			</div>
 			{error ? (
 				<div className="border border-error-accent p-2 text-error-accent">
 					<div>Error initializing editor: {error}</div>
