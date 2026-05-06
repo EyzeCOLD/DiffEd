@@ -76,7 +76,7 @@ function Username({initialValue, onUpdate}: UpdateProps) {
 				</div>
 			) : (
 				<div>
-					<span>USERNAME: {initialValue}</span>
+					<span>{initialValue}</span>
 					&nbsp;
 					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change username">
 						Change
@@ -157,7 +157,7 @@ function Email({initialValue, onUpdate}: UpdateProps) {
 				</div>
 			) : (
 				<div>
-					<span>EMAIL: {initialValue}</span>
+					<span>{initialValue}</span>
 					&nbsp;
 					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change email address">
 						Change
@@ -300,6 +300,148 @@ function Delete() {
 	);
 }
 
+type PasswordConfirmProps = {
+	onConfirm: (password: string) => void;
+	onCancel: () => void;
+};
+
+function Confirm({onConfirm, onCancel}: PasswordConfirmProps) {
+	const [password, setPassword] = useState("");
+	const [isLoading, setIsLoading] = useState(false);
+	const showToast = useShowToast();
+
+	async function handleSubmitClick() {
+		setIsLoading(true);
+		try {
+			if (!password) {
+				throw new Error("Please fill the password!");
+			}
+
+			onConfirm(password);
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	return (
+		<>
+			<div>
+				<Input
+					placeholder="Enter password"
+					type="password"
+					value={password}
+					onChange={(e) => setPassword(e.target.value)}
+				/>
+				<Button onClick={handleSubmitClick} disabled={isLoading} aria-label="Accept profile updates">
+					Accept
+				</Button>
+			</div>
+			<div>
+				Please enter password to accept the changes or&nbsp;
+				<button
+					onClick={onCancel}
+					className="hover:text-accent font-bold underline cursor-pointer"
+					aria-label="Cancel profile updates"
+				>
+					cancel
+				</button>
+			</div>
+		</>
+	);
+}
+
+type UserSettingProps = {
+	user: User;
+	onUpdate: (username?: string, email?: string) => void;
+};
+
+function UserSettings({user, onUpdate}: UserSettingProps) {
+	const [currentUsername, setCurrentUsername] = useState(user.username);
+	const [currentEmail, setCurrentEmail] = useState(user.email);
+	const [newUsername, setNewUsername] = useState("");
+	const [newEmail, setNewEmail] = useState("");
+	const [passwordConfirm, setPasswordConfirm] = useState(false);
+	const showToast = useShowToast();
+
+	function handleSubmitClick() {
+		if (!newUsername) setNewUsername(currentUsername);
+		if (!newEmail) setNewEmail(currentEmail);
+		setPasswordConfirm(true);
+	}
+
+	async function resetState() {
+		setNewUsername("");
+		setNewEmail("");
+		setPasswordConfirm(false);
+	}
+
+	async function handleAcceptClick(password: string) {
+		try {
+			const response: ApiResponse<null> = await apiFetch("/api/user", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({email: newEmail, username: newUsername, password}),
+			});
+
+			if (!response.ok) {
+				throw new Error(response.error);
+			}
+
+			setCurrentEmail(newEmail);
+			setCurrentUsername(newUsername);
+			onUpdate(newUsername, newEmail);
+			showToast("success", "Successfully updated the changes");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			resetState();
+		}
+	}
+
+	return !passwordConfirm ? (
+		<div>
+			<h2>Username</h2>
+			<div>
+				<Input
+					type="text"
+					placeholder={currentUsername}
+					value={newUsername}
+					onChange={(e) => setNewUsername(e.target.value)}
+				/>
+			</div>
+			<h2>Email</h2>
+			<div>
+				<Input type="email" placeholder={currentEmail} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+			</div>
+			<div>
+				<Button
+					onClick={() => {
+						newUsername || newEmail ? handleSubmitClick() : showToast("error", "No changes available");
+					}}
+					aria-label="Update Profile"
+				>
+					Submit Changes
+				</Button>
+			</div>
+		</div>
+	) : (
+		<>
+			<div>
+				<h2>Username</h2>
+				{newUsername}
+				<h2>Email</h2>
+				{newEmail}
+			</div>
+			<div>
+				<Confirm onConfirm={handleAcceptClick} onCancel={resetState} />
+			</div>
+		</>
+	);
+}
+
 export default function UserManagementPage() {
 	const currentUser = useCurrentUser();
 	const setUser = useSetUser();
@@ -325,17 +467,15 @@ export default function UserManagementPage() {
 		<div>Loading...</div>
 	) : (
 		<div>
-			<div>User Management</div>
+			<h1>Account Settings</h1>
 			<div>
-				<Username initialValue={currentUser.username} onUpdate={(username) => updateUser({username})} />
-			</div>
-			<div>
-				<Email initialValue={currentUser.email} onUpdate={(email) => updateUser({email})} />
+				<UserSettings user={currentUser} onUpdate={(username, email) => updateUser({username, email})} />
 			</div>
 			<div>
 				<Password />
 			</div>
 			<div>
+				DANGER ZONE!!!
 				<Delete />
 			</div>
 		</div>
