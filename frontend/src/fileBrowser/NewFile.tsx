@@ -16,25 +16,29 @@ function NewFile({onCreated}: NewFileProps): JSX.Element {
 	const showToast = useShowToast();
 
 	async function openNewFile() {
-		const fileResult = await apiFetch<string>("/api/files", {
+		const formData = new FormData();
+		const file = new File([""], newFilename!, {type: "text/plain"});
+		formData.append("file", file);
+
+		const fileResult = await apiFetch<string[]>("/api/files", {
 			method: "POST",
-			body: JSON.stringify({name: newFilename}),
-			headers: [["Content-Type", "application/json"] as [string, string]],
+			body: formData,
 		});
 
 		if (!fileResult.ok) {
 			showToast("error", "File creation failed!");
 			return;
 		}
+		const fileId = fileResult.data[0];
 
 		if (onCreated) {
-			await onCreated(fileResult.data);
+			await onCreated(fileId);
 			return;
 		}
 
 		const workspaceResult = await apiFetch<{workspaceId: string}>("/api/workspace", {
 			method: "POST",
-			body: JSON.stringify({fileId: fileResult.data}),
+			body: JSON.stringify({fileId: fileId}),
 			headers: [["Content-Type", "application/json"] as [string, string]],
 		});
 

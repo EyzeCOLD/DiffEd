@@ -20,6 +20,7 @@ function FileBrowserPage() {
 		}
 	}
 
+	// @NOTE this is fine
 	useEffect(() => void refreshFileList(), []);
 
 	return (
