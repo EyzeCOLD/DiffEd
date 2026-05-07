@@ -24,7 +24,6 @@
 		"passport": "^0.7.0",
 		"passport-github2": "^0.1.12",
 		"pg": "^8.20.0",
-		"pg-promise": "12.6.2",
 		"socket.io": "^4.8.3",
 		"zod": "4.3.6"
 	},
