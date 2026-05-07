@@ -15,6 +15,7 @@ export default function EditorPage() {
 	const [sessionInfo, setSessionInfo] = useState<WorkspaceInfo | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [joining, setJoining] = useState(true);
+	const [showFilePicker, setShowFilePicker] = useState(false);
 
 	const connection = useMemo(() => (workspaceId ? new CollabConnection(workspaceId) : null), [workspaceId]);
 
@@ -43,6 +44,7 @@ export default function EditorPage() {
 		if (!connection) return;
 		const unsubscribe = connection.subscribeMembers((event) => {
 			setJoining(false);
+			setShowFilePicker(false);
 			setSessionInfo({
 				id: event.workspaceId,
 				members: event.members,
@@ -67,9 +69,16 @@ export default function EditorPage() {
 
 	const isMember = sessionInfo.members.some((member) => member.id === user.id);
 
-	if (!isMember) {
+	if (!isMember || showFilePicker) {
 		return <FilePicker connection={connection} />;
 	}
 
-	return <Editor connection={connection} myOwnerId={user.id} initialMembers={sessionInfo.members} />;
+	return (
+		<Editor
+			connection={connection}
+			myOwnerId={user.id}
+			initialMembers={sessionInfo.members}
+			onRepickFile={() => setShowFilePicker(true)}
+		/>
+	);
 }

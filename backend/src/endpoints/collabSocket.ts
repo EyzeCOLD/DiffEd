@@ -17,9 +17,9 @@ import type {
 	WorkspaceInfo,
 } from "#shared/src/types.js";
 
-const DATABASE_SAVE_DEBOUNCE_TIME = 1500;
-// Gives users time to refresh, recover from a network blip, or navigate back before collab state is flushed
-const WORKSPACE_DESTROY_GRACE_MS = 10_000;
+const DATABASE_SAVE_DEBOUNCE_MS = 1500;
+// Gives users time to refresh, recover from a network blip, or navigate back before participation/workspace is destroyed & flushed
+const DISCONNECT_GRACE_MS = 10_000;
 
 type LiveDocState = {
 	ownerId: number;
@@ -41,6 +41,7 @@ type Workspace = {
 	memberFiles: Map<number, string>;
 	connectedSockets: Map<string, number>;
 	destroyTimer: ReturnType<typeof setTimeout> | null;
+	memberDisconnectTimers: Map<number, ReturnType<typeof setTimeout>>;
 };
 
 type CollabSocketState = {
@@ -201,7 +202,7 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 		if (doc.dbSaveDebounceTimer) {
 			clearTimeout(doc.dbSaveDebounceTimer);
 		}
-		doc.dbSaveDebounceTimer = setTimeout(() => void flushDoc(doc), DATABASE_SAVE_DEBOUNCE_TIME);
+		doc.dbSaveDebounceTimer = setTimeout(() => flushDoc(doc), DATABASE_SAVE_DEBOUNCE_MS);
 	}
 
 	async function releaseDocRef(fileId: string): Promise<void> {
@@ -223,9 +224,32 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 	}
 
 	async function destroyWorkspace(workspace: Workspace): Promise<void> {
+		for (const timer of workspace.memberDisconnectTimers.values()) {
+			clearTimeout(timer);
+		}
+		workspace.memberDisconnectTimers.clear();
 		state.workspaces.delete(workspace.workspaceId);
 		for (const fileId of workspace.memberFiles.values()) {
 			await releaseDocRef(fileId);
+		}
+	}
+
+	function scheduleMemberRemoval(workspace: Workspace, userId: number): void {
+		if (workspace.memberDisconnectTimers.has(userId)) return;
+		workspace.memberDisconnectTimers.set(
+			userId,
+			setTimeout(() => {
+				workspace.memberDisconnectTimers.delete(userId);
+				void removeUserFromWorkspace(workspace, userId);
+			}, DISCONNECT_GRACE_MS),
+		);
+	}
+
+	function cancelMemberRemoval(workspace: Workspace, userId: number): void {
+		const timer = workspace.memberDisconnectTimers.get(userId);
+		if (timer !== undefined) {
+			clearTimeout(timer);
+			workspace.memberDisconnectTimers.delete(userId);
 		}
 	}
 
@@ -236,13 +260,14 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			// Someone reconnected during the grace window — skip destruction.
 			if (workspace.connectedSockets.size > 0) return;
 			void destroyWorkspace(workspace);
-		}, WORKSPACE_DESTROY_GRACE_MS);
+		}, DISCONNECT_GRACE_MS);
 	}
 
 	function attachSocketToWorkspace(socket: Socket, workspace: Workspace, userId: number): void {
 		if (workspace.connectedSockets.has(socket.id)) return;
 		workspace.connectedSockets.set(socket.id, userId);
 		socket.join(buildWorkspaceName(workspace.workspaceId));
+		cancelMemberRemoval(workspace, userId);
 	}
 
 	function detachSocketFromWorkspace(socketId: string, workspace: Workspace): void {
@@ -280,6 +305,7 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 			memberFiles: new Map([[userId, fileId]]),
 			connectedSockets: new Map(),
 			destroyTimer: null,
+			memberDisconnectTimers: new Map(),
 		};
 		// Give the creator time to navigate and open a socket before we'd auto-clean.
 		scheduleWorkspaceDestroy(workspace);
@@ -303,9 +329,7 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 				detachSocketFromWorkspace(socket.id, workspace);
 				// Only evict if this user has no other sockets still connected to this workspace
 				const stillConnected = [...workspace.connectedSockets.values()].some((id) => id === userId);
-				if (!stillConnected) {
-					void removeUserFromWorkspace(workspace, userId);
-				}
+				if (!stillConnected) scheduleMemberRemoval(workspace, userId);
 				break;
 			}
 		});
@@ -336,12 +360,6 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 
 				switch (type) {
 					case "pickFile": {
-						if (workspace.memberFiles.has(userId)) {
-							sendResponse({
-								error: "You have already picked a file for this session",
-							} satisfies ErrorResponse);
-							break;
-						}
 						if (!data.fileId || typeof data.fileId !== "string") {
 							sendResponse({error: "Invalid file ID"} satisfies ErrorResponse);
 							break;
@@ -350,6 +368,16 @@ export function initCollabSocket(sockets: Server, db: Pool): CollabSocketApi {
 						if (!doc) {
 							sendResponse({error: "File not found or not owned by you"} satisfies ErrorResponse);
 							break;
+						}
+						const oldFileId = workspace.memberFiles.get(userId);
+						if (oldFileId) {
+							workspace.memberFiles.delete(userId);
+							try {
+								await broadcastMembers(workspace);
+							} catch (err) {
+								timestampedLog(`Failed to broadcast members after pickFile: ${String(err)}`);
+							}
+							await releaseDocRef(oldFileId);
 						}
 						workspace.memberFiles.set(userId, data.fileId);
 						sendResponse(true);
