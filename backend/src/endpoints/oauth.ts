@@ -11,8 +11,8 @@ import userQueryService from "#/src/queries/users.js";
 
 function signToken(payload: PendingGithubPayload): string {
 	const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
-	const sig = crypto.createHmac("sha256", SESSION_SECRET).update(data).digest("base64url");
-	return `${data}.${sig}`;
+	const signature = crypto.createHmac("sha256", SESSION_SECRET).update(data).digest("base64url");
+	return `${data}.${signature}`;
 }
 
 function verifyToken(token: string): PendingGithubPayload | null {
@@ -26,12 +26,12 @@ function verifyToken(token: string): PendingGithubPayload | null {
 	if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) return null;
 
 	const payload: PendingGithubPayload = JSON.parse(Buffer.from(data, "base64url").toString());
-	if (Date.now() > payload.exp) return null;
+	if (Date.now() > payload.expiration) return null;
 
 	return payload;
 }
 
-function githubAuth(app: Express) {
+function githubAuthStart(app: Express) {
 	app.get("/api/auth/github", (req: Request, res: Response, next) => {
 		const action = (req.query.action as string) || "login";
 		const githubAuth = passport.authenticate("github", {
@@ -43,7 +43,7 @@ function githubAuth(app: Express) {
 	});
 }
 
-function authenticateGithubMiddleware(req: Request, res: Response, next: (err?: unknown) => void) {
+function githubAuthMiddleware(req: Request, res: Response, next: (err?: unknown) => void) {
 	const action = (req.query.action as string) || "login";
 	const githubAuth = passport.authenticate("github", {
 		session: false,
@@ -53,8 +53,8 @@ function authenticateGithubMiddleware(req: Request, res: Response, next: (err?: 
 	githubAuth(req, res, next);
 }
 
-function githubCallback(app: Express) {
-	app.get("/api/auth/github/callback", authenticateGithubMiddleware, async (req: Request, res: Response) => {
+function githubAuthCallback(app: Express) {
+	app.get("/api/auth/github/callback", githubAuthMiddleware, async (req: Request, res: Response) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
 		const profile = req.user as passport.Profile & {emails?: {value: string}[]};
@@ -94,7 +94,7 @@ function githubCallback(app: Express) {
 				githubId,
 				email: primaryEmail ?? "",
 				displayName,
-				exp: Date.now() + 10 * 60 * 1000,
+				expiration: Date.now() + 10 * 60 * 1000,
 			});
 			res.redirect(`/signup?github_token=${token}`);
 		} catch (error: unknown) {
@@ -187,4 +187,4 @@ function establishSession(req: Request, res: Response, userId: number) {
 	});
 }
 
-export default {githubAuth, githubCallback, setGithubUsername, githubUnlink};
+export default {githubAuthStart, githubAuthCallback, setGithubUsername, githubUnlink};

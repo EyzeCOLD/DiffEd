@@ -43,8 +43,8 @@ UserEndpoints.getUser(app);
 SessionEndpoints.loginUser(app);
 SessionEndpoints.logoutUser(app);
 SessionEndpoints.getSession(app);
-OAuthEndpoints.githubAuth(app);
-OAuthEndpoints.githubCallback(app);
+OAuthEndpoints.githubAuthStart(app);
+OAuthEndpoints.githubAuthCallback(app);
 OAuthEndpoints.setGithubUsername(app);
 OAuthEndpoints.githubUnlink(app);
 

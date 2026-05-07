@@ -100,5 +100,5 @@ export type PendingGithubPayload = {
 	githubId: string;
 	email: string;
 	displayName: string;
-	exp: number;
+	expiration: number;
 };
