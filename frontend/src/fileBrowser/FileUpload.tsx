@@ -4,7 +4,7 @@ import {useShowToast} from "#/src/stores/toastStore";
 import {Input} from "../components/Input";
 import {apiFetch} from "#/src/utils.js";
 import type {ApiResponse} from "#shared/src/types.ts";
-import {fileNotValid} from "#shared/src/fileTypeCheck";
+import {validateFile} from "#shared/src/fileValidation";
 
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<Array<File> | null>(null);
@@ -21,19 +21,15 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 
 		const newFileArray = fileUploads?.slice() ?? new Array<File>();
 		for (const f of e.target.files) {
-			const err = fileNotValid(f.type, f.size, await f.text(), f.name);
+			const err = validateFile(f.type, f.size, await f.text(), f.name);
 			if (err) {
 				showToast("error", `File '${f.name}': ${err}`);
 				console.error(`File '${f.name}' is ${err}`);
 			} else {
-				const index = newFileArray.findIndex(
-					(value: File) =>
-						value.name === f.name && value.webkitRelativePath === f.webkitRelativePath && value.size === f.size,
-				);
+				const index = newFileArray.findIndex((value: File) => value.name === f.name);
 				if (index !== -1) {
 					if (f.lastModified <= newFileArray[index].lastModified) {
-						showToast("info", `Duplicate file ${f.name}`);
-						console.error(`Duplicate file ${f.name}`);
+						showToast("error", `Duplicate file ${f.name}`);
 					} else {
 						newFileArray[index] = f;
 						showToast("info", `Updated file ${f.name}`);
@@ -60,7 +56,8 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 		if (fileUploads) {
 			console.log("Uploading file(s)...", fileUploads);
 			// I think would be better to make the submit button unpressable during this
-			// showToast("info", "Uploading file(s)...");
+			// @NOTE will look into implementing that in the future
+			showToast("info", "Uploading file(s)...");
 
 			const formData = new FormData();
 			[...fileUploads].forEach((file: File) => {

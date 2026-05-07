@@ -1,11 +1,10 @@
 import type {UserFile} from "#shared/src/types";
 import {useNavigate} from "react-router";
 import type {JSX} from "react";
-
-import {Button} from "#/src/components/Button";
 import type {ApiResponse} from "#shared/src/types.js";
 import {apiFetch} from "#/src/utils.js";
 import {useShowToast} from "#/src/stores/toastStore";
+import {Button} from "#/src/components/Button";
 
 function FileList({
 	fileList,

@@ -4,13 +4,13 @@ import {timestampedLog} from "#/src/logging.js";
 import {UserFileSchema} from "#/src/validation/schemas.js";
 import {requireAuth} from "#/src/middleware.js";
 import type {UserFile, ApiResponse} from "#shared/src/types.js";
-import {isDbError, isUniqueViolation} from "#/src/utils.js";
+import {isDbError, isInvalidByteSequence, isUniqueViolation} from "#/src/utils.js";
 
 import multer from "multer";
 
 // doing #shared does not work for some reason
 // having is text or binary package only in shard is not enought for some reason, also need in backend
-import {fileNotValid} from "../../../shared/src/fileTypeCheck.js";
+import {validateFile} from "../../../shared/src/fileValidation.js";
 
 // doing #shared does not work for some reason
 
@@ -88,7 +88,7 @@ function uploadFiles(app: Express, db: Pool) {
 
 			const fileErrors: string[] = [];
 			for (const f of req.files) {
-				const err: string | null = fileNotValid(f.mimetype, f.size, f.buffer.toString("utf8"), f.originalname);
+				const err: string | null = validateFile(f.mimetype, f.size, f.buffer.toString("utf8"), f.originalname);
 				if (err) fileErrors.push(`File '${f.originalname}': ${err}`);
 			}
 			if (fileErrors.length > 0) {
@@ -113,7 +113,6 @@ function uploadFiles(app: Express, db: Pool) {
 			try {
 				const result = await db.query(query, values);
 				const ids = result.rows.map((row) => row.id);
-				console.log(ids);
 				return res.status(201).json({ok: true, data: ids});
 			} catch (error: unknown) {
 				if (!isDbError(error)) {
@@ -121,9 +120,10 @@ function uploadFiles(app: Express, db: Pool) {
 					return res.status(500).json({ok: false, error: "Internal server error"});
 				}
 				timestampedLog(`DB ERROR <<< ${error.code}: ${error.detail}`);
+
 				// this binary file handling happens if the checks before db fail
 				// @NOTE the messaging is different from normal checks
-				if (error.code === "22021") {
+				if (isInvalidByteSequence(error)) {
 					const msg =
 						req.files.length === 1
 							? `File '${req.files[0].originalname}' has binary encoding`

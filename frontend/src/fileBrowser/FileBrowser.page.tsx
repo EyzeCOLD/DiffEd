@@ -21,17 +21,7 @@ function FileBrowserPage() {
 	}
 
 	// @NOTE this is fine
-	// not calling the refreshFileList function to make ESLint shut up
-	useEffect(() => {
-		apiFetch<UserFile[]>("/api/files").then((response) => {
-			if (response.ok) {
-				setFileList(response.data);
-			} else {
-				console.error(response.error);
-				showToast("error", `${response.error}`);
-			}
-		});
-	}, []);
+	useEffect(() => void refreshFileList(), []);
 
 	return (
 		<>

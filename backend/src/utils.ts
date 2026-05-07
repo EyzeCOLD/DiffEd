@@ -8,3 +8,7 @@ export function isDbError(error: unknown): error is DatabaseError {
 export function isUniqueViolation(error: DatabaseError): boolean {
 	return error.code === "23505";
 }
+
+export function isInvalidByteSequence(error: DatabaseError): boolean {
+	return error.code === "22021";
+}
