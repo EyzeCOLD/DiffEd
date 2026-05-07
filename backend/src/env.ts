@@ -6,6 +6,7 @@ const required = [
 	"POSTGRES_PASSWORD",
 	"GITHUB_CLIENT_ID",
 	"GITHUB_CLIENT_SECRET",
+	"SESSION_SECRET",
 ] as const;
 
 const missing = required.filter((key) => !process.env[key]);
