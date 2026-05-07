@@ -10,20 +10,32 @@ type fileBrowserProps = {
 };
 
 function FileBrowser({onFileSelect}: fileBrowserProps) {
-	const {paginated, totalPages, page, setPage, filter, setFilter, sortDescending, setSortDescending, refreshFileList} =
-		useFileList();
+	const {
+		paginated,
+		totalPages,
+		page,
+		setPage,
+		filter,
+		setFilter,
+		sortDescending,
+		setSortDescending,
+		refreshFileList,
+		totalFiles,
+	} = useFileList();
 
 	return (
 		<>
-			<div>
-				<Input
-					type="text"
-					id="fileListFilter"
-					value={filter}
-					placeholder="Filter"
-					onChange={(event) => setFilter(event.target.value)}
-				/>
-			</div>
+			{totalFiles > 0 ? (
+				<div>
+					<Input
+						type="text"
+						id="fileListFilter"
+						value={filter}
+						placeholder="Filter"
+						onChange={(event) => setFilter(event.target.value)}
+					/>
+				</div>
+			) : null}
 			<FileList
 				onFileSelect={onFileSelect}
 				fileList={paginated}

@@ -3,13 +3,14 @@ import {useState, useEffect, useMemo} from "react";
 import {apiFetch} from "#/src/utils";
 import {useShowToast} from "#/src/stores/toastStore";
 
+const FILES_PER_PAGE = 10;
+
 function useFileList() {
 	const [fileList, setFileList] = useState<UserFile[] | null>(null);
 	const [filter, setFilter] = useState("");
 	const [page, setPage] = useState(0);
 	const [sortDescending, setSortDescending] = useState(true);
 	const showToast = useShowToast();
-	const FILES_PER_PAGE = 10;
 
 	const processed = useMemo(() => {
 		if (!fileList) return [];
@@ -30,6 +31,7 @@ function useFileList() {
 
 	useEffect(() => void refreshFileList(), []);
 
+	const totalFiles = fileList ? fileList.length : 0;
 	const paginated = processed.slice(page * FILES_PER_PAGE, (page + 1) * FILES_PER_PAGE);
 	const totalPages = processed ? Math.ceil(processed.length / FILES_PER_PAGE) : 0;
 
@@ -43,6 +45,7 @@ function useFileList() {
 		sortDescending,
 		setSortDescending,
 		refreshFileList,
+		totalFiles,
 	};
 }
 

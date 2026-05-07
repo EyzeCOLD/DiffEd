@@ -7,6 +7,8 @@ type paginatorProps = {
 };
 
 function Paginator({currentPage, totalPages, onPageChange}: paginatorProps) {
+	if (totalPages < 2) return null;
+
 	function generatePageNumbers() {
 		if (totalPages <= 7) {
 			return Array.from({length: totalPages}, (_, i) => i + 1);
@@ -17,7 +19,7 @@ function Paginator({currentPage, totalPages, onPageChange}: paginatorProps) {
 		for (let i = Math.max(2, currentPage); i <= Math.min(totalPages - 1, currentPage + 2); ++i) {
 			pages.push(i);
 		}
-		if (currentPage < totalPages - 2) pages.push("...");
+		if (currentPage < totalPages - 3) pages.push("...");
 		pages.push(totalPages);
 		return pages;
 	}
@@ -26,7 +28,9 @@ function Paginator({currentPage, totalPages, onPageChange}: paginatorProps) {
 
 	return (
 		<div>
-			<Button onClick={() => onPageChange(Math.max(0, currentPage - 1))}>«</Button>
+			<Button onClick={() => onPageChange(Math.max(0, currentPage - 1))} disabled={currentPage === 0}>
+				«
+			</Button>
 			{pageNumbers.map((p) => {
 				if (p === "...") {
 					return <span>...</span>;
@@ -35,8 +39,12 @@ function Paginator({currentPage, totalPages, onPageChange}: paginatorProps) {
 				}
 				return <Button onClick={() => onPageChange(p - 1)}>{p}</Button>;
 			})}
-			<Button onClick={() => onPageChange(Math.min(currentPage + 1, totalPages - 1))}>»</Button>
-			Page {currentPage + 1} out of {totalPages}
+			<Button
+				onClick={() => onPageChange(Math.min(currentPage + 1, totalPages - 1))}
+				disabled={currentPage === totalPages - 1}
+			>
+				»
+			</Button>
 		</div>
 	);
 }
