@@ -8,6 +8,7 @@ import {usernameSchema} from "#/src/validation/schemas.js";
 import type {ApiResponse, User, PendingGithubPayload} from "#shared/src/types.js";
 import {requireAuth} from "#/src/middleware.js";
 import userQueryService from "#/src/queries/users.js";
+import {Buffer} from "node:buffer";
 
 function signToken(payload: PendingGithubPayload): string {
 	const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
