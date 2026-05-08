@@ -10,6 +10,7 @@ export type User = {
 	id: number;
 	username: string;
 	email: string;
+	github_linked?: boolean;
 };
 
 export type UserWithPassword = User & {hashed_password: string};
@@ -94,3 +95,10 @@ export type NameUpdateResponse = {
 export type ApiSuccess<T> = {ok: true; data: T};
 export type ApiError = {ok: false; error: string};
 export type ApiResponse<T> = ApiSuccess<T> | ApiError;
+
+export type PendingGithubPayload = {
+	githubId: string;
+	email: string;
+	displayName: string;
+	expiration: number;
+};
