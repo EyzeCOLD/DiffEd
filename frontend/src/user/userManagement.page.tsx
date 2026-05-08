@@ -10,226 +10,184 @@ import type {ApiResponse, User} from "#shared/src/types.js";
 
 const emailSchema = z.email();
 
-type UpdateProps = {
-	initialValue: string;
-	onUpdate: (newValue: string) => void;
+type UserSettingProps = {
+	user: User;
+	onUpdate: (username?: string, email?: string) => void;
 };
 
-function Username({initialValue, onUpdate}: UpdateProps) {
-	const [isEditing, setIsEditing] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
-	const [newUsername, setNewUsername] = useState(initialValue);
+function UserSettings({user, onUpdate}: UserSettingProps) {
+	const [currentUsername, setCurrentUsername] = useState(user.username);
+	const [currentEmail, setCurrentEmail] = useState(user.email);
+	const [newUsername, setNewUsername] = useState("");
+	const [newEmail, setNewEmail] = useState("");
+	const [passwordConfirm, setPasswordConfirm] = useState(false);
 	const showToast = useShowToast();
 
-	async function handleSubmitClick() {
-		setIsLoading(true);
+	async function resetState() {
+		setNewUsername("");
+		setNewEmail("");
+		setPasswordConfirm(false);
+	}
+
+	function handleSubmitClick() {
+		if (newEmail) {
+			if (!emailSchema.safeParse(newEmail).success)
+				return showToast("error", "Invalid email. If you don't want to change email, please leave the field empty.");
+			if (newEmail == currentEmail) return showToast("error", "New email same as current email");
+		}
+
+		if (newUsername) {
+			if (newUsername.length < 3) return showToast("error", "Username has to be at least 3 characters long");
+			if (newUsername === currentUsername) return showToast("error", "New Username same as current username");
+		}
+
+		setPasswordConfirm(true);
+	}
+
+	async function handleAcceptClick(password: string) {
 		try {
-			if (!newUsername) {
-				throw new Error("The field cannot be empty");
+			if (newUsername) {
+				const response: ApiResponse<null> = await apiFetch("/api/user", {
+					method: "PATCH",
+					headers: {"Content-Type": "application/json"},
+					credentials: "include",
+					body: JSON.stringify({username: newUsername, password: password}),
+				});
+
+				if (!response.ok) {
+					if (response.error.includes("password")) throw new Error(response.error);
+					showToast("error", response.error);
+				} else {
+					setCurrentUsername(newUsername);
+					showToast("success", "Successfully updated username");
+				}
 			}
 
-			const response: ApiResponse<null> = await apiFetch("/api/user", {
-				method: "PATCH",
-				headers: {"Content-Type": "application/json"},
-				credentials: "include",
-				body: JSON.stringify({username: newUsername}),
-			});
+			if (newEmail) {
+				const response: ApiResponse<null> = await apiFetch("/api/user", {
+					method: "PATCH",
+					headers: {"Content-Type": "application/json"},
+					credentials: "include",
+					body: JSON.stringify({email: newEmail, password: password}),
+				});
 
-			if (!response.ok) {
-				throw new Error(response.error);
+				if (!response.ok) {
+					if (response.error.includes("password")) throw new Error(response.error);
+					showToast("error", response.error);
+				} else {
+					setCurrentEmail(newEmail);
+					showToast("success", "Successfully updated email");
+				}
 			}
 
-			onUpdate(newUsername);
-			showToast("success", "Successfully changed username");
-		} catch (e: unknown) {
-			setNewUsername(initialValue);
+			onUpdate(currentUsername, currentEmail);
+			resetState();
+		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
-		} finally {
-			setIsEditing(false);
-			setIsLoading(false);
 		}
 	}
 
-	function handleCancelClick() {
-		setIsEditing(false);
-		setNewUsername(initialValue);
-	}
-
 	return (
-		<div>
-			{isEditing ? (
+		<>
+			<div>
+				<h2>Username</h2>
 				<div>
-					<Input placeholder="username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
-					&nbsp;
-					<Button
-						onClick={handleSubmitClick}
-						disabled={isLoading}
-						style={{cursor: "pointer"}}
-						aria-label="Submit new username"
-					>
-						{isLoading ? "Saving..." : "Submit"}
-					</Button>
-					&nbsp;
-					<Button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel username change">
-						Cancel
-					</Button>
+					<Input
+						type="text"
+						disabled={passwordConfirm}
+						placeholder={currentUsername}
+						value={newUsername}
+						onChange={(e) => setNewUsername(e.target.value)}
+					/>
 				</div>
-			) : (
-				<div>
-					<span>{initialValue}</span>
-					&nbsp;
-					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change username">
-						Change
-					</Button>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function Email({initialValue, onUpdate}: UpdateProps) {
-	const [isEditing, setIsEditing] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
-	const [newEmail, setNewEmail] = useState(initialValue);
-	const showToast = useShowToast();
-
-	async function handleSubmitClick() {
-		setIsLoading(true);
-		try {
-			if (!newEmail) {
-				throw new Error("The field cannot be empty");
-			}
-
-			if (!emailSchema.safeParse(newEmail).success) {
-				throw new Error("Invalid email");
-			}
-
-			const response: ApiResponse<null> = await apiFetch("/api/user", {
-				method: "PATCH",
-				headers: {"Content-Type": "application/json"},
-				credentials: "include",
-				body: JSON.stringify({email: newEmail}),
-			});
-
-			if (!response.ok) {
-				throw new Error(response.error);
-			}
-
-			onUpdate(newEmail);
-			showToast("success", "Successfully changed email");
-		} catch (e: unknown) {
-			setNewEmail(initialValue);
-			showToast("error", e instanceof Error ? e.message : String(e));
-		} finally {
-			setIsEditing(false);
-			setIsLoading(false);
-		}
-	}
-
-	function handleCancelClick() {
-		setIsEditing(false);
-		setNewEmail(initialValue);
-	}
-
-	return (
-		<div>
-			{isEditing ? (
+				<h2>Email</h2>
 				<div>
 					<Input
 						type="email"
-						placeholder="example@email.com"
+						disabled={passwordConfirm}
+						placeholder={currentEmail}
 						value={newEmail}
 						onChange={(e) => setNewEmail(e.target.value)}
 					/>
-					&nbsp;
-					<Button
-						onClick={handleSubmitClick}
-						disabled={isLoading}
-						style={{cursor: "pointer"}}
-						aria-label="Submit new email address"
-					>
-						{isLoading ? "Saving..." : "Submit"}
-					</Button>
-					&nbsp;
-					<Button onClick={handleCancelClick} style={{cursor: "pointer"}} aria-label="Cancel email address change">
-						Cancel
-					</Button>
 				</div>
-			) : (
-				<div>
-					<span>{initialValue}</span>
-					&nbsp;
-					<Button onClick={() => setIsEditing(true)} style={{cursor: "pointer"}} aria-label="Change email address">
-						Change
-					</Button>
-				</div>
-			)}
-		</div>
+			</div>
+			<div>
+				{passwordConfirm ? (
+					<div>
+						<Confirm onConfirm={handleAcceptClick} onCancel={() => setPasswordConfirm(false)} />
+					</div>
+				) : (
+					<div>
+						<Button
+							onClick={() => {
+								newUsername || newEmail ? handleSubmitClick() : showToast("error", "No changes available");
+							}}
+							aria-label="Update Profile"
+						>
+							Submit Changes
+						</Button>
+					</div>
+				)}
+			</div>
+		</>
 	);
 }
 
 function Password() {
-	const [isLoading, setIsLoading] = useState(false);
+	const [passwordConfirm, setPasswordConfirm] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [newPassword, setNewPassword] = useState("");
 	const [newPassword2, setNewPassword2] = useState("");
-	const [oldPassword, setOldPassword] = useState("");
 	const showToast = useShowToast();
 
-	async function handleSubmitClick() {
-		setIsLoading(true);
+	function resetState() {
+		setIsEditing(false);
+		setPasswordConfirm(false);
+		setNewPassword("");
+		setNewPassword2("");
+	}
+
+	async function handleAcceptClick(password: string) {
 		try {
-			if (!oldPassword || !newPassword) {
-				throw new Error("Please fill all the fields!");
-			}
-
-			if (newPassword !== newPassword2) {
-				throw new Error("The passwords do not match!");
-			}
-
 			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "PATCH",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
-				body: JSON.stringify({oldPassword, newPassword}),
+				body: JSON.stringify({password, newPassword}),
 			});
 
 			if (!response.ok) {
 				throw new Error(response.error);
 			}
 
-			setNewPassword("");
-			setNewPassword2("");
-			setOldPassword("");
-			setIsEditing(false);
 			showToast("success", "Successfully changed password");
+			resetState();
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
 		} finally {
-			setIsLoading(false);
 		}
 	}
 
-	function handleCancelClick() {
-		setIsEditing(false);
-		setNewPassword("");
-		setNewPassword2("");
-		setOldPassword("");
+	function handleSubmitClick() {
+		if (!newPassword || !newPassword2) {
+			return showToast("error", "Please fill all the fields!");
+		}
+
+		if (newPassword !== newPassword2) {
+			return showToast("error", "The passwords do not match!");
+		}
+
+		setPasswordConfirm(true);
 	}
 
 	return (
 		<div>
 			{isEditing ? (
-				<div>
-					<Input
-						placeholder="old password"
-						type="password"
-						value={oldPassword}
-						onChange={(e) => setOldPassword(e.target.value)}
-					/>
+				<>
 					<div>
 						<Input
 							placeholder="new password"
+							disabled={passwordConfirm}
 							type="password"
 							value={newPassword}
 							onChange={(e) => setNewPassword(e.target.value)}
@@ -238,21 +196,29 @@ function Password() {
 					<div>
 						<Input
 							placeholder="new password, again"
+							disabled={passwordConfirm}
 							type="password"
 							value={newPassword2}
 							onChange={(e) => setNewPassword2(e.target.value)}
 						/>
 					</div>
 					<div>
-						<Button onClick={handleSubmitClick} disabled={isLoading} aria-label="Submit password change">
-							Submit
-						</Button>
-						&nbsp;
-						<Button onClick={handleCancelClick} aria-label="Cancel password change">
-							Cancel
-						</Button>
+						{!passwordConfirm ? (
+							<div>
+								<Button onClick={handleSubmitClick} aria-label="Submit password change">
+									Submit
+								</Button>
+								<Button onClick={resetState} aria-label="Cancel password change">
+									Cancel
+								</Button>
+							</div>
+						) : (
+							<div>
+								<Confirm onConfirm={handleAcceptClick} onCancel={resetState} />
+							</div>
+						)}
 					</div>
-				</div>
+				</>
 			) : (
 				<div>
 					<Button onClick={() => setIsEditing(true)} aria-label="Change password">
@@ -265,10 +231,11 @@ function Password() {
 }
 
 function Delete() {
+	const [passwordConfirm, setPasswordConfirm] = useState(false);
 	const navigate = useNavigate();
 	const showToast = useShowToast();
 
-	async function deleteAccount() {
+	async function deleteAccount(password: string) {
 		if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
 			return;
 		}
@@ -278,10 +245,11 @@ function Delete() {
 				method: "DELETE",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
+				body: JSON.stringify({password: password}),
 			});
 
 			if (!response.ok) {
-				throw new Error("Failed to delete account");
+				throw new Error(response.error);
 			}
 
 			showToast("success", "Successfully deleted user");
@@ -291,11 +259,16 @@ function Delete() {
 		}
 	}
 
-	return (
+	return !passwordConfirm ? (
 		<div>
-			<Button onClick={deleteAccount} aria-label="Delete account">
+			<Button onClick={() => setPasswordConfirm(true)} aria-label="Delete account">
 				Delete Account
 			</Button>
+		</div>
+	) : (
+		<div>
+			<h2>You are deleting your account!</h2>
+			<Confirm onConfirm={deleteAccount} onCancel={() => setPasswordConfirm(false)} />
 		</div>
 	);
 }
@@ -347,96 +320,6 @@ function Confirm({onConfirm, onCancel}: PasswordConfirmProps) {
 				>
 					cancel
 				</button>
-			</div>
-		</>
-	);
-}
-
-type UserSettingProps = {
-	user: User;
-	onUpdate: (username?: string, email?: string) => void;
-};
-
-function UserSettings({user, onUpdate}: UserSettingProps) {
-	const [currentUsername, setCurrentUsername] = useState(user.username);
-	const [currentEmail, setCurrentEmail] = useState(user.email);
-	const [newUsername, setNewUsername] = useState("");
-	const [newEmail, setNewEmail] = useState("");
-	const [passwordConfirm, setPasswordConfirm] = useState(false);
-	const showToast = useShowToast();
-
-	function handleSubmitClick() {
-		if (!newUsername) setNewUsername(currentUsername);
-		if (!newEmail) setNewEmail(currentEmail);
-		setPasswordConfirm(true);
-	}
-
-	async function resetState() {
-		setNewUsername("");
-		setNewEmail("");
-		setPasswordConfirm(false);
-	}
-
-	async function handleAcceptClick(password: string) {
-		try {
-			const response: ApiResponse<null> = await apiFetch("/api/user", {
-				method: "PATCH",
-				headers: {"Content-Type": "application/json"},
-				credentials: "include",
-				body: JSON.stringify({email: newEmail, username: newUsername, password}),
-			});
-
-			if (!response.ok) {
-				throw new Error(response.error);
-			}
-
-			setCurrentEmail(newEmail);
-			setCurrentUsername(newUsername);
-			onUpdate(newUsername, newEmail);
-			showToast("success", "Successfully updated the changes");
-		} catch (e) {
-			showToast("error", e instanceof Error ? e.message : String(e));
-		} finally {
-			resetState();
-		}
-	}
-
-	return !passwordConfirm ? (
-		<div>
-			<h2>Username</h2>
-			<div>
-				<Input
-					type="text"
-					placeholder={currentUsername}
-					value={newUsername}
-					onChange={(e) => setNewUsername(e.target.value)}
-				/>
-			</div>
-			<h2>Email</h2>
-			<div>
-				<Input type="email" placeholder={currentEmail} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-			</div>
-			<div>
-				<Button
-					onClick={() => {
-						newUsername || newEmail ? handleSubmitClick() : showToast("error", "No changes available");
-					}}
-					aria-label="Update Profile"
-				>
-					Submit Changes
-				</Button>
-			</div>
-		</div>
-	) : (
-		<>
-			<div>
-				<h2>Username</h2>
-				{newUsername}
-				<h2>Email</h2>
-				{newEmail}
-			</div>
-			<div>
-				<Confirm onConfirm={handleAcceptClick} onCancel={resetState} />
 			</div>
 		</>
 	);

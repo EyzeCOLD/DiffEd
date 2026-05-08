@@ -43,7 +43,7 @@ function signupUser(app: Express) {
 function modifyUser(app: Express) {
 	app.patch("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-		const {username, email, oldPassword, newPassword} = req.body;
+		const {username, email, password, newPassword} = req.body;
 		const id = req.session.userId!;
 
 		if (!username && !email && !newPassword) {
@@ -51,9 +51,13 @@ function modifyUser(app: Express) {
 		}
 
 		try {
-			const user = await userQueryService.getUserById(id);
+			const user = await userQueryService.getUserWithPasswordById(id);
 			if (!user) {
 				throw new Error(`User with id: ${id} not found in database`);
+			}
+
+			if (!(await argon2.verify(user.hashed_password, password))) {
+				return res.status(400).json({ok: false, error: "Incorrect password"});
 			}
 
 			if (username) {
@@ -63,7 +67,7 @@ function modifyUser(app: Express) {
 				}
 
 				if (user!.username === parsedUsername.data) {
-					return res.status(400).json({ok: false, error: "No changes made: New username same as current username"});
+					return res.status(400).json({ok: false, error: "New username same as current username"});
 				}
 
 				const usernameExists = await userQueryService.getUserByUsername(username);
@@ -82,8 +86,9 @@ function modifyUser(app: Express) {
 				}
 
 				if (user!.email === email) {
-					return res.status(400).json({ok: false, error: "No changes made: New email same as old email"});
+					return res.status(400).json({ok: false, error: "New email same as old email"});
 				}
+
 				const emailExists = await userQueryService.getUserByEmail(email);
 				if (emailExists) {
 					return res.status(409).json({ok: false, error: "Email already taken"});
@@ -99,16 +104,7 @@ function modifyUser(app: Express) {
 					return res.status(400).json({ok: false, error: parsedPassword.error.issues[0].message});
 				}
 
-				const currentPassword = await userQueryService.getHashedPasswordById(id);
-				if (!currentPassword) {
-					throw new Error(`Could not fetch password from database for id: ${id}`);
-				}
-
-				if (!(await argon2.verify(currentPassword, oldPassword))) {
-					return res.status(400).json({ok: false, error: "Incorrect password"});
-				}
-
-				if (await argon2.verify(currentPassword, newPassword)) {
+				if (await argon2.verify(user.hashed_password, newPassword)) {
 					return res.status(400).json({ok: false, error: "New Password can not be the same as old password!"});
 				}
 
@@ -135,9 +131,19 @@ function modifyUser(app: Express) {
 function deleteUser(app: Express) {
 	app.delete("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-
+		const {password} = req.body;
 		const id = req.session.userId!;
+
 		try {
+			const user = await userQueryService.getUserWithPasswordById(id);
+			if (!user) {
+				throw new Error(`User with id: ${id} not found in database`);
+			}
+
+			if (!(await argon2.verify(user.hashed_password, password))) {
+				return res.status(400).json({ok: false, error: "Incorrect password"});
+			}
+
 			if ((await userQueryService.deleteUserById(id)) === false) {
 				throw new Error(`Could not delete user with id: ${id}`);
 			}

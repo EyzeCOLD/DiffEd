@@ -13,6 +13,17 @@ async function getUserById(id: number): Promise<User | null> {
 	return rows[0];
 }
 
+async function getUserWithPasswordById(id: number): Promise<UserWithPassword | null> {
+	const query = "SELECT * FROM users WHERE id = $1";
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${[id]}`);
+	const {rows} = await db.query(query, [id]);
+
+	if (!rows.length) return null;
+
+	return rows[0];
+}
+
 async function getUserByUsername(username: string): Promise<User | null> {
 	const query = "SELECT id, username, email FROM users WHERE username = $1";
 	timestampedLog(`DB QUERY >>> ${query}`);
@@ -111,6 +122,7 @@ async function deleteUserById(id: number): Promise<boolean> {
 
 export default {
 	getUserById,
+	getUserWithPasswordById,
 	getUserByUsername,
 	getUserByEmail,
 	getUserWithPasswordByIdentifier,
