@@ -10,6 +10,9 @@ import {requireAuth} from "#/src/middleware.js";
 import userQueryService from "#/src/queries/users.js";
 import {Buffer} from "node:buffer";
 
+export const GITHUB_ACTIONS = ["login", "signup", "link_account"] as const;
+export type githubAction = (typeof GITHUB_ACTIONS)[number];
+
 function signToken(payload: PendingGithubPayload): string {
 	const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
 	const signature = crypto.createHmac("sha256", SESSION_SECRET).update(data).digest("base64url");
@@ -38,7 +41,10 @@ function verifyToken(token: string): PendingGithubPayload | null {
 
 function githubAuthStart(app: Express) {
 	app.get("/api/auth/github", (req: Request, res: Response, next) => {
-		const action = (req.query.action as string) || "login";
+		const action = (req.query.action as githubAction) || "login";
+		if (typeof action !== "string" || !GITHUB_ACTIONS.includes(action)) {
+			return res.status(400).json({ok: false, error: "Invalid action"});
+		}
 		const githubAuth = passport.authenticate("github", {
 			scope: ["user:email"],
 			session: false,
@@ -49,7 +55,10 @@ function githubAuthStart(app: Express) {
 }
 
 function githubAuthMiddleware(req: Request, res: Response, next: (err?: unknown) => void) {
-	const action = (req.query.action as string) || "login";
+	const action = (req.query.action as githubAction) || "login";
+	if (typeof action !== "string" || !GITHUB_ACTIONS.includes(action)) {
+		return res.status(400).json({ok: false, error: "Invalid action"});
+	}
 	const githubAuth = passport.authenticate("github", {
 		session: false,
 		failureRedirect: "/login",
@@ -68,7 +77,10 @@ function githubAuthCallback(app: Express) {
 		const displayName = profile.username ?? profile.displayName ?? "user";
 
 		try {
-			const action = req.query.action as string;
+			const action = req.query.action as githubAction;
+			if (typeof action !== "string" || !GITHUB_ACTIONS.includes(action)) {
+				return res.status(400).json({ok: false, error: "Invalid action"});
+			}
 
 			if (action === "link_account") {
 				const userId = req.session.userId;
