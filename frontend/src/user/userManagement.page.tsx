@@ -30,6 +30,7 @@ function UserSettings({user, onUpdate}: UserSettingProps) {
 	}
 
 	function handleSubmitClick() {
+		if (!newUsername && !newEmail) return showToast("error", "No changes available");
 		if (newEmail) {
 			if (!emailSchema.safeParse(newEmail).success)
 				return showToast("error", "Invalid email. If you don't want to change email, please leave the field empty.");
@@ -118,12 +119,7 @@ function UserSettings({user, onUpdate}: UserSettingProps) {
 					</div>
 				) : (
 					<div>
-						<Button
-							onClick={() => {
-								newUsername || newEmail ? handleSubmitClick() : showToast("error", "No changes available");
-							}}
-							aria-label="Update Profile"
-						>
+						<Button onClick={handleSubmitClick} aria-label="Update Profile">
 							Submit Changes
 						</Button>
 					</div>
@@ -164,7 +160,6 @@ function Password() {
 			resetState();
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
-		} finally {
 		}
 	}
 
@@ -226,6 +221,51 @@ function Password() {
 					</Button>
 				</div>
 			)}
+		</div>
+	);
+}
+
+function GithubLink({githubLinked}: {githubLinked: boolean}) {
+	const [isLoading, setIsLoading] = useState(false);
+	const updateUser = useUpdateUser();
+	const showToast = useShowToast();
+
+	async function handleUnlink() {
+		setIsLoading(true);
+		try {
+			const response: ApiResponse<null> = await apiFetch("/api/auth/github/link", {
+				method: "DELETE",
+				credentials: "include",
+			});
+			if (!response.ok) throw new Error(response.error);
+			updateUser({github_linked: false});
+			showToast("success", "GitHub account unlinked");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	if (githubLinked) {
+		return (
+			<div>
+				<span>GitHub: Linked</span>
+				&nbsp;
+				<Button onClick={handleUnlink} disabled={isLoading} aria-label="Unlink GitHub account">
+					{isLoading ? "Unlinking..." : "Unlink"}
+				</Button>
+			</div>
+		);
+	}
+
+	return (
+		<div>
+			<a href="/api/auth/github?action=link_account">
+				<Button type="button" aria-label="Link GitHub account">
+					Link GitHub
+				</Button>
+			</a>
 		</div>
 	);
 }
@@ -356,6 +396,9 @@ export default function UserManagementPage() {
 			</div>
 			<div>
 				<Password />
+			</div>
+			<div>
+				<GithubLink githubLinked={!!currentUser.github_linked} />
 			</div>
 			<div>
 				DANGER ZONE!!!

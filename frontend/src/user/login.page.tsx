@@ -2,7 +2,7 @@ import {Button} from "../components/Button";
 import {Input} from "../components/Input";
 import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
-import {useNavigate} from "react-router";
+import {useNavigate, useSearchParams} from "react-router";
 import {getSession, apiFetch} from "#/src/utils.ts";
 import {useShowToast} from "#/src/stores/toastStore";
 import {useSetUser} from "#/src/stores/userStore.ts";
@@ -14,8 +14,14 @@ export default function LoginPage() {
 	const navigate = useNavigate();
 	const showToast = useShowToast();
 	const setUser = useSetUser();
+	const [searchParams] = useSearchParams();
 
 	useEffect(() => {
+		const githubExists = searchParams.get("github_exists");
+		if (githubExists) showToast("error", `${githubExists} already has a registered GitHub account`);
+		const githubError = searchParams.get("github_error");
+		if (githubError === "no_account") showToast("error", "No account linked to your GitHub profile");
+		if (githubError === "email_exists") showToast("error", "An account with this email already exists");
 		getSession().then((ok) => {
 			if (ok) navigate("/dashboard");
 		});
@@ -66,6 +72,11 @@ export default function LoginPage() {
 					<Button type="submit">Log In</Button>
 				</div>
 			</form>
+			<div>
+				<a href="/api/auth/github">
+					<Button type="button">Login with GitHub</Button>
+				</a>
+			</div>
 			<div>
 				Don't have an account? Create one&nbsp;
 				<button onClick={() => navigate("/signup")} className="hover:text-accent font-bold underline cursor-pointer">
