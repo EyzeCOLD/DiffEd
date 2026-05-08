@@ -118,7 +118,7 @@ function setGithubUsername(app: Express) {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
 		const {token, username} = req.body;
-		if (!token || !username) {
+		if (typeof token !== "string" || typeof username !== "string" || !token || !username) {
 			return res.status(400).json({ok: false, error: "Missing token or username"});
 		}
 
