@@ -3,7 +3,8 @@ import {User, UserWithPassword} from "#shared/src/types.js";
 import {timestampedLog} from "#/src/logging.js";
 
 async function getUserById(id: number): Promise<User | null> {
-	const query = "SELECT id, username, email, (github_id IS NOT NULL) AS github_linked FROM users WHERE id = $1";
+	const query =
+		"SELECT id, username, email, vim_bindings, (github_id IS NOT NULL) AS github_linked FROM users WHERE id = $1";
 	timestampedLog(`DB QUERY >>> ${query}`);
 	timestampedLog(`DB VALUES >>> ${[id]}`);
 	const {rows} = await db.query(query, [id]);
@@ -136,6 +137,16 @@ async function unlinkGithubId(userId: number): Promise<boolean> {
 	return result.rowCount! > 0;
 }
 
+async function updateVimBindings(value: boolean, id: number): Promise<boolean> {
+	const query = "UPDATE users SET vim_bindings = $1 WHERE id = $2";
+	const values = [value, id];
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${values}`);
+	const result = await db.query(query, values);
+
+	return result.rowCount! > 0;
+}
+
 async function deleteUserById(id: number): Promise<boolean> {
 	const query = "DELETE FROM users WHERE id = $1";
 	timestampedLog(`DB QUERY >>> ${query}`);
@@ -160,4 +171,5 @@ export default {
 	updateEmail,
 	getHashedPasswordById,
 	updatePassword,
+	updateVimBindings,
 };

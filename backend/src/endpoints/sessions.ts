@@ -44,7 +44,10 @@ function loginUser(app: Express) {
 				req.session.userId = user.id;
 				req.session.save((error) => {
 					if (error) return res.status(500).json({ok: false, error: "Session save failed"});
-					res.status(200).json({ok: true, data: {id: user.id, username: user.username, email: user.email}});
+					res.status(200).json({
+						ok: true,
+						data: {id: user.id, username: user.username, email: user.email, vim_bindings: user.vim_bindings},
+					});
 				});
 			});
 		} catch (error: unknown) {
