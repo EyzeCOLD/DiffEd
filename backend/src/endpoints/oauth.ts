@@ -24,9 +24,13 @@ function verifyToken(token: string): PendingGithubPayload | null {
 	const signature = token.slice(dotIndex + 1);
 	const expectedSig = crypto.createHmac("sha256", SESSION_SECRET).update(data).digest("base64url");
 
-	if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) return null;
-
-	const payload: PendingGithubPayload = JSON.parse(Buffer.from(data, "base64url").toString());
+	let payload: PendingGithubPayload;
+	try {
+		if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) return null;
+		payload = JSON.parse(Buffer.from(data, "base64url").toString());
+	} catch {
+		return null;
+	}
 	if (Date.now() > payload.expiration) return null;
 
 	return payload;
