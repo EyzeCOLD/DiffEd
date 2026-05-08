@@ -6,7 +6,7 @@ import {EditorView} from "@codemirror/view";
 import {updateOriginalDoc} from "@codemirror/merge";
 import {CollabConnection, getInitialDocument, pushFileName, pullFileName} from "./collabClient";
 import {CollabPeersPool} from "./collabPeerDocs";
-import {getEditorExtensions, langServer} from "./editorConfigs";
+import {getEditorExtensions, getLangExtension, langOptions, langCompartment} from "./editorConfigs";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
 import {Input} from "../components/Input";
@@ -46,6 +46,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 	const [error, setError] = useState<string | null>(null);
 	const [retryCount, setRetryCount] = useState(0);
 	const [fileName, setFileName] = useState("");
+	const [langSelected, setLangOverride] = useState<string | null>(null);
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
 	const [members, setMembers] = useState<WorkspaceMember[]>(() => initialMembers.filter((m) => m.id !== myOwnerId));
@@ -105,6 +106,12 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 		});
 	}, [pool, basePeerId]);
 
+	useEffect(() => {
+		if (!viewRef.current) return;
+		const extension = langSelected ? (langOptions[langSelected]?.() ?? []) : getLangExtension(fileName);
+		viewRef.current.dispatch({effects: langCompartment.reconfigure(extension)});
+	}, [langSelected, fileName]);
+
 	const memberInitialDoc = basePeerId === null ? null : (pool.getPeerDoc(basePeerId)?.doc ?? null);
 
 	useEffect(() => {
@@ -144,7 +151,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 				const state = EditorState.create({
 					doc,
 					extensions: getEditorExtensions({
-						langExtension: langServer.markdown(),
+						langExtension: getLangExtension(initialFileName),
 						version,
 						connection,
 						myOwnerId,
@@ -220,9 +227,25 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 						Rename
 					</Button>
 				</form>
-				<Button type="button" className="border px-2" onClick={onRepickFile}>
-					Change file
-				</Button>
+				<div className="flex items-center">
+					<select
+						className="m-1 px-1 border-2 border-surface bg-canvas text-foreground"
+						value={langSelected ?? ""}
+						onChange={(e) => setLangOverride(e.target.value || null)}
+					>
+						<option className="bg-canvas" value="">
+							File syntax
+						</option>
+						{Object.keys(langOptions).map((name) => (
+							<option className="bg-canvas" key={name} value={name}>
+								{name}
+							</option>
+						))}
+					</select>
+					<Button type="button" className="border px-2" onClick={onRepickFile}>
+						Change file
+					</Button>
+				</div>
 			</div>
 			{error ? (
 				<div className="border border-error-accent p-2 text-error-accent">
