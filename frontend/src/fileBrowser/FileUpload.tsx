@@ -8,6 +8,7 @@ import {validateFile} from "#shared/src/fileValidation";
 
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	const [fileUploads, setFileUploads] = useState<Array<File> | null>(null);
+	const [UploadInProgress, setUploadInProgress] = useState<boolean>(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const showToast = useShowToast();
 
@@ -47,44 +48,85 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 	async function handleRemove(name: string) {
 		if (fileUploads === null) return;
 
-		const newFileArray = fileUploads.filter((value: File) => value.name !== name);
-		if (newFileArray.length) setFileUploads(newFileArray);
-		else resetInput();
+		setFileUploads((prev) => {
+			if (!prev) return null;
+
+			const newFileArray = prev.filter((value: File) => value.name !== name);
+			if (newFileArray.length) return newFileArray;
+			else return null;
+		});
 	}
 
+	async function uploadFile(file: File) {
+		if (!file) {
+			console.log("Tried to upload non existent file");
+			return {ok: false, error: "Tried to upload non existent file"} as ApiResponse<string>;
+		}
+		showToast("info", `Uploading file ${file.name}`);
+		const formData = new FormData();
+		formData.append("file", file);
+
+		const response: ApiResponse<string> = await apiFetch("/api/files", {
+			method: "POST",
+			body: formData,
+		});
+
+		if (!response.ok) {
+			console.error(`${response.error}`);
+			if (response.error === "Network error") {
+				showToast("error", "Network error: Try to reupload files");
+			} else {
+				showToast("error", response.error);
+			}
+		} else {
+			console.log(`File ${file.name} uploaded`);
+			showToast("success", `File ${file.name} uploaded`);
+		}
+		handleRemove(file.name);
+		return Promise.resolve();
+	}
+
+	async function uploadDaFiiles(Uploads: File[]) {
+		const promises = Uploads.map(async (file: File) => {
+			await uploadFile(file);
+		});
+		return await Promise.allSettled(promises);
+	}
+
+	// async function uploadDaFiiles(Uploads: File[]) {
+	// 	const uploadStates: Promise<void>[] = [];
+	// 	for (const file of Uploads) {
+	// 		uploadStates.push(
+	// 			uploadFile(file).then((response) => {
+	// 				if (!response.ok) {
+	// 					console.error(`${response.error}`);
+	// 					if (response.error === "Network error") {
+	// 						showToast("error", "Network error: Try to reupload files");
+	// 					} else {
+	// 						showToast("error", response.error);
+	// 					}
+	// 				} else {
+	// 					console.log(`File ${file.name} uploaded`);
+	// 					showToast("success", `File ${file.name} uploaded`);
+	// 				}
+	// 			}),
+	// 		);
+	// 	}
+	// 	return await Promise.all(uploadStates);
+	// }
+
 	async function handleUpload() {
-		if (fileUploads) {
+		if (fileUploads && !UploadInProgress) {
+			setUploadInProgress(true);
 			console.log("Uploading file(s)...", fileUploads);
 			// I think would be better to make the submit button unpressable during this
 			// @NOTE will look into implementing that in the future
-			showToast("info", "Uploading file(s)...");
 
-			const formData = new FormData();
-			[...fileUploads].forEach((file: File) => {
-				formData.append("file", file);
-			});
-
-			const response: ApiResponse<null> = await apiFetch("/api/files", {
-				method: "POST",
-				body: formData,
-			});
-
-			if (!response.ok) {
-				console.error(`${response.error}`);
-				if (response.error === "Network error") {
-					showToast("error", "Network error: Try to reupload files");
-					resetInput();
-				} else {
-					const errors = response.error.split("\0");
-					errors.forEach((e) => showToast("error", e));
-				}
-				return;
-			}
-
-			resetInput();
+			await uploadDaFiiles(fileUploads);
+			await new Promise((r) => setTimeout(r, 10000));
+			setUploadInProgress(false);
 			refreshFileList();
-			console.log("File(s) uploaded");
-			showToast("success", "File(s) uploaded");
+			resetInput();
 		}
 	}
 
@@ -119,7 +161,9 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 								))}
 						</tbody>
 					</table>
-					<Button onClick={() => handleUpload()}>Submit</Button>
+					<Button disabled={UploadInProgress} onClick={() => handleUpload()}>
+						Submit
+					</Button>
 				</>
 			)}
 		</>

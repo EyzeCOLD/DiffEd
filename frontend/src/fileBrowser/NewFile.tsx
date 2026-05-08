@@ -22,7 +22,7 @@ function NewFile({onFileCreate}: NewFileProps): JSX.Element {
 		const file = new File([""], newFilename!, {type: "text/plain"});
 		formData.append("file", file);
 
-		const fileResult = await apiFetch<string[]>("/api/files", {
+		const fileResult = await apiFetch<string>("/api/files", {
 			method: "POST",
 			body: formData,
 		});
@@ -31,7 +31,7 @@ function NewFile({onFileCreate}: NewFileProps): JSX.Element {
 			showToast("error", `File creation failed: ${fileResult.error}`);
 			return;
 		}
-		const fileId = fileResult.data[0];
+		const fileId = fileResult.data;
 
 		onFileCreate(fileId);
 	}
