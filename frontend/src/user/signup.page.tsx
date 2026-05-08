@@ -132,26 +132,38 @@ export default function SignupPage() {
 			<div>Welcome to the signup page</div>
 			<form onSubmit={signup}>
 				<div>
-					<Input placeholder="username" value={username} onChange={(e) => setUserName(e.target.value)} />
+					<label>
+						Username:
+						<Input placeholder="username" value={username} onChange={(e) => setUserName(e.target.value)} />
+					</label>
 				</div>
 				<div>
-					<Input placeholder="email" value={email} onChange={(e) => setUserEmail(e.target.value)} />
+					<label>
+						Email:
+						<Input placeholder="email" value={email} onChange={(e) => setUserEmail(e.target.value)} />
+					</label>
 				</div>
 				<div>
-					<Input
-						placeholder="password"
-						type="password"
-						value={password}
-						onChange={(e) => setUserPassword(e.target.value)}
-					/>
+					<label>
+						Password:
+						<Input
+							placeholder="password"
+							type="password"
+							value={password}
+							onChange={(e) => setUserPassword(e.target.value)}
+						/>
+					</label>
 				</div>
 				<div>
-					<Input
-						placeholder="repeat password"
-						type="password"
-						value={password2}
-						onChange={(e) => setUserPassword2(e.target.value)}
-					/>
+					<label>
+						Repeat password:
+						<Input
+							placeholder="repeat password"
+							type="password"
+							value={password2}
+							onChange={(e) => setUserPassword2(e.target.value)}
+						/>
+					</label>
 				</div>
 				<div>
 					<Button type="submit">Sign Up</Button>

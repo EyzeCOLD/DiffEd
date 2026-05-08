@@ -1,10 +1,11 @@
 import {NavLink, useNavigate} from "react-router";
+import TopBarLink from "#/src/components/TopBarLink";
 import {useShowToast} from "../stores/toastStore.ts";
 import {useCurrentUser, useClearUser} from "../stores/userStore.ts";
 import type {MouseEvent} from "react";
 
 function navLinkClass({isActive}: {isActive: boolean}) {
-	return `text-foreground px-3 py-2 hover:text-accent ${isActive ? "underline underline-offset-4 font-bold" : ""}`;
+	return `text-foreground-light px-3 py-2 hover:text-accent ${isActive ? "underline underline-offset-4 font-bold" : ""}`;
 }
 
 const contentSkipLink = (

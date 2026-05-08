@@ -51,22 +51,27 @@ export default function LoginPage() {
 	//should we use maxlength for the input fields?
 	return (
 		<div>
-			<div>Welcome to the login page</div>
 			<form onSubmit={login}>
 				<div>
-					<Input
-						placeholder="username or email"
-						value={loginIdentifier}
-						onChange={(e) => setLoginIdentifier(e.target.value)}
-					/>
+					<label>
+						Login:
+						<Input
+							placeholder="username or email"
+							value={loginIdentifier}
+							onChange={(e) => setLoginIdentifier(e.target.value)}
+						/>
+					</label>
 				</div>
 				<div>
-					<Input
-						placeholder="password"
-						type="password"
-						value={loginPassword}
-						onChange={(e) => setLoginPassword(e.target.value)}
-					/>
+					<label>
+						Password:
+						<Input
+							placeholder="password"
+							type="password"
+							value={loginPassword}
+							onChange={(e) => setLoginPassword(e.target.value)}
+						/>
+					</label>
 				</div>
 				<div>
 					<Button type="submit">Log In</Button>
