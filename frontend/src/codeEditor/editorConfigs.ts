@@ -1,9 +1,20 @@
 import {defaultKeymap, insertTab} from "@codemirror/commands";
-import {type Extension, Text} from "@codemirror/state";
+import {type Extension, Text, Compartment} from "@codemirror/state";
 import {keymap, EditorView} from "@codemirror/view";
 import {unifiedMergeView} from "@codemirror/merge";
 import {markdown} from "@codemirror/lang-markdown";
 import {languages} from "@codemirror/language-data";
+import {javascript} from "@codemirror/lang-javascript";
+import {python} from "@codemirror/lang-python";
+import {html} from "@codemirror/lang-html";
+import {css} from "@codemirror/lang-css";
+import {json} from "@codemirror/lang-json";
+import {sql} from "@codemirror/lang-sql";
+import {rust} from "@codemirror/lang-rust";
+import {cpp} from "@codemirror/lang-cpp";
+import {java} from "@codemirror/lang-java";
+import {php} from "@codemirror/lang-php";
+import {xml} from "@codemirror/lang-xml";
 import {basicSetup} from "codemirror";
 import {type CollabConnection} from "./collabClient";
 import {peerExtension} from "./peerExtension";
@@ -17,9 +28,62 @@ const keybinds = keymap.of([
 	},
 ]);
 
-export const langServer = {
-	markdown: () => markdown({codeLanguages: languages}),
-} satisfies Record<string, () => ReturnType<typeof markdown>>;
+const langServer: Record<string, () => Extension> = {
+	md: () => markdown({codeLanguages: languages}),
+	cpp: () => cpp(),
+	cc: () => cpp(),
+	cxx: () => cpp(),
+	c: () => cpp(),
+	h: () => cpp(),
+	hpp: () => cpp(),
+	html: () => html(),
+	htm: () => html(),
+	css: () => css(),
+	ts: () => javascript({typescript: true}),
+	mts: () => javascript({typescript: true}),
+	cts: () => javascript({typescript: true}),
+	js: () => javascript(),
+	mjs: () => javascript(),
+	cjs: () => javascript(),
+	tsx: () => javascript({jsx: true, typescript: true}),
+	jsx: () => javascript({jsx: true}),
+	json: () => json(),
+	sql: () => sql(),
+	rs: () => rust(),
+	py: () => python(),
+	java: () => java(),
+	php: () => php(),
+	xml: () => xml(),
+	svg: () => xml(),
+};
+
+export function getLangExtension(fileName: string): Extension {
+	const lastDotIndex = fileName.lastIndexOf(".");
+	if (lastDotIndex === -1) return [];
+	const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+	return langServer[extension]?.() ?? [];
+}
+
+export const langOptions: Record<string, () => Extension> = {
+	Markdown: langServer.md,
+	"C/C++": langServer.cpp,
+	HTML: langServer.html,
+	CSS: langServer.css,
+	TypeScript: langServer.ts,
+	JavaScript: langServer.js,
+	TSX: langServer.tsx,
+	JSX: langServer.jsx,
+	JSON: langServer.json,
+	SQL: langServer.sql,
+	Rust: langServer.rs,
+	Python: langServer.py,
+	Java: langServer.java,
+	PHP: langServer.php,
+	"XML/SVG": langServer.xml,
+};
+
+export const langCompartment = new Compartment();
+
 type EditorConfig = {
 	langExtension: Extension;
 	version: number;
@@ -38,7 +102,7 @@ export function getEditorExtensions({
 	const extensions: Extension[] = [
 		basicSetup,
 		keybinds,
-		langExtension,
+		langCompartment.of(langExtension),
 		...peerExtension(version, connection, myOwnerId),
 		EditorView.theme({
 			// Hide mergeControl buttons on chunks that only have additions by self
