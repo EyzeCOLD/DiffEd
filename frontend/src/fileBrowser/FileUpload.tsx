@@ -6,53 +6,53 @@ import {apiFetch} from "#/src/utils.js";
 import type {ApiResponse} from "#shared/src/types.ts";
 import {validateFile} from "#shared/src/fileValidation";
 
+// if uploading
 function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
-	const [fileUploads, setFileUploads] = useState<Array<File> | null>(null);
-	const [UploadInProgress, setUploadInProgress] = useState<boolean>(false);
+	const [fileUploads, setFileUploads] = useState<Map<string, File> | null>(null);
+
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const showToast = useShowToast();
-
-	function resetInput() {
-		setFileUploads(null);
-		if (fileInputRef.current) fileInputRef.current.value = "";
-	}
 
 	async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 		if (!e.target.files) return;
 
-		const newFileArray = fileUploads?.slice() ?? new Array<File>();
+		const newFileArray: File[] = [];
+		const newFilemap = fileUploads ?? new Map<string, File>();
 		for (const f of e.target.files) {
 			const err = validateFile(f.type, f.size, await f.text(), f.name);
 			if (err) {
 				showToast("error", `File '${f.name}': ${err}`);
 				console.error(`File '${f.name}' is ${err}`);
 			} else {
-				const index = newFileArray.findIndex((value: File) => value.name === f.name);
-				if (index !== -1) {
-					if (f.lastModified <= newFileArray[index].lastModified) {
-						showToast("error", `Duplicate file ${f.name}`);
-					} else {
-						newFileArray[index] = f;
-						showToast("info", `Updated file ${f.name}`);
-					}
+				if (newFilemap.has(f.name)) {
+					showToast("error", `Duplicate file ${f.name}`);
 				} else {
+					newFilemap.set(f.name, f);
 					newFileArray.push(f);
 				}
 			}
 		}
-
-		if (newFileArray.length > 0) setFileUploads(newFileArray);
+		if (newFilemap.size > 0) setFileUploads(newFilemap);
 		if (fileInputRef.current) fileInputRef.current.value = "";
+
+		for (const f of newFileArray) uploadFile(f);
+
+		// const promises = newFileArray.map(async (file: File) => {
+		// 	await uploadFile(file);
+		// });
+		// await Promise.allSettled(promises);
+		// refreshFileList();
+		// await Promise.allSettled(promises);
+		// resetInput();
 	}
 
 	async function handleRemove(name: string) {
-		if (fileUploads === null) return;
-
 		setFileUploads((prev) => {
 			if (!prev) return null;
+			const result = new Map(prev);
+			result.delete(name);
 
-			const newFileArray = prev.filter((value: File) => value.name !== name);
-			if (newFileArray.length) return newFileArray;
+			if (result.size) return result;
 			else return null;
 		});
 	}
@@ -83,51 +83,10 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 			showToast("success", `File ${file.name} uploaded`);
 		}
 		handleRemove(file.name);
+		// @WARN calling this here probably causes many re render when uploads finish at similar times
+		console.log(file.name, "refreshing");
+		refreshFileList();
 		return Promise.resolve();
-	}
-
-	async function uploadDaFiiles(Uploads: File[]) {
-		const promises = Uploads.map(async (file: File) => {
-			await uploadFile(file);
-		});
-		return await Promise.allSettled(promises);
-	}
-
-	// async function uploadDaFiiles(Uploads: File[]) {
-	// 	const uploadStates: Promise<void>[] = [];
-	// 	for (const file of Uploads) {
-	// 		uploadStates.push(
-	// 			uploadFile(file).then((response) => {
-	// 				if (!response.ok) {
-	// 					console.error(`${response.error}`);
-	// 					if (response.error === "Network error") {
-	// 						showToast("error", "Network error: Try to reupload files");
-	// 					} else {
-	// 						showToast("error", response.error);
-	// 					}
-	// 				} else {
-	// 					console.log(`File ${file.name} uploaded`);
-	// 					showToast("success", `File ${file.name} uploaded`);
-	// 				}
-	// 			}),
-	// 		);
-	// 	}
-	// 	return await Promise.all(uploadStates);
-	// }
-
-	async function handleUpload() {
-		if (fileUploads && !UploadInProgress) {
-			setUploadInProgress(true);
-			console.log("Uploading file(s)...", fileUploads);
-			// I think would be better to make the submit button unpressable during this
-			// @NOTE will look into implementing that in the future
-
-			await uploadDaFiiles(fileUploads);
-			await new Promise((r) => setTimeout(r, 10000));
-			setUploadInProgress(false);
-			refreshFileList();
-			resetInput();
-		}
 	}
 
 	return (
@@ -151,7 +110,7 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 						</thead>
 						<tbody>
 							{fileUploads &&
-								[...fileUploads].map((file) => (
+								[...fileUploads.values()].map((file) => (
 									<tr key={file.name}>
 										<td>🗎 {file.name}</td>
 										<td className="text-center">
@@ -161,9 +120,6 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 								))}
 						</tbody>
 					</table>
-					<Button disabled={UploadInProgress} onClick={() => handleUpload()}>
-						Submit
-					</Button>
 				</>
 			)}
 		</>
