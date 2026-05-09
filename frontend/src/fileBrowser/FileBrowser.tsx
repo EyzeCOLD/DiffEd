@@ -1,9 +1,9 @@
 import FileList from "./FileList";
-import Paginator from "./Paginator";
+import PageSelector from "./PageSelector";
 import NewFile from "./NewFile";
 import FileUploader from "./FileUpload";
-import useFileList from "./useFileList";
-import {Input} from "#/src/components/Input";
+import useFileBrowser from "./useFileBrowser";
+import Input from "#/src/components/Input";
 
 type fileBrowserProps = {
 	onFileSelect: (fileId: string) => void;
@@ -21,20 +21,18 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 		setSortDescending,
 		refreshFileList,
 		totalFiles,
-	} = useFileList();
+	} = useFileBrowser();
 
 	return (
 		<>
 			{totalFiles > 0 ? (
-				<div>
-					<Input
-						type="text"
-						id="fileListFilter"
-						value={filter}
-						placeholder="Filter"
-						onChange={(event) => setFilter(event.target.value)}
-					/>
-				</div>
+				<Input
+					type="text"
+					id="fileListFilter"
+					value={filter}
+					placeholder="Filter"
+					onChange={(event) => setFilter(event.target.value)}
+				/>
 			) : null}
 			<FileList
 				onFileSelect={onFileSelect}
@@ -43,7 +41,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 				onSortToggle={() => setSortDescending((d) => !d)}
 				descending={sortDescending}
 			/>
-			{totalPages ? <Paginator currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
+			{totalPages ? <PageSelector currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
 			<NewFile onFileSelect={onFileSelect} />
 			<FileUploader refreshFileList={refreshFileList} />
 		</>

@@ -3,7 +3,7 @@ import type {JSX} from "react";
 import type {ApiResponse} from "#shared/src/types.js";
 import {apiFetch} from "#/src/utils.js";
 import {useShowToast} from "#/src/stores/toastStore";
-import {Button} from "#/src/components/Button";
+import Button from "#/src/components/Button";
 
 type fileListProps = {
 	onFileSelect: (fileId: string) => void;

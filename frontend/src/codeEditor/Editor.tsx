@@ -9,8 +9,8 @@ import {CollabPeersPool} from "./collabPeerDocs";
 import {getEditorExtensions, langServer} from "./editorConfigs";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
-import {Input} from "../components/Input";
-import {Button} from "../components/Button";
+import Input from "../components/Input";
+import Button from "../components/Button";
 import {useShowToast} from "../stores/toastStore";
 
 const INITIAL_DOC_MAX_ATTEMPTS = 2;

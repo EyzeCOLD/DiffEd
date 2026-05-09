@@ -1,8 +1,8 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import {z} from "zod";
-import {Button} from "#/src/components/Button";
-import {Input} from "#/src/components/Input";
+import Button from "#/src/components/Button";
+import Input from "#/src/components/Input";
 import {useShowToast} from "#/src/stores/toastStore";
 import {useCurrentUser, useSetUser, useUpdateUser} from "#/src/stores/userStore";
 import {apiFetch} from "#/src/utils.js";

@@ -1,7 +1,7 @@
 import {useState, type JSX} from "react";
-import {Button} from "#/src/components/Button";
+import Button from "#/src/components/Button";
 import {useShowToast} from "#/src/stores/toastStore";
-import {Input} from "#/src/components/Input";
+import Input from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
 
 type NewFileProps = {

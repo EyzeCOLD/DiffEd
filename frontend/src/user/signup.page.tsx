@@ -1,5 +1,5 @@
-import {Button} from "#/src/components/Button";
-import {Input} from "#/src/components/Input";
+import Button from "#/src/components/Button";
+import Input from "#/src/components/Input";
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import type {SubmitEvent} from "react";
