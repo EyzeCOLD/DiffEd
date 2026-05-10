@@ -3,11 +3,10 @@ import Button from "../components/Button";
 import {useShowToast} from "#/src/stores/toastStore";
 import Input from "../components/Input";
 import {apiFetch} from "#/src/utils.js";
-import type {ApiResponse} from "#shared/src/types.ts";
+import type {ApiResponse, FileListItem} from "#shared/src/types.ts";
 import {validateFile} from "#shared/src/fileValidation";
 
-// if uploading
-function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
+function FileUploader({pushToFileList}: {pushToFileList: (file: FileListItem) => void}) {
 	const [fileUploads, setFileUploads] = useState<Map<string, File> | null>(null);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,15 +34,9 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 		if (newFilemap.size > 0) setFileUploads(newFilemap);
 		if (fileInputRef.current) fileInputRef.current.value = "";
 
-		for (const f of newFileArray) uploadFile(f);
-
-		// const promises = newFileArray.map(async (file: File) => {
-		// 	await uploadFile(file);
-		// });
-		// await Promise.allSettled(promises);
-		// refreshFileList();
-		// await Promise.allSettled(promises);
-		// resetInput();
+		for (const f of newFileArray) {
+			uploadFile(f);
+		}
 	}
 
 	async function handleRemove(name: string) {
@@ -81,12 +74,10 @@ function FileUploader({refreshFileList}: {refreshFileList: () => void}) {
 		} else {
 			console.log(`File ${file.name} uploaded`);
 			showToast("success", `File ${file.name} uploaded`);
+			const listFile: FileListItem = {name: file.name, id: response.data};
+			pushToFileList(listFile);
 		}
 		handleRemove(file.name);
-		// @WARN calling this here probably causes many re render when uploads finish at similar times
-		console.log(file.name, "refreshing");
-		refreshFileList();
-		return Promise.resolve();
 	}
 
 	return (

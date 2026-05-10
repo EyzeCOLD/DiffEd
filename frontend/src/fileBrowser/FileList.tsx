@@ -1,4 +1,4 @@
-import type {UserFile} from "#shared/src/types";
+import type {FileListItem, UserFile} from "#shared/src/types";
 import type {JSX} from "react";
 import type {ApiResponse} from "#shared/src/types.js";
 import {apiFetch} from "#/src/utils.js";
@@ -7,7 +7,7 @@ import Button from "#/src/components/Button";
 
 type fileListProps = {
 	onFileSelect: (fileId: string) => void;
-	fileList: UserFile[];
+	fileList: FileListItem[];
 	refreshFileList: () => void;
 	onSortToggle: () => void;
 	descending: boolean;
@@ -18,12 +18,13 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 
 	if (fileList.length === 0) return <p>No files to show.</p>;
 
-	async function handleDownload(file: UserFile) {
-		const response: ApiResponse<UserFile> = await apiFetch(`/api/files/${file.id}`);
+	async function handleDownload(file: FileListItem) {
+		const response: ApiResponse<Pick<UserFile, "content">> = await apiFetch(`/api/files/${file.id}`);
 
 		if (!response.ok) {
 			console.error(response.error);
 			showToast("error", `${response.error}`);
+			refreshFileList();
 			return;
 		}
 
@@ -55,7 +56,7 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		refreshFileList();
 	}
 
-	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: UserFile) => {
+	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: FileListItem) => {
 		return (
 			<tr key={file.id}>
 				<td>

@@ -11,6 +11,7 @@ import multer from "multer";
 // doing #shared does not work for some reason
 // having is text or binary package only in shard is not enought for some reason, also need in backend
 import {validateFile} from "../../../shared/src/fileValidation.js";
+import assert from "node:assert";
 
 // doing #shared does not work for some reason
 
@@ -94,7 +95,7 @@ function uploadFile(app: Express, db: Pool) {
 				return res.status(415).json({ok: false, error: err});
 			}
 
-			const query = `INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id;`;
+			const query = "INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id";
 			const values = [crypto.randomUUID(), f.originalname, fileText, req.session.userId];
 
 			timestampedLog(`DB QUERY >>> ${query}`);
@@ -102,11 +103,10 @@ function uploadFile(app: Express, db: Pool) {
 
 			try {
 				const result = await db.query(query, values);
-				if (result.rowCount !== 1) {
-					// placeholder
-					return res.status(500).json({ok: false, error: "Internal server error"});
-				}
-				const fileId = result.rows[0];
+				assert(result.rowCount === 1, "Result did not contain any rows");
+				const fileId = result.rows[0].id;
+				assert(fileId, "Result did not contain an id field");
+
 				return res.status(201).json({ok: true, data: fileId});
 			} catch (error: unknown) {
 				if (!isDbError(error)) {

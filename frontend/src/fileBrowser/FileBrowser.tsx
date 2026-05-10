@@ -20,6 +20,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 		sortDescending,
 		toggleSort,
 		refreshFileList,
+		pushToFileList,
 		totalFiles,
 	} = useFileBrowser();
 
@@ -40,7 +41,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 			/>
 			{totalPages ? <PageSelector currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
 			<NewFile onFileCreate={onFileSelect} />
-			<FileUploader refreshFileList={refreshFileList} />
+			<FileUploader pushToFileList={pushToFileList} />
 		</div>
 	);
 }

@@ -13,13 +13,14 @@ function NewFile({onFileCreate}: NewFileProps): JSX.Element {
 	const showToast = useShowToast();
 
 	async function openNewFile() {
-		if (newFilename === "") {
+		if (!newFilename || !newFilename.trim().length) {
 			showToast("error", "Filename can't be empty");
 			return;
 		}
 
 		const formData = new FormData();
-		const file = new File([""], newFilename!, {type: "text/plain"});
+		const file = new File([""], newFilename, {type: "text/plain"});
+
 		formData.append("file", file);
 
 		const fileResult = await apiFetch<string>("/api/files", {

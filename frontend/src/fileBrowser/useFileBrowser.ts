@@ -1,4 +1,4 @@
-import type {UserFile, ApiResponse} from "#shared/src/types";
+import type {ApiResponse, FileListItem} from "#shared/src/types";
 import {useState, useEffect, useMemo, useCallback} from "react";
 import {apiFetch} from "#/src/utils";
 import {useShowToast} from "#/src/stores/toastStore";
@@ -7,7 +7,7 @@ import {useSearchParams} from "react-router";
 const FILES_PER_PAGE = 10;
 
 function useFileBrowser() {
-	const [fileList, setFileList] = useState<UserFile[] | null>(null);
+	const [fileList, setFileList] = useState<FileListItem[] | null>(null);
 	const [searchParams, setSearchParams] = useSearchParams();
 	const showToast = useShowToast();
 
@@ -38,7 +38,7 @@ function useFileBrowser() {
 			return prev;
 		});
 	}
-	const processed = useMemo<UserFile[]>(() => {
+	const processed = useMemo<FileListItem[]>(() => {
 		if (!fileList) return [];
 		return fileList
 			.filter((f) => f.name.toLocaleLowerCase().includes(filter.toLocaleLowerCase()))
@@ -46,7 +46,7 @@ function useFileBrowser() {
 	}, [fileList, filter, sortDescending]);
 
 	const refreshFileList = useCallback(async () => {
-		const response: ApiResponse<UserFile[]> = await apiFetch("/api/files");
+		const response: ApiResponse<FileListItem[]> = await apiFetch("/api/files");
 		if (response.ok) {
 			setFileList(response.data);
 		} else {
@@ -54,6 +54,10 @@ function useFileBrowser() {
 			showToast("error", `${response.error}`);
 		}
 	}, [showToast]);
+
+	function pushToFileList(file: FileListItem) {
+		setFileList((prev) => prev?.concat(file) ?? [file]);
+	}
 
 	useEffect(() => void refreshFileList(), []);
 
@@ -71,6 +75,7 @@ function useFileBrowser() {
 		sortDescending,
 		toggleSort,
 		refreshFileList,
+		pushToFileList,
 		totalFiles,
 	};
 }
