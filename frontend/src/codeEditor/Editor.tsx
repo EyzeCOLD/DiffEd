@@ -7,7 +7,14 @@ import {updateOriginalDoc} from "@codemirror/merge";
 import {vim} from "@replit/codemirror-vim";
 import {CollabConnection, getInitialDocument, pushFileName, pullFileName} from "./collabClient";
 import {CollabPeersPool} from "./collabPeerDocs";
-import {getEditorExtensions, getLangExtension, getLangOption, langOptions, langCompartment, vimCompartment} from "./editorConfigs";
+import {
+	getEditorExtensions,
+	getLangExtension,
+	getLangOption,
+	langOptions,
+	langCompartment,
+	vimCompartment,
+} from "./editorConfigs";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
 import Input from "../components/Input";
@@ -243,18 +250,18 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 					</Button>
 				</form>
 				<div className="flex items-center">
-				<Button
-					type="button"
-					className="border px-2"
-					style={
-						vimBindings
-							? {boxShadow: "0 0 4px 1px color-mix(in srgb, var(--color-foreground) 40%, transparent)"}
-							: {opacity: 0.6}
-					}
-					onClick={() => void handleVimToggle()}
-				>
-					Vim
-				</Button>
+					<Button
+						type="button"
+						className="border px-2"
+						style={
+							vimBindings
+								? {boxShadow: "0 0 4px 1px color-mix(in srgb, var(--color-foreground) 40%, transparent)"}
+								: {opacity: 0.6}
+						}
+						onClick={() => void handleVimToggle()}
+					>
+						Vim
+					</Button>
 					<select
 						className="m-1 px-1 border-2 border-surface bg-canvas text-foreground"
 						value={langSelected ?? ""}
@@ -269,10 +276,10 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 							</option>
 						))}
 					</select>
+					<Button type="button" className="border px-2" onClick={onRepickFile}>
+						Change file
+					</Button>
 				</div>
-				<Button type="button" className="border px-2" onClick={onRepickFile}>
-					Change file
-				</Button>
 			</div>
 			{error ? (
 				<div className="border border-error-accent p-2 text-error-accent">
