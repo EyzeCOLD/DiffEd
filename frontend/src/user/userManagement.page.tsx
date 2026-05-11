@@ -279,6 +279,39 @@ function GithubLink({githubLinked}: {githubLinked: boolean}) {
 	);
 }
 
+function VimBindings({enabled}: {enabled: boolean}) {
+	const [isLoading, setIsLoading] = useState(false);
+	const updateUser = useUpdateUser();
+	const showToast = useShowToast();
+
+	async function handleToggle() {
+		setIsLoading(true);
+		try {
+			const response: ApiResponse<null> = await apiFetch("/api/user", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({vim_bindings: !enabled}),
+			});
+			if (!response.ok) throw new Error(response.error);
+			updateUser({vim_bindings: !enabled});
+			showToast("success", `Vim bindings ${!enabled ? "enabled" : "disabled"}`);
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		}
+		setIsLoading(false);
+	}
+
+	return (
+		<div>
+			<span>VIM BY DEFAULT:</span>
+			<Button onClick={handleToggle} disabled={isLoading} aria-label="Toggle vim bindings">
+				{enabled ? "On" : "Off"}
+			</Button>
+		</div>
+	);
+}
+
 function Delete() {
 	const [passwordConfirm, setPasswordConfirm] = useState(false);
 	const navigate = useNavigate();
@@ -478,6 +511,9 @@ export default function UserManagementPage() {
 			</div>
 			<div>
 				<APIKey />
+			</div>
+			<div>
+				<VimBindings enabled={currentUser.vim_bindings} />
 			</div>
 			<div>
 				DANGER ZONE!!!

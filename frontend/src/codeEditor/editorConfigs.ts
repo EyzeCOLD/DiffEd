@@ -1,6 +1,7 @@
 import {defaultKeymap, insertTab} from "@codemirror/commands";
-import {type Extension, Text} from "@codemirror/state";
+import {type Extension, Text, Compartment} from "@codemirror/state";
 import {keymap, EditorView} from "@codemirror/view";
+import {vim} from "@replit/codemirror-vim";
 import {unifiedMergeView} from "@codemirror/merge";
 import {markdown} from "@codemirror/lang-markdown";
 import {languages} from "@codemirror/language-data";
@@ -20,12 +21,16 @@ const keybinds = keymap.of([
 export const langServer = {
 	markdown: () => markdown({codeLanguages: languages}),
 } satisfies Record<string, () => ReturnType<typeof markdown>>;
+
+export const vimCompartment = new Compartment();
+
 type EditorConfig = {
 	langExtension: Extension;
 	version: number;
 	connection: CollabConnection;
 	myOwnerId: number;
 	memberInitialDoc: Text | null;
+	vimBindings: boolean;
 };
 
 export function getEditorExtensions({
@@ -34,8 +39,10 @@ export function getEditorExtensions({
 	connection,
 	myOwnerId,
 	memberInitialDoc,
+	vimBindings,
 }: EditorConfig): Extension[] {
 	const extensions: Extension[] = [
+		vimCompartment.of(vimBindings ? vim() : []),
 		basicSetup,
 		keybinds,
 		langExtension,
@@ -85,9 +92,11 @@ export function getEditorExtensions({
 			},
 
 			// Styles the cursor's current line
-			"& .cm-activeLine, &.cm-merge-b .cm-activeLine": {backgroundColor: "#cceeff44"},
+			"& .cm-activeLine, &.cm-merge-b .cm-activeLine": {
+				backgroundColor: "color-mix(in srgb, var(--color-accent) 7.5%, transparent)",
+			},
 			"& .cm-activeLineGutter, &.cm-merge-b .cm-activeLineGutter": {
-				backgroundColor: "#cceeff44",
+				backgroundColor: "color-mix(in srgb, var(--color-accent) 7.5%, transparent)",
 			},
 
 			// Styles the button to expand section folds
@@ -98,8 +107,33 @@ export function getEditorExtensions({
 				borderRadius: "0.2rem",
 			},
 
-			// Styles the input cursor
+			// Styles the input cursor (normal mode) and vim block cursor
 			"& .cm-cursor, & .cm-cursorAnchor": {borderLeftColor: "var(--color-accent)"},
+			"& .cm-fat-cursor": {
+				backgroundColor: "color-mix(in srgb, var(--color-accent) 50%, transparent) !important",
+				outline: "none !important",
+			},
+
+			"& .cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+				backgroundColor: "color-mix(in srgb, var(--color-accent) 12.5%, transparent) !important",
+			},
+
+			// Styles the vim command-line panel
+			"& .cm-panels": {backgroundColor: "var(--color-surface)", color: "var(--color-foreground)"},
+			"& .cm-panels .cm-vim-panel": {
+				borderTop: "1px solid color-mix(in srgb, var(--color-foreground) 12.5%, transparent)",
+				padding: "2px 4px",
+			},
+			"& .cm-panels .cm-vim-panel input": {
+				backgroundColor: "transparent",
+				color: "var(--color-foreground)",
+				outline: "none",
+			},
+			"& .cm-panels .cm-vim-message": {
+				color: "var(--color-foreground) !important",
+				borderLeft: "3px solid var(--color-accent)",
+				paddingLeft: "6px",
+			},
 		}),
 	];
 
