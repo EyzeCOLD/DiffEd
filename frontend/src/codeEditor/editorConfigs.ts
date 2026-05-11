@@ -17,6 +17,8 @@ import {java} from "@codemirror/lang-java";
 import {php} from "@codemirror/lang-php";
 import {xml} from "@codemirror/lang-xml";
 import {basicSetup} from "codemirror";
+import {HighlightStyle, syntaxHighlighting} from "@codemirror/language";
+import {tags} from "@lezer/highlight";
 import {type CollabConnection} from "./collabClient";
 import {peerExtension} from "./peerExtension";
 
@@ -127,6 +129,42 @@ export function getLangOption(fileName: string): string | null {
 	return null;
 }
 
+const codeHighlight = HighlightStyle.define([
+	// if / const / import / typeof / === …
+	{
+		tag: [
+			tags.keyword,
+			tags.controlKeyword,
+			tags.definitionKeyword,
+			tags.moduleKeyword,
+			tags.operatorKeyword,
+			tags.operator,
+			tags.attributeName,
+		],
+		color: "var(--color-syntax-keyword)",
+	},
+	// "hello" / `template` / /regex/
+	{tag: [tags.string, tags.special(tags.string), tags.regexp], color: "var(--color-syntax-string)"},
+	// // line and /* block */ comments
+	{tag: tags.comment, color: "var(--color-syntax-comment)", fontStyle: "italic"},
+	// 42 / true / null
+	{tag: [tags.number, tags.bool, tags.null], color: "var(--color-syntax-number)"},
+	// function name at call site and at definition
+	{
+		tag: [tags.function(tags.variableName), tags.function(tags.definition(tags.variableName))],
+		color: "var(--color-syntax-function)",
+	},
+	// MyClass / string (TS type) / namespace / <div> (HTML/JSX tag)
+	{tag: [tags.typeName, tags.className, tags.namespace, tags.tagName], color: "var(--color-syntax-type)"},
+	// obj.property
+	{tag: tags.propertyName, color: "var(--color-accent)"},
+	// markdown
+	{tag: tags.heading, color: "var(--color-syntax-function)", fontWeight: "bold"},
+	{tag: tags.emphasis, fontStyle: "italic"},
+	{tag: tags.strong, fontWeight: "bold"},
+	{tag: [tags.link, tags.url], color: "var(--color-syntax-function)", textDecoration: "underline"},
+]);
+
 export const langCompartment = new Compartment();
 export const vimCompartment = new Compartment();
 
@@ -150,6 +188,7 @@ export function getEditorExtensions({
 	const extensions: Extension[] = [
 		vimCompartment.of(vimBindings ? vim() : []),
 		basicSetup,
+		syntaxHighlighting(codeHighlight),
 		keybinds,
 		langCompartment.of(langExtension),
 		...peerExtension(version, connection, myOwnerId),
