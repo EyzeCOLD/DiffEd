@@ -21,7 +21,7 @@ function FileUploader({pushToFileList}: {pushToFileList: (file: FileListItem) =>
 			const err = validateFile(f.type, f.size, await f.text(), f.name);
 			if (err) {
 				showToast("error", `File '${f.name}': ${err}`);
-				console.error(`File '${f.name}' is ${err}`);
+				console.log(`File '${f.name}': ${err}`);
 			} else {
 				if (newFilemap.has(f.name)) {
 					showToast("error", `Duplicate file ${f.name}`);
@@ -65,7 +65,7 @@ function FileUploader({pushToFileList}: {pushToFileList: (file: FileListItem) =>
 		});
 
 		if (!response.ok) {
-			console.error(`${response.error}`);
+			console.log(response.error);
 			if (response.error === "Network error") {
 				showToast("error", "Network error: Try to reupload files");
 			} else {
