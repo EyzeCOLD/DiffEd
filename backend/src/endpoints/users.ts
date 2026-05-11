@@ -10,8 +10,8 @@ import userQueryService from "#/src/queries/users.js";
 function signupUser(app: Express) {
 	app.post("/api/user", async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-		const {username, email, password} = req.body;
 
+		const {username, email, password} = req.body;
 		try {
 			const parsedSchema = SignupSchema.safeParse(req.body);
 			if (!parsedSchema.success) {
@@ -43,6 +43,7 @@ function signupUser(app: Express) {
 function modifyUser(app: Express) {
 	app.patch("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+
 		const {username, email, password, newPassword, newPassword2, vim_bindings} = req.body;
 		const id = req.session.userId!;
 
@@ -143,9 +144,9 @@ function modifyUser(app: Express) {
 function deleteUser(app: Express) {
 	app.delete("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+
 		const {password} = req.body;
 		const id = req.session.userId!;
-
 		try {
 			const user = await userQueryService.getUserWithPasswordById(id);
 			if (!user) {
@@ -195,4 +196,51 @@ function getUser(app: Express) {
 	});
 }
 
-export default {signupUser, deleteUser, getUser, modifyUser};
+function getUserAPIKey(app: Express) {
+	app.get("/api/user/api", requireAuth, async (req: Request, res: Response<ApiResponse<string>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+
+		const id = req.session.userId!;
+		try {
+			const key = await userQueryService.getAPIKeyById(id);
+			if (!key) {
+				throw new Error("User doesn't yet have a API key");
+			}
+
+			res.status(200).json({ok: true, data: key});
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
+			return res.status(500).json({ok: false, error: "Internal server error"});
+		}
+	});
+}
+
+function updateUserAPIKey(app: Express) {
+	app.patch("/api/user/api", requireAuth, async (req: Request, res: Response<ApiResponse<string>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+
+		const {hash} = req.body;
+		const id = req.session.userId!;
+		try {
+			const key = await userQueryService.updateAPIKey(hash, id);
+			if (!key) {
+				throw new Error("Could not update API key");
+			}
+
+			res.status(200).json({ok: true, data: key});
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
+			return res.status(500).json({ok: false, error: "Internal server error"});
+		}
+	});
+}
+
+export default {signupUser, deleteUser, getUser, modifyUser, getUserAPIKey, updateUserAPIKey};

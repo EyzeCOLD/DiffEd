@@ -1,6 +1,5 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
-import crypto from "crypto";
 import {z} from "zod";
 import Button from "#/src/components/Button";
 import Input from "#/src/components/Input";
@@ -411,7 +410,7 @@ function APIKey() {
 	const [isLoading, setIsLoading] = useState(false);
 	const showToast = useShowToast();
 
-	async function getAPIKey() {
+	async function copyAPIKey() {
 		try {
 			setIsLoading(true);
 			const response: ApiResponse<string> = await apiFetch("/api/user/api", {
@@ -427,6 +426,7 @@ function APIKey() {
 			const key = response.data;
 			await navigator.clipboard.writeText(key);
 		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
 		} finally {
 			setIsLoading(false);
 		}
@@ -436,7 +436,7 @@ function APIKey() {
 		try {
 			setIsLoading(true);
 
-			const hash = crypto.randomBytes(32).toString("hex");
+			const hash = window.crypto.randomUUID();
 			console.log(hash);
 			const response: ApiResponse<string> = await apiFetch("/api/user/api", {
 				method: "PATCH",
@@ -461,12 +461,12 @@ function APIKey() {
 	return (
 		<>
 			<div>
-				<Button onClick={getAPIKey} disabled={isLoading} aria-label="Get current API key">
-					Get API key
+				<Button onClick={copyAPIKey} disabled={isLoading} aria-label="Get current API key">
+					Copy API key
 				</Button>
 			</div>
 			<div>
-				<Button onClick={createNewAPIKey} disabled={isLoading} aria-label="Get current API key">
+				<Button onClick={createNewAPIKey} disabled={isLoading} aria-label="Create new API key">
 					Create new API key
 				</Button>
 			</div>

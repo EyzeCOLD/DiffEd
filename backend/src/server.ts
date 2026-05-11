@@ -38,6 +38,8 @@ UserEndpoints.signupUser(app);
 UserEndpoints.modifyUser(app);
 UserEndpoints.deleteUser(app);
 UserEndpoints.getUser(app);
+UserEndpoints.getUserAPIKey(app);
+UserEndpoints.updateUserAPIKey(app);
 SessionEndpoints.loginUser(app);
 SessionEndpoints.logoutUser(app);
 SessionEndpoints.getSession(app);

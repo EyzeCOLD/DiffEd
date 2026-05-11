@@ -87,7 +87,7 @@ async function getAPIKeyById(id: number): Promise<string | null> {
 
 	if (!rows.length) return null;
 
-	return rows[0];
+	return rows[0].apikey;
 }
 
 async function createOAuthUser(username: string, email: string, githubId: string): Promise<number> {
@@ -150,14 +150,14 @@ async function updatePassword(hash: string, id: number): Promise<boolean> {
 	return result.rowCount! > 0;
 }
 
-async function updateAPIKey(hash: string, id: number): Promise<boolean> {
+async function updateAPIKey(hash: string, id: number): Promise<string | null> {
 	const values = [hash, id];
 	const query = "UPDATE users SET APIKey = $1 WHERE id = $2";
 	timestampedLog(`DB QUERY >>> ${query}`);
 	timestampedLog(`DB VALUES >>> ${values}`);
 	const result = await db.query(query, values);
 
-	return result.rowCount! > 0;
+	return result.rowCount! > 0 ? hash : null;
 }
 
 async function unlinkGithubId(userId: number): Promise<boolean> {
