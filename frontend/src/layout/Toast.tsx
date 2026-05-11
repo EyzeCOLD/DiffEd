@@ -101,7 +101,7 @@ export function ToastContainer() {
 			 * assertive for errors (interrupts), polite for success/info (waits for idle).
 			 * aria-atomic="false" announces only newly added children, not the full list.
 			 */}
-			<div aria-live="assertive" aria-atomic="false" className="sr-only">
+			<div role="alert" aria-live="assertive" aria-atomic="false" className="sr-only">
 				{toasts
 					.filter((t) => t.variant === "error")
 					.map((t) => (
@@ -110,7 +110,7 @@ export function ToastContainer() {
 						</span>
 					))}
 			</div>
-			<div aria-live="polite" aria-atomic="false" className="sr-only">
+			<div role="status" aria-live="polite" aria-atomic="false" className="sr-only">
 				{toasts
 					.filter((t) => t.variant !== "error")
 					.map((t) => (

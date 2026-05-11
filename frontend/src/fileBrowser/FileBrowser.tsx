@@ -26,13 +26,10 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 	return (
 		<>
 			{totalFiles > 0 ? (
-				<Input
-					type="text"
-					id="fileListFilter"
-					value={filter}
-					placeholder="Filter"
-					onChange={(event) => setFilter(event.target.value)}
-				/>
+				<label>
+					Filter:
+					<Input type="text" id="fileListFilter" value={filter} onChange={(event) => setFilter(event.target.value)} />
+				</label>
 			) : null}
 			<FileList
 				onFileSelect={onFileSelect}
