@@ -6,7 +6,7 @@ import {useShowToast} from "#/src/stores/toastStore";
 import Button from "#/src/components/Button";
 
 type fileListProps = {
-	onFileSelect: (fileId: string) => void;
+	onFileSelect: (fileId: string, refreshFileList: () => void) => void;
 	fileList: FileListItem[];
 	refreshFileList: () => void;
 	onSortToggle: () => void;
@@ -29,9 +29,7 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		}
 
 		const blob = new Blob([response.data.content], {type: "text/plain"});
-
 		const url = URL.createObjectURL(blob);
-
 		const a = document.createElement("a");
 		a.href = url;
 		a.download = file.name;
@@ -63,7 +61,7 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 					<button
 						type="button"
 						className="bg-transparent border-0 p-0 text-inherit cursor-pointer hover:underline"
-						onClick={() => onFileSelect(file.id)}
+						onClick={() => onFileSelect(file.id, refreshFileList)}
 					>
 						{file.name}
 					</button>

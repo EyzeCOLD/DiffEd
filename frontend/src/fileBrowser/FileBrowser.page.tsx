@@ -7,7 +7,7 @@ function FileBrowserPage() {
 	const navigate = useNavigate();
 	const showToast = useShowToast();
 
-	async function startSessionFromFile(fileId: string) {
+	async function startSessionFromFile(fileId: string, refreshFileList?: () => void) {
 		const response = await apiFetch<{workspaceId: string}>("/api/workspace", {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
@@ -15,6 +15,7 @@ function FileBrowserPage() {
 		});
 		if (!response.ok) {
 			showToast("error", response.error);
+			refreshFileList?.();
 			return;
 		}
 		navigate(`/collab/${response.data.workspaceId}`);
