@@ -18,7 +18,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 		filter,
 		setFilter,
 		sortDescending,
-		setSortDescending,
+		toggleSort,
 		refreshFileList,
 		totalFiles,
 	} = useFileBrowser();
@@ -35,7 +35,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 				onFileSelect={onFileSelect}
 				fileList={paginated}
 				refreshFileList={refreshFileList}
-				onSortToggle={() => setSortDescending((d) => !d)}
+				onSortToggle={toggleSort}
 				descending={sortDescending}
 			/>
 			{totalPages ? <PageSelector currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
