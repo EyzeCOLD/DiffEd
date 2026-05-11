@@ -7,7 +7,14 @@ import {updateOriginalDoc} from "@codemirror/merge";
 import {vim} from "@replit/codemirror-vim";
 import {CollabConnection, getInitialDocument, pushFileName, pullFileName} from "./collabClient";
 import {CollabPeersPool} from "./collabPeerDocs";
-import {getEditorExtensions, langServer, vimCompartment} from "./editorConfigs";
+import {
+	getEditorExtensions,
+	getLangExtension,
+	getLangOption,
+	langOptions,
+	langCompartment,
+	vimCompartment,
+} from "./editorConfigs";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
 import Input from "../components/Input";
@@ -50,6 +57,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 	const [error, setError] = useState<string | null>(null);
 	const [retryCount, setRetryCount] = useState(0);
 	const [fileName, setFileName] = useState("");
+	const [langSelected, setLangSelected] = useState<string | null>(null);
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
 	const [members, setMembers] = useState<WorkspaceMember[]>(() => initialMembers.filter((m) => m.id !== myOwnerId));
@@ -109,6 +117,16 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 		});
 	}, [pool, basePeerId]);
 
+	useEffect(() => {
+		setLangSelected(getLangOption(fileName));
+	}, [fileName]);
+
+	useEffect(() => {
+		if (!viewRef.current) return;
+		const extension = langOptions[langSelected ?? ""]?.() ?? [];
+		viewRef.current.dispatch({effects: langCompartment.reconfigure(extension)});
+	}, [langSelected]);
+
 	const memberInitialDoc = basePeerId === null ? null : (pool.getPeerDoc(basePeerId)?.doc ?? null);
 
 	useEffect(() => {
@@ -144,11 +162,12 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 				const {doc, version, fileName: initialFileName} = await getInitialDocumentWithRetry();
 				if (hasUnmounted) return;
 				setFileName(initialFileName);
+				setLangSelected(getLangOption(initialFileName));
 
 				const state = EditorState.create({
 					doc,
 					extensions: getEditorExtensions({
-						langExtension: langServer.markdown(),
+						langExtension: getLangExtension(initialFileName),
 						version,
 						connection,
 						myOwnerId,
@@ -234,21 +253,37 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 						Rename
 					</Button>
 				</form>
-				<Button
-					type="button"
-					className="border px-2"
-					style={
-						vimBindings
-							? {boxShadow: "0 0 4px 1px color-mix(in srgb, var(--color-foreground) 40%, transparent)"}
-							: {opacity: 0.6}
-					}
-					onClick={() => void handleVimToggle()}
-				>
-					Vim
-				</Button>
-				<Button type="button" className="border px-2" onClick={onRepickFile}>
-					Change file
-				</Button>
+				<div className="flex items-center">
+					<Button
+						type="button"
+						className="border px-2"
+						style={
+							vimBindings
+								? {boxShadow: "0 0 4px 1px color-mix(in srgb, var(--color-foreground) 40%, transparent)"}
+								: {opacity: 0.6}
+						}
+						onClick={() => void handleVimToggle()}
+					>
+						Vim
+					</Button>
+					<select
+						className="m-1 px-1 border-2 border-surface bg-canvas text-foreground"
+						value={langSelected ?? ""}
+						onChange={(e) => setLangSelected(e.target.value || null)}
+					>
+						<option className="bg-canvas" value="">
+							Plain Text
+						</option>
+						{Object.keys(langOptions).map((name) => (
+							<option className="bg-canvas" key={name} value={name}>
+								{name}
+							</option>
+						))}
+					</select>
+					<Button type="button" className="border px-2" onClick={onRepickFile}>
+						Change file
+					</Button>
+				</div>
 			</div>
 			{error ? (
 				<div className="border border-error-accent p-2 text-error-accent">

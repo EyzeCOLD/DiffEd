@@ -12,6 +12,13 @@
 	--color-success-accent: #22c55e;
 
 	--font-family-sans: Arial, sans-serif;
+
+	--color-syntax-keyword: #ff79c6;
+	--color-syntax-string: #f1fa8c;
+	--color-syntax-comment: #6d7fc4;
+	--color-syntax-number: #ffb86c;
+	--color-syntax-function: #8be9fd;
+	--color-syntax-type: #50fa7b;
 }
 
 @layer base {
