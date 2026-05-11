@@ -28,7 +28,7 @@ const keybinds = keymap.of([
 	},
 ]);
 
-const langServer: Record<string, () => Extension> = {
+const langServer = {
 	md: () => markdown({codeLanguages: languages}),
 	cpp: () => cpp(),
 	cc: () => cpp(),
@@ -55,14 +55,7 @@ const langServer: Record<string, () => Extension> = {
 	php: () => php(),
 	xml: () => xml(),
 	svg: () => xml(),
-};
-
-export function getLangExtension(fileName: string): Extension {
-	const lastDotIndex = fileName.lastIndexOf(".");
-	if (lastDotIndex === -1) return [];
-	const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-	return langServer[extension]?.() ?? [];
-}
+} satisfies Record<string, () => Extension>;
 
 export const langOptions: Record<string, () => Extension> = {
 	Markdown: langServer.md,
@@ -81,6 +74,57 @@ export const langOptions: Record<string, () => Extension> = {
 	PHP: langServer.php,
 	"XML/SVG": langServer.xml,
 };
+
+const extToLangOption: Record<keyof typeof langServer, keyof typeof langOptions> = {
+	md: "Markdown",
+	cpp: "C/C++",
+	cc: "C/C++",
+	cxx: "C/C++",
+	c: "C/C++",
+	h: "C/C++",
+	hpp: "C/C++",
+	html: "HTML",
+	htm: "HTML",
+	css: "CSS",
+	ts: "TypeScript",
+	mts: "TypeScript",
+	cts: "TypeScript",
+	js: "JavaScript",
+	mjs: "JavaScript",
+	cjs: "JavaScript",
+	tsx: "TSX",
+	jsx: "JSX",
+	json: "JSON",
+	sql: "SQL",
+	rs: "Rust",
+	py: "Python",
+	java: "Java",
+	php: "PHP",
+	xml: "XML/SVG",
+	svg: "XML/SVG",
+};
+
+function getFileExtension(fileName: string): string | null {
+	const lastDotIndex = fileName.lastIndexOf(".");
+	if (lastDotIndex === -1) return null;
+	return fileName.substring(lastDotIndex + 1).toLowerCase();
+}
+
+export function getLangExtension(fileName: string): Extension {
+	const extension = getFileExtension(fileName);
+	if (extension && extension in langServer) {
+		return langServer[extension as keyof typeof langServer]();
+	}
+	return [];
+}
+
+export function getLangOption(fileName: string): string | null {
+	const extension = getFileExtension(fileName);
+	if (extension && extension in extToLangOption) {
+		return extToLangOption[extension as keyof typeof extToLangOption];
+	}
+	return null;
+}
 
 export const langCompartment = new Compartment();
 

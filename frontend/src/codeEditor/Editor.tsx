@@ -6,7 +6,7 @@ import {EditorView} from "@codemirror/view";
 import {updateOriginalDoc} from "@codemirror/merge";
 import {CollabConnection, getInitialDocument, pushFileName, pullFileName} from "./collabClient";
 import {CollabPeersPool} from "./collabPeerDocs";
-import {getEditorExtensions, getLangExtension, langOptions, langCompartment} from "./editorConfigs";
+import {getEditorExtensions, getLangExtension, getLangOption, langOptions, langCompartment} from "./editorConfigs";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
 import {Input} from "../components/Input";
@@ -46,7 +46,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 	const [error, setError] = useState<string | null>(null);
 	const [retryCount, setRetryCount] = useState(0);
 	const [fileName, setFileName] = useState("");
-	const [langSelected, setLangOverride] = useState<string | null>(null);
+	const [langSelected, setLangSelected] = useState<string | null>(null);
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
 	const [members, setMembers] = useState<WorkspaceMember[]>(() => initialMembers.filter((m) => m.id !== myOwnerId));
@@ -147,6 +147,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 				const {doc, version, fileName: initialFileName} = await getInitialDocumentWithRetry();
 				if (hasUnmounted) return;
 				setFileName(initialFileName);
+				setLangSelected(getLangOption(initialFileName));
 
 				const state = EditorState.create({
 					doc,
@@ -231,7 +232,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 					<select
 						className="m-1 px-1 border-2 border-surface bg-canvas text-foreground"
 						value={langSelected ?? ""}
-						onChange={(e) => setLangOverride(e.target.value || null)}
+						onChange={(e) => setLangSelected(e.target.value || null)}
 					>
 						<option className="bg-canvas" value="">
 							Plain Text
