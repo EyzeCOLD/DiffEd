@@ -5,14 +5,19 @@ import Input from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
 
 type NewFileProps = {
-	onFileSelect: (fileId: string) => void;
+	onFileCreate: (fileId: string) => void;
 };
 
-function NewFile({onFileSelect}: NewFileProps): JSX.Element {
-	const [newFilename, setNewFilename] = useState<string>();
+function NewFile({onFileCreate}: NewFileProps): JSX.Element {
+	const [newFilename, setNewFilename] = useState<string>("");
 	const showToast = useShowToast();
 
 	async function openNewFile() {
+		if (newFilename === "") {
+			showToast("error", "Filename can't be empty");
+			return;
+		}
+
 		const formData = new FormData();
 		const file = new File([""], newFilename!, {type: "text/plain"});
 		formData.append("file", file);
@@ -28,7 +33,7 @@ function NewFile({onFileSelect}: NewFileProps): JSX.Element {
 		}
 		const fileId = fileResult.data[0];
 
-		onFileSelect(fileId);
+		onFileCreate(fileId);
 	}
 
 	return (
