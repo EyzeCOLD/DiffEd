@@ -234,7 +234,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 						onChange={(e) => setLangOverride(e.target.value || null)}
 					>
 						<option className="bg-canvas" value="">
-							File syntax
+							Plain Text
 						</option>
 						{Object.keys(langOptions).map((name) => (
 							<option className="bg-canvas" key={name} value={name}>
