@@ -118,6 +118,10 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 	}, [pool, basePeerId]);
 
 	useEffect(() => {
+		setLangSelected(getLangOption(fileName));
+	}, [fileName]);
+
+	useEffect(() => {
 		if (!viewRef.current) return;
 		const extension = langSelected ? (langOptions[langSelected]?.() ?? []) : getLangExtension(fileName);
 		viewRef.current.dispatch({effects: langCompartment.reconfigure(extension)});
