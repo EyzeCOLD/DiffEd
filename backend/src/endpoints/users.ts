@@ -43,7 +43,7 @@ function signupUser(app: Express) {
 function modifyUser(app: Express) {
 	app.patch("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-		const {username, email, password, newPassword} = req.body;
+		const {username, email, password, newPassword, newPassword2} = req.body;
 		const id = req.session.userId!;
 
 		if (!username && !email && !newPassword) {
@@ -103,6 +103,9 @@ function modifyUser(app: Express) {
 				if (!parsedPassword.success) {
 					return res.status(400).json({ok: false, error: parsedPassword.error.issues[0].message});
 				}
+
+				if (newPassword !== newPassword2)
+					return res.status(400).json({ok: false, error: "The passwords do not match!"});
 
 				if (await argon2.verify(user.hashed_password, newPassword)) {
 					return res.status(400).json({ok: false, error: "New Password can not be the same as old password!"});

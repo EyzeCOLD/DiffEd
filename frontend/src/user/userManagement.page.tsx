@@ -134,6 +134,7 @@ function Password() {
 	const [isEditing, setIsEditing] = useState(false);
 	const [newPassword, setNewPassword] = useState("");
 	const [newPassword2, setNewPassword2] = useState("");
+	const [isLoading, setIsLoading] = useState(false);
 	const showToast = useShowToast();
 
 	function resetState() {
@@ -144,12 +145,17 @@ function Password() {
 	}
 
 	async function handleAcceptClick(password: string) {
+		if (newPassword !== newPassword2) {
+			return showToast("error", "The passwords do not match!");
+		}
+
+		setIsLoading(true);
 		try {
 			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "PATCH",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
-				body: JSON.stringify({password, newPassword}),
+				body: JSON.stringify({password, newPassword, newPassword2}),
 			});
 
 			if (!response.ok) {
@@ -160,6 +166,8 @@ function Password() {
 			resetState();
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
 		}
 	}
 
@@ -182,7 +190,7 @@ function Password() {
 					<div>
 						<Input
 							placeholder="new password"
-							disabled={passwordConfirm}
+							disabled={isLoading}
 							type="password"
 							value={newPassword}
 							onChange={(e) => setNewPassword(e.target.value)}
@@ -191,7 +199,7 @@ function Password() {
 					<div>
 						<Input
 							placeholder="new password, again"
-							disabled={passwordConfirm}
+							disabled={isLoading}
 							type="password"
 							value={newPassword2}
 							onChange={(e) => setNewPassword2(e.target.value)}
