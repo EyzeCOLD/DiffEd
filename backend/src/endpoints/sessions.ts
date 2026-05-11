@@ -28,6 +28,10 @@ function loginUser(app: Express) {
 				return res.status(401).json({ok: false, error: "Incorrect username or password"});
 			}
 
+			if (!user.hashed_password) {
+				return res.status(401).json({ok: false, error: "This account uses GitHub login"});
+			}
+
 			const match = await argon2.verify(user.hashed_password, password);
 
 			if (!match) {
@@ -40,7 +44,10 @@ function loginUser(app: Express) {
 				req.session.userId = user.id;
 				req.session.save((error) => {
 					if (error) return res.status(500).json({ok: false, error: "Session save failed"});
-					res.status(200).json({ok: true, data: {id: user.id, username: user.username, email: user.email}});
+					res.status(200).json({
+						ok: true,
+						data: {id: user.id, username: user.username, email: user.email, vim_bindings: user.vim_bindings},
+					});
 				});
 			});
 		} catch (error: unknown) {

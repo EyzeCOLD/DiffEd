@@ -1,8 +1,8 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
 import {z} from "zod";
-import {Button} from "#/src/components/Button";
-import {Input} from "#/src/components/Input";
+import Button from "#/src/components/Button";
+import Input from "#/src/components/Input";
 import {useShowToast} from "#/src/stores/toastStore";
 import {useCurrentUser, useSetUser, useUpdateUser} from "#/src/stores/userStore";
 import {apiFetch} from "#/src/utils.js";
@@ -264,6 +264,84 @@ function Password() {
 	);
 }
 
+function GithubLink({githubLinked}: {githubLinked: boolean}) {
+	const [isLoading, setIsLoading] = useState(false);
+	const updateUser = useUpdateUser();
+	const showToast = useShowToast();
+
+	async function handleUnlink() {
+		setIsLoading(true);
+		try {
+			const response: ApiResponse<null> = await apiFetch("/api/auth/github/link", {
+				method: "DELETE",
+				credentials: "include",
+			});
+			if (!response.ok) throw new Error(response.error);
+			updateUser({github_linked: false});
+			showToast("success", "GitHub account unlinked");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	if (githubLinked) {
+		return (
+			<div>
+				<span>GitHub: Linked</span>
+				&nbsp;
+				<Button onClick={handleUnlink} disabled={isLoading} aria-label="Unlink GitHub account">
+					{isLoading ? "Unlinking..." : "Unlink"}
+				</Button>
+			</div>
+		);
+	}
+
+	return (
+		<div>
+			<a href="/api/auth/github?action=link_account">
+				<Button type="button" aria-label="Link GitHub account">
+					Link GitHub
+				</Button>
+			</a>
+		</div>
+	);
+}
+
+function VimBindings({enabled}: {enabled: boolean}) {
+	const [isLoading, setIsLoading] = useState(false);
+	const updateUser = useUpdateUser();
+	const showToast = useShowToast();
+
+	async function handleToggle() {
+		setIsLoading(true);
+		try {
+			const response: ApiResponse<null> = await apiFetch("/api/user", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({vim_bindings: !enabled}),
+			});
+			if (!response.ok) throw new Error(response.error);
+			updateUser({vim_bindings: !enabled});
+			showToast("success", `Vim bindings ${!enabled ? "enabled" : "disabled"}`);
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		}
+		setIsLoading(false);
+	}
+
+	return (
+		<div>
+			<span>VIM BY DEFAULT:</span>
+			<Button onClick={handleToggle} disabled={isLoading} aria-label="Toggle vim bindings">
+				{enabled ? "On" : "Off"}
+			</Button>
+		</div>
+	);
+}
+
 function Delete() {
 	const navigate = useNavigate();
 	const showToast = useShowToast();
@@ -334,6 +412,12 @@ export default function UserManagementPage() {
 			</div>
 			<div>
 				<Password />
+			</div>
+			<div>
+				<GithubLink githubLinked={!!currentUser.github_linked} />
+			</div>
+			<div>
+				<VimBindings enabled={currentUser.vim_bindings} />
 			</div>
 			<div>
 				<Delete />

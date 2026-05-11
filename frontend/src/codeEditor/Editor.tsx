@@ -4,14 +4,16 @@ import type {WorkspaceMember} from "#shared/src/types";
 import {EditorState, Transaction} from "@codemirror/state";
 import {EditorView} from "@codemirror/view";
 import {updateOriginalDoc} from "@codemirror/merge";
+import {vim} from "@replit/codemirror-vim";
 import {CollabConnection, getInitialDocument, pushFileName, pullFileName} from "./collabClient";
 import {CollabPeersPool} from "./collabPeerDocs";
-import {getEditorExtensions, getLangExtension, getLangOption, langOptions, langCompartment} from "./editorConfigs";
+import {getEditorExtensions, getLangExtension, getLangOption, langOptions, langCompartment, vimCompartment} from "./editorConfigs";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
-import {Input} from "../components/Input";
-import {Button} from "../components/Button";
+import Input from "../components/Input";
+import Button from "../components/Button";
 import {useShowToast} from "../stores/toastStore";
+import {useCurrentUser} from "../stores/userStore";
 
 const INITIAL_DOC_MAX_ATTEMPTS = 2;
 const INITIAL_DOC_RETRY_DELAY_MS = 250;
@@ -37,6 +39,8 @@ type SharedEditorProps = {
 
 export default function Editor({connection, myOwnerId, initialMembers, onRepickFile}: SharedEditorProps): JSX.Element {
 	const showToast = useShowToast();
+	const currentUser = useCurrentUser();
+	const [vimBindings, setVimBindings] = useState<boolean>(currentUser!.vim_bindings);
 	const [selectedPeerId, setSelectedPeerId] = useState<number | null>(null);
 	const [readyPeerIds, setReadyPeerIds] = useState<ReadonlySet<number>>(new Set());
 
@@ -157,6 +161,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 						connection,
 						myOwnerId,
 						memberInitialDoc,
+						vimBindings,
 					}),
 				});
 				const editorView = new EditorView({
@@ -197,6 +202,15 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 		setRetryCount((count) => count + 1);
 	}
 
+	async function handleVimToggle(): Promise<void> {
+		const newVimBindings = !vimBindings; // Can't use the useState value because the setter doesn't update it immediately
+
+		setVimBindings(newVimBindings);
+		viewRef.current?.dispatch({
+			effects: vimCompartment.reconfigure(newVimBindings ? vim() : []),
+		});
+	}
+
 	async function handleRename(): Promise<void> {
 		if (!connection) return;
 		try {
@@ -229,6 +243,18 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 					</Button>
 				</form>
 				<div className="flex items-center">
+				<Button
+					type="button"
+					className="border px-2"
+					style={
+						vimBindings
+							? {boxShadow: "0 0 4px 1px color-mix(in srgb, var(--color-foreground) 40%, transparent)"}
+							: {opacity: 0.6}
+					}
+					onClick={() => void handleVimToggle()}
+				>
+					Vim
+				</Button>
 					<select
 						className="m-1 px-1 border-2 border-surface bg-canvas text-foreground"
 						value={langSelected ?? ""}
@@ -243,10 +269,10 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 							</option>
 						))}
 					</select>
-					<Button type="button" className="border px-2" onClick={onRepickFile}>
-						Change file
-					</Button>
 				</div>
+				<Button type="button" className="border px-2" onClick={onRepickFile}>
+					Change file
+				</Button>
 			</div>
 			{error ? (
 				<div className="border border-error-accent p-2 text-error-accent">

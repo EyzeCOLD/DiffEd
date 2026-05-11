@@ -1,0 +1,52 @@
+import type {UserFile, ApiResponse} from "#shared/src/types";
+import {useState, useEffect, useMemo, useCallback} from "react";
+import {apiFetch} from "#/src/utils";
+import {useShowToast} from "#/src/stores/toastStore";
+
+const FILES_PER_PAGE = 10;
+
+function useFileBrowser() {
+	const [fileList, setFileList] = useState<UserFile[] | null>(null);
+	const [filter, setFilter] = useState("");
+	const [page, setPage] = useState(0);
+	const [sortDescending, setSortDescending] = useState(true);
+	const showToast = useShowToast();
+
+	const processed = useMemo<UserFile[]>(() => {
+		if (!fileList) return [];
+		return fileList
+			.filter((f) => f.name.toLocaleLowerCase().includes(filter.toLocaleLowerCase()))
+			.sort((a, b) => a.name.localeCompare(b.name) * (sortDescending ? 1 : -1));
+	}, [fileList, filter, sortDescending]);
+
+	const refreshFileList = useCallback(async () => {
+		const response: ApiResponse<UserFile[]> = await apiFetch("/api/files");
+		if (response.ok) {
+			setFileList(response.data);
+		} else {
+			console.error(response.error);
+			showToast("error", `${response.error}`);
+		}
+	}, [showToast]);
+
+	useEffect(() => void refreshFileList(), []);
+
+	const totalFiles = fileList ? fileList.length : 0;
+	const paginated = processed.slice(page * FILES_PER_PAGE, (page + 1) * FILES_PER_PAGE);
+	const totalPages = Math.ceil(processed.length / FILES_PER_PAGE);
+
+	return {
+		paginated,
+		totalPages,
+		page,
+		setPage,
+		filter,
+		setFilter,
+		sortDescending,
+		setSortDescending,
+		refreshFileList,
+		totalFiles,
+	};
+}
+
+export default useFileBrowser;

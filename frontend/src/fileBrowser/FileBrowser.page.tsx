@@ -1,35 +1,26 @@
-import FileList from "./FileList";
-import NewFile from "./NewFile";
-import FileUploader from "./FileUpload";
-import type {UserFile, ApiResponse} from "#shared/src/types";
-import {useState, useEffect} from "react";
-import {apiFetch} from "#/src/utils";
+import FileBrowser from "./FileBrowser";
+import {useNavigate} from "react-router";
+import {apiFetch} from "#/src/utils.ts";
 import {useShowToast} from "#/src/stores/toastStore";
 
 function FileBrowserPage() {
-	const [fileList, setFileList] = useState<UserFile[] | null>(null);
+	const navigate = useNavigate();
 	const showToast = useShowToast();
 
-	async function refreshFileList() {
-		const response: ApiResponse<UserFile[]> = await apiFetch("/api/files");
-		if (response.ok) {
-			setFileList(response.data);
-		} else {
-			console.error(response.error);
-			showToast("error", `${response.error}`);
+	async function startSessionFromFile(fileId: string) {
+		const response = await apiFetch<{workspaceId: string}>("/api/workspace", {
+			method: "POST",
+			headers: {"Content-Type": "application/json"},
+			body: JSON.stringify({fileId: fileId}),
+		});
+		if (!response.ok) {
+			showToast("error", response.error);
+			return;
 		}
+		navigate(`/collab/${response.data.workspaceId}`);
 	}
 
-	// @NOTE this is fine
-	useEffect(() => void refreshFileList(), []);
-
-	return (
-		<>
-			<FileList fileList={fileList} refreshFileList={refreshFileList} />
-			<NewFile />
-			<FileUploader refreshFileList={refreshFileList} />
-		</>
-	);
+	return <FileBrowser onFileSelect={startSessionFromFile} />;
 }
 
 export default FileBrowserPage;

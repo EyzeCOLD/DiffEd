@@ -3,7 +3,8 @@ import {User, UserWithPassword} from "#shared/src/types.js";
 import {timestampedLog} from "#/src/logging.js";
 
 async function getUserById(id: number): Promise<User | null> {
-	const query = "SELECT id, username, email FROM users WHERE id = $1";
+	const query =
+		"SELECT id, username, email, vim_bindings, (github_id IS NOT NULL) AS github_linked FROM users WHERE id = $1";
 	timestampedLog(`DB QUERY >>> ${query}`);
 	timestampedLog(`DB VALUES >>> ${[id]}`);
 	const {rows} = await db.query(query, [id]);
@@ -56,10 +57,37 @@ async function getHashedPasswordById(id: number): Promise<string | null> {
 
 	return rows[0].hashed_password;
 }
-/*
-   CHECK THIS FUNCTION! MIGHT BE NECESSARY TO IMPLEMENT TWO USER CREATION FUNCTIONS
-   ONE FOR LOCAL CREATION AND ONE FOR OAUTH CREATION
-*/
+async function getUserByGithubId(githubId: string): Promise<User | null> {
+	const query = "SELECT id, username, email FROM users WHERE github_id = $1";
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${[githubId]}`);
+	const {rows} = await db.query(query, [githubId]);
+
+	if (!rows.length) return null;
+
+	return rows[0];
+}
+
+async function createOAuthUser(username: string, email: string, githubId: string): Promise<number> {
+	const query = "INSERT INTO users (username, email, github_id) VALUES ($1, $2, $3) RETURNING id";
+	const values = [username, email, githubId];
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${values}`);
+	const {rows} = await db.query(query, values);
+
+	return rows[0].id;
+}
+
+async function linkGithubId(userId: number, githubId: string): Promise<boolean> {
+	const query = "UPDATE users SET github_id = $1 WHERE id = $2";
+	const values = [githubId, userId];
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${values}`);
+	const result = await db.query(query, values);
+
+	return result.rowCount! > 0;
+}
+
 async function createUser(user: Omit<User, "id">, hash: string | undefined): Promise<number> {
 	const query = "INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3) RETURNING id";
 	const values = [user.username, user.email, hash || null];
@@ -100,6 +128,25 @@ async function updatePassword(hash: string, id: number): Promise<boolean> {
 	return result.rowCount! > 0;
 }
 
+async function unlinkGithubId(userId: number): Promise<boolean> {
+	const query = "UPDATE users SET github_id = NULL WHERE id = $1";
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${[userId]}`);
+	const result = await db.query(query, [userId]);
+
+	return result.rowCount! > 0;
+}
+
+async function updateVimBindings(value: boolean, id: number): Promise<boolean> {
+	const query = "UPDATE users SET vim_bindings = $1 WHERE id = $2";
+	const values = [value, id];
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${values}`);
+	const result = await db.query(query, values);
+
+	return result.rowCount! > 0;
+}
+
 async function deleteUserById(id: number): Promise<boolean> {
 	const query = "DELETE FROM users WHERE id = $1";
 	timestampedLog(`DB QUERY >>> ${query}`);
@@ -113,11 +160,16 @@ export default {
 	getUserById,
 	getUserByUsername,
 	getUserByEmail,
+	getUserByGithubId,
 	getUserWithPasswordByIdentifier,
 	createUser,
+	createOAuthUser,
+	linkGithubId,
+	unlinkGithubId,
 	updateUsername,
 	deleteUserById,
 	updateEmail,
 	getHashedPasswordById,
 	updatePassword,
+	updateVimBindings,
 };

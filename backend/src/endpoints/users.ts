@@ -43,10 +43,10 @@ function signupUser(app: Express) {
 function modifyUser(app: Express) {
 	app.patch("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-		const {username, email, oldPassword, newPassword} = req.body;
+		const {username, email, oldPassword, newPassword, vim_bindings} = req.body;
 		const id = req.session.userId!;
 
-		if (!username && !email && !newPassword) {
+		if (!username && !email && !newPassword && vim_bindings === undefined) {
 			return res.status(400).json({ok: false, error: "Nothing to update"});
 		}
 
@@ -100,16 +100,13 @@ function modifyUser(app: Express) {
 				}
 
 				const currentPassword = await userQueryService.getHashedPasswordById(id);
-				if (!currentPassword) {
-					throw new Error(`Could not fetch password from database for id: ${id}`);
-				}
-
-				if (!(await argon2.verify(currentPassword, oldPassword))) {
-					return res.status(400).json({ok: false, error: "Incorrect password"});
-				}
-
-				if (await argon2.verify(currentPassword, newPassword)) {
-					return res.status(400).json({ok: false, error: "New Password can not be the same as old password!"});
+				if (currentPassword) {
+					if (!(await argon2.verify(currentPassword, oldPassword))) {
+						return res.status(400).json({ok: false, error: "Incorrect password"});
+					}
+					if (await argon2.verify(currentPassword, newPassword)) {
+						return res.status(400).json({ok: false, error: "New Password can not be the same as old password!"});
+					}
 				}
 
 				const hash = await argon2.hash(newPassword, {
@@ -118,6 +115,15 @@ function modifyUser(app: Express) {
 
 				if ((await userQueryService.updatePassword(hash, id)) == false)
 					throw new Error(`Could not update password for id :${id}`);
+			}
+
+			if (vim_bindings !== undefined) {
+				if (typeof vim_bindings !== "boolean") {
+					return res.status(400).json({ok: false, error: "Vim bindings must be a boolean"});
+				}
+
+				if ((await userQueryService.updateVimBindings(vim_bindings, id)) == false)
+					throw new Error(`Could not update vim_bindings for id: ${id}`);
 			}
 
 			res.status(200).json({ok: true, data: null});

@@ -1,6 +1,7 @@
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import {postgres} from "./postgres.js";
+import {SESSION_SECRET} from "#/src/env.js";
 
 // This extrends the express-session SessionData. Stored in database.
 declare module "express-session" {
@@ -16,7 +17,7 @@ const sessionConfig = session({
 		pool: postgres,
 		tableName: "user_sessions",
 	}),
-	secret: process.env.SESSION_SECRET || "sessionkey", //TODO! Change to process.env.SECRET_VAR
+	secret: SESSION_SECRET,
 	resave: false,
 	saveUninitialized: false,
 	cookie: {
