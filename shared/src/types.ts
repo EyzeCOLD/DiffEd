@@ -11,11 +11,12 @@ export type User = {
 	username: string;
 	email: string;
 	github_linked?: boolean;
+	vim_bindings: boolean;
 };
 
 export type UserWithPassword = User & {hashed_password: string};
 
-export type SigningUser = Omit<User, "id"> & {
+export type SigningUser = Pick<User, "username" | "email"> & {
 	password: string;
 };
 
