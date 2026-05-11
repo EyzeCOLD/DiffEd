@@ -1,5 +1,6 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
+import crypto from "crypto";
 import {z} from "zod";
 import Button from "#/src/components/Button";
 import Input from "#/src/components/Input";
@@ -373,11 +374,78 @@ function Confirm({onConfirm, onCancel}: PasswordConfirmProps) {
 	);
 }
 
+function APIKey() {
+	const [isLoading, setIsLoading] = useState(false);
+	const showToast = useShowToast();
+
+	async function getAPIKey() {
+		try {
+			setIsLoading(true);
+			const response: ApiResponse<string> = await apiFetch("/api/user/api", {
+				method: "GET",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+			});
+
+			if (!response.ok) {
+				throw new Error(response.error);
+			}
+
+			const key = response.data;
+			await navigator.clipboard.writeText(key);
+		} catch (e) {
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	async function createNewAPIKey() {
+		try {
+			setIsLoading(true);
+
+			const hash = crypto.randomBytes(32).toString("hex");
+			console.log(hash);
+			const response: ApiResponse<string> = await apiFetch("/api/user/api", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({hash}),
+			});
+
+			if (!response.ok) {
+				throw new Error(response.error);
+			}
+
+			const key = response.data;
+			await navigator.clipboard.writeText(key);
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	return (
+		<>
+			<div>
+				<Button onClick={getAPIKey} disabled={isLoading} aria-label="Get current API key">
+					Get API key
+				</Button>
+			</div>
+			<div>
+				<Button onClick={createNewAPIKey} disabled={isLoading} aria-label="Get current API key">
+					Create new API key
+				</Button>
+			</div>
+		</>
+	);
+}
+
 export default function UserManagementPage() {
 	const currentUser = useCurrentUser();
 	const setUser = useSetUser();
 	const updateUser = useUpdateUser();
-	const [loading, setLoading] = useState(!currentUser);
+	const [isLoading, setIsLoading] = useState(!currentUser);
 	const showToast = useShowToast();
 	const navigate = useNavigate();
 
@@ -390,11 +458,11 @@ export default function UserManagementPage() {
 				return;
 			}
 			setUser(response.data);
-			setLoading(false);
+			setIsLoading(false);
 		});
 	}, [navigate]);
 
-	return loading || !currentUser ? (
+	return isLoading || !currentUser ? (
 		<div>Loading...</div>
 	) : (
 		<div>
@@ -407,6 +475,9 @@ export default function UserManagementPage() {
 			</div>
 			<div>
 				<GithubLink githubLinked={!!currentUser.github_linked} />
+			</div>
+			<div>
+				<APIKey />
 			</div>
 			<div>
 				DANGER ZONE!!!

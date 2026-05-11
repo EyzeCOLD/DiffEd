@@ -78,6 +78,17 @@ async function getUserByGithubId(githubId: string): Promise<User | null> {
 	return rows[0];
 }
 
+async function getAPIKeyById(id: number): Promise<string | null> {
+	const query = "SELECT APIKey FROM users WHERE id = $1";
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${[id]}`);
+	const {rows} = await db.query(query, [id]);
+
+	if (!rows.length) return null;
+
+	return rows[0];
+}
+
 async function createOAuthUser(username: string, email: string, githubId: string): Promise<number> {
 	const query = "INSERT INTO users (username, email, github_id) VALUES ($1, $2, $3) RETURNING id";
 	const values = [username, email, githubId];
@@ -98,9 +109,9 @@ async function linkGithubId(userId: number, githubId: string): Promise<boolean> 
 	return result.rowCount! > 0;
 }
 
-async function createUser(user: Omit<User, "id">, hash: string | undefined): Promise<number> {
+async function createUser(username: string, email: string, hash: string): Promise<number> {
 	const query = "INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3) RETURNING id";
-	const values = [user.username, user.email, hash || null];
+	const values = [username, email, hash || null];
 	timestampedLog(`DB QUERY >>> ${query}`);
 	timestampedLog(`DB VALUES >>> ${values}`);
 	const {rows} = await db.query(query, values);
@@ -138,6 +149,16 @@ async function updatePassword(hash: string, id: number): Promise<boolean> {
 	return result.rowCount! > 0;
 }
 
+async function updateAPIKey(hash: string, id: number): Promise<boolean> {
+	const values = [hash, id];
+	const query = "UPDATE users SET APIKey = $1 WHERE id = $2";
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${values}`);
+	const result = await db.query(query, values);
+
+	return result.rowCount! > 0;
+}
+
 async function unlinkGithubId(userId: number): Promise<boolean> {
 	const query = "UPDATE users SET github_id = NULL WHERE id = $1";
 	timestampedLog(`DB QUERY >>> ${query}`);
@@ -163,13 +184,15 @@ export default {
 	getUserByEmail,
 	getUserByGithubId,
 	getUserWithPasswordByIdentifier,
+	getAPIKeyById,
 	createUser,
 	createOAuthUser,
 	linkGithubId,
-	unlinkGithubId,
-	updateUsername,
-	deleteUserById,
-	updateEmail,
 	getHashedPasswordById,
+	updateUsername,
+	updateEmail,
 	updatePassword,
+	updateAPIKey,
+	unlinkGithubId,
+	deleteUserById,
 };

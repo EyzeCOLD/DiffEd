@@ -22,9 +22,9 @@ function signupUser(app: Express) {
 				type: argon2.argon2id,
 			});
 
-			/* createUser returns id. Let's keep this call here if it is ever needed */
-			//const id = await createUser({username, email} as User, hash);
-			await userQueryService.createUser({username, email} as User, hash);
+			const id = await userQueryService.createUser(username, email, hash);
+			const user = await userQueryService.getUserById(id);
+			if (!user) throw new Error("User not found after creation");
 			res.status(201).json({ok: true, data: null});
 		} catch (error: unknown) {
 			if (isDbError(error) && isUniqueViolation(error)) {

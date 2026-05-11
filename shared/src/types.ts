@@ -11,6 +11,7 @@ export type User = {
 	username: string;
 	email: string;
 	github_linked?: boolean;
+	APIKey?: string;
 };
 
 export type UserWithPassword = User & {hashed_password: string};
