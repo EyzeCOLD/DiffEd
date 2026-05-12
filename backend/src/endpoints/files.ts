@@ -9,7 +9,6 @@ import {isDbError, isInvalidByteSequence, isUniqueViolation} from "#/src/utils.j
 import multer from "multer";
 
 // doing #shared does not work for some reason
-// having is text or binary package only in shard is not enought for some reason, also need in backend
 import {validateFile} from "../../../shared/src/fileValidation.js";
 import assert from "node:assert";
 
@@ -68,7 +67,6 @@ function getFileById(app: Express, db: Pool) {
 	});
 }
 
-// const storage = multer.memoryStorage();
 const upload = multer({
 	storage: multer.memoryStorage(),
 });

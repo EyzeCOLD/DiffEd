@@ -6,7 +6,7 @@ import {useShowToast} from "#/src/stores/toastStore";
 import Button from "#/src/components/Button";
 
 type fileListProps = {
-	onFileSelect: (fileId: string) => void;
+	onFileSelect: (fileId: string) => Promise<void>;
 	fileList: FileListItem[];
 	refreshFileList: () => void;
 	onSortToggle: () => void;
