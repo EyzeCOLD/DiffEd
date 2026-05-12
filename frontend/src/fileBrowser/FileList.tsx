@@ -67,10 +67,10 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 						{file.name}
 					</button>
 				</td>
-				<td className="text-center">
+				<td className="text-center w-24">
 					<Button onClick={() => handleDownload(file)}>{" 🡻 "}</Button>
 				</td>
-				<td className="text-center">
+				<td className="text-center w-24">
 					<Button onClick={() => handleDelete(file.id)} className="font-bold">
 						{" X "}
 					</Button>
@@ -80,7 +80,7 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 	});
 
 	return (
-		<table id="file-list">
+		<table id="file-list" className="max-w-4/5">
 			<thead>
 				<th>
 					filename
@@ -88,8 +88,8 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 						{descending ? "▾" : "▴"}
 					</Button>
 				</th>
-				<th>download</th>
-				<th>delete</th>
+				<th className="text-center">download</th>
+				<th className="text-center">delete</th>
 			</thead>
 			<tbody>{listItems}</tbody>
 		</table>

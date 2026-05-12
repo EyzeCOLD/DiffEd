@@ -56,6 +56,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [retryCount, setRetryCount] = useState(0);
+	const [newFileName, setNewFileName] = useState("");
 	const [fileName, setFileName] = useState("");
 	const [langSelected, setLangSelected] = useState<string | null>(null);
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
@@ -79,7 +80,10 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			while (!done) {
 				try {
 					const name = await pullFileName(connection);
-					if (!done) setFileName(name);
+					if (!done) {
+						setFileName(name);
+						setNewFileName(name);
+					}
 				} catch {
 					if (!done) await delay(1000);
 				}
@@ -162,6 +166,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 				const {doc, version, fileName: initialFileName} = await getInitialDocumentWithRetry();
 				if (hasUnmounted) return;
 				setFileName(initialFileName);
+				setNewFileName(initialFileName);
 				setLangSelected(getLangOption(initialFileName));
 
 				const state = EditorState.create({
@@ -225,8 +230,9 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 	async function handleRename(): Promise<void> {
 		if (!connection) return;
 		try {
-			const response = await pushFileName(connection, fileName);
+			const response = await pushFileName(connection, newFileName);
 			setFileName(response.name);
+			setNewFileName(response.name);
 		} catch (err) {
 			showToast("error", errorMessage(err));
 		}
@@ -242,46 +248,43 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			/>
 			<div className="flex items-center justify-between p-1">
 				<form
-					className="flex gap-2"
+					className="flex gap-1"
 					onSubmit={(e) => {
 						e.preventDefault();
 						void handleRename();
 					}}
 				>
-					<Input type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} />
-					<Button type="submit" className="border px-2">
+					<label>
+						Filename
+						<Input type="text" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} />
+					</label>
+					<Button disabled={newFileName === fileName ? true : undefined} type="submit">
 						Rename
 					</Button>
 				</form>
 				<div className="flex items-center">
-					<Button
-						type="button"
-						className="border px-2"
-						style={
-							vimBindings
-								? {boxShadow: "0 0 4px 1px color-mix(in srgb, var(--color-foreground) 40%, transparent)"}
-								: {opacity: 0.6}
-						}
-						onClick={() => void handleVimToggle()}
-					>
-						Vim
+					<Button type="button" className={vimBindings ? "border" : ""} onClick={() => void handleVimToggle()}>
+						Vim Mode
 					</Button>
-					<select
-						className="m-1 px-1 border-2 border-surface bg-canvas text-foreground"
-						value={langSelected ?? ""}
-						onChange={(e) => setLangSelected(e.target.value || null)}
-					>
-						<option className="bg-canvas" value="">
-							Plain Text
-						</option>
-						{Object.keys(langOptions).map((name) => (
-							<option className="bg-canvas" key={name} value={name}>
-								{name}
+					<label className="text-sm">
+						Syntax Highlighting
+						<select
+							className="m-1 px-1 border-2 border-surface bg-canvas text-foreground"
+							value={langSelected ?? ""}
+							onChange={(e) => setLangSelected(e.target.value || null)}
+						>
+							<option className="bg-canvas" value="">
+								Plain Text
 							</option>
-						))}
-					</select>
-					<Button type="button" className="border px-2" onClick={onRepickFile}>
-						Change file
+							{Object.keys(langOptions).map((name) => (
+								<option className="bg-canvas" key={name} value={name}>
+									{name}
+								</option>
+							))}
+						</select>
+					</label>
+					<Button type="button" onClick={onRepickFile}>
+						Change File
 					</Button>
 				</div>
 			</div>

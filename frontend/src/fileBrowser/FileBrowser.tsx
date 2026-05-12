@@ -24,7 +24,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 	} = useFileBrowser();
 
 	return (
-		<>
+		<div className="flex flex-col center-items justify-center">
 			{totalFiles > 0 ? (
 				<label>
 					Filter:
@@ -41,7 +41,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 			{totalPages ? <PageSelector currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
 			<NewFile onFileCreate={onFileSelect} />
 			<FileUploader refreshFileList={refreshFileList} />
-		</>
+		</div>
 	);
 }
 
