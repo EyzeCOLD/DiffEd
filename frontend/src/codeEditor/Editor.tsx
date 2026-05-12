@@ -123,9 +123,9 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 
 	useEffect(() => {
 		if (!viewRef.current) return;
-		const extension = langSelected ? (langOptions[langSelected]?.() ?? []) : getLangExtension(fileName);
+		const extension = langOptions[langSelected ?? ""]?.() ?? [];
 		viewRef.current.dispatch({effects: langCompartment.reconfigure(extension)});
-	}, [langSelected, fileName]);
+	}, [langSelected]);
 
 	const memberInitialDoc = basePeerId === null ? null : (pool.getPeerDoc(basePeerId)?.doc ?? null);
 
