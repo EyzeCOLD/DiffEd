@@ -15,10 +15,6 @@ export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promi
 		return {ok: false, error: "Network error"};
 	}
 
-	if (res.status === 401) {
-		return {ok: false, error: "Unauthorized"};
-	}
-
 	try {
 		const json = await res.json();
 
