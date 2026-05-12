@@ -85,7 +85,6 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 			const listFile: FileListItem = {name: file.name, id: response.data};
 			pushToFileList(listFile);
 		}
-		await new Promise((r) => setTimeout(r, 15000));
 		handleRemove(file.name);
 		return Promise.resolve();
 	}
@@ -101,13 +100,7 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 					multiple
 					onChange={handleFileChange}
 				/>
-				<Button
-					disabled={uploadOnGoing}
-					onClick={() => {
-						if (uploadOnGoing) return; // hack
-						fileInputRef.current?.click();
-					}}
-				>
+				<Button disabled={uploadOnGoing} onClick={() => fileInputRef.current?.click()}>
 					Upload Files
 				</Button>
 			</div>

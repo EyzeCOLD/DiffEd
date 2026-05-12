@@ -4,7 +4,6 @@ import {apiFetch} from "#/src/utils.ts";
 
 function FileBrowserPage() {
 	const navigate = useNavigate();
-	// const showToast = useShowToast();
 
 	async function startSessionFromFile(fileId: string) {
 		const response = await apiFetch<{workspaceId: string}>("/api/workspace", {

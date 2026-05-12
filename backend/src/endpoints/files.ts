@@ -13,8 +13,6 @@ import multer from "multer";
 import {validateFile} from "../../../shared/src/fileValidation.js";
 import assert from "node:assert";
 
-// doing #shared does not work for some reason
-
 function getFiles(app: Express, db: Pool) {
 	app.get("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile[]>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);

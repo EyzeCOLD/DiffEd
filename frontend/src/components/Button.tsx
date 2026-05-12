@@ -12,7 +12,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({children, clas
 	}
 
 	return (
-		<button ref={ref} className={`${getStyle()} m-1 p-1 ${className ?? ""}`} {...props}>
+		<button ref={ref} className={`${getStyle()} m-1 p-1 ${className ?? ""}`} disabled={disabled} {...props}>
 			{children}
 		</button>
 	);
