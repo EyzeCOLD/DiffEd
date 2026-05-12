@@ -43,12 +43,15 @@ function NewFile({onFileCreate}: NewFileProps): JSX.Element {
 				openNewFile();
 			}}
 		>
-			<Input
-				id="fileNameInput"
-				value={newFilename}
-				placeholder="New file"
-				onChange={(event) => setNewFilename(event.target.value)}
-			/>
+			<label>
+				New File:
+				<Input
+					id="fileNameInput"
+					value={newFilename}
+					placeholder="filename"
+					onChange={(event) => setNewFilename(event.target.value)}
+				/>
+			</label>
 			<Button type="submit">Create</Button>
 		</form>
 	);

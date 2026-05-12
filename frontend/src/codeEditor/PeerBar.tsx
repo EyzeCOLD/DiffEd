@@ -20,7 +20,7 @@ export default function PeerBar({peers, readyPeerIds, selectedPeerId, onSelect}:
 						role="tab"
 						aria-selected={selectedPeerId === null}
 						onClick={() => onSelect(null)}
-						className={`px-2 py-1 border ${selectedPeerId === null ? "border-accent" : "border-transparent"} cursor-pointer`}
+						className={`text-foreground-light px-2 py-1 border ${selectedPeerId === null ? "border-accent" : "border-transparent"} cursor-pointer`}
 					>
 						Solo
 					</button>
@@ -37,7 +37,7 @@ export default function PeerBar({peers, readyPeerIds, selectedPeerId, onSelect}:
 								aria-selected={selected}
 								disabled={!ready}
 								onClick={() => onSelect(peer.id)}
-								className={`px-2 py-1 border ${borderClass} ${stateClass}`}
+								className={`text-foreground-light px-2 py-1 border ${borderClass} ${stateClass}`}
 							>
 								{peer.username}
 							</button>
