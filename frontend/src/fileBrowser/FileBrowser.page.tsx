@@ -20,7 +20,11 @@ function FileBrowserPage() {
 		navigate(`/collab/${response.data.workspaceId}`);
 	}
 
-	return <FileBrowser onFileSelect={startSessionFromFile} />;
+	return (
+		<div className="p-4 flex flex-col gap-2">
+			<FileBrowser onFileSelect={startSessionFromFile} />
+		</div>
+	);
 }
 
 export default FileBrowserPage;

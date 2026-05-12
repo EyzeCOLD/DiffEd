@@ -18,33 +18,30 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 		filter,
 		setFilter,
 		sortDescending,
-		setSortDescending,
+		toggleSort,
 		refreshFileList,
 		totalFiles,
 	} = useFileBrowser();
 
 	return (
-		<>
+		<div className="flex flex-col center-items justify-center">
 			{totalFiles > 0 ? (
-				<Input
-					type="text"
-					id="fileListFilter"
-					value={filter}
-					placeholder="Filter"
-					onChange={(event) => setFilter(event.target.value)}
-				/>
+				<label>
+					Filter:
+					<Input type="text" id="fileListFilter" value={filter} onChange={(event) => setFilter(event.target.value)} />
+				</label>
 			) : null}
 			<FileList
 				onFileSelect={onFileSelect}
 				fileList={paginated}
 				refreshFileList={refreshFileList}
-				onSortToggle={() => setSortDescending((d) => !d)}
+				onSortToggle={toggleSort}
 				descending={sortDescending}
 			/>
 			{totalPages ? <PageSelector currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
 			<NewFile onFileCreate={onFileSelect} />
 			<FileUploader refreshFileList={refreshFileList} />
-		</>
+		</div>
 	);
 }
 

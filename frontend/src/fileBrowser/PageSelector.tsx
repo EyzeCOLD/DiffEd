@@ -27,7 +27,7 @@ function PageSelector({currentPage, totalPages, onPageChange}: pageSelectorProps
 	const pageNumbers = generatePageNumbers();
 
 	return (
-		<nav aria-label="Pagination">
+		<nav aria-label="Pagination" className="flex">
 			<ul className="flex list-none p-0 m-0">
 				<li key="Previous page">
 					<Button

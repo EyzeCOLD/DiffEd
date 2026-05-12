@@ -48,40 +48,40 @@ export default function LoginPage() {
 		navigate("/dashboard");
 	}
 
-	//should we use maxlength for the input fields?
 	return (
-		<div>
-			<div>Welcome to the login page</div>
-			<form onSubmit={login}>
-				<div>
-					<Input
-						placeholder="username or email"
-						value={loginIdentifier}
-						onChange={(e) => setLoginIdentifier(e.target.value)}
-					/>
-				</div>
-				<div>
-					<Input
-						placeholder="password"
-						type="password"
-						value={loginPassword}
-						onChange={(e) => setLoginPassword(e.target.value)}
-					/>
-				</div>
-				<div>
-					<Button type="submit">Log In</Button>
-				</div>
+		<div className="flex flex-col items-center justify-center pt-12 gap-2">
+			<form onSubmit={login} className="grid grid-cols-[auto_1fr] items-center gap-y-2 gap-x-2 w-fit">
+				<label htmlFor="login" className="text-right">
+					Login
+				</label>
+				<Input
+					id="login"
+					placeholder="username or email"
+					value={loginIdentifier}
+					onChange={(e) => setLoginIdentifier(e.target.value)}
+				/>
+				<label htmlFor="password" className="text-right">
+					Password
+				</label>
+				<Input
+					id="password"
+					placeholder="********"
+					type="password"
+					value={loginPassword}
+					onChange={(e) => setLoginPassword(e.target.value)}
+				/>
+				<Button type="submit" className="col-span-2 mx-auto">
+					Log In
+				</Button>
 			</form>
-			<div>
-				<a href="/api/auth/github">
-					<Button type="button">Login with GitHub</Button>
-				</a>
-			</div>
-			<div>
-				Don't have an account? Create one&nbsp;
-				<button onClick={() => navigate("/signup")} className="hover:text-accent font-bold underline cursor-pointer">
-					here
-				</button>
+
+			<a href="/api/auth/github">
+				<Button type="button">Login with GitHub</Button>
+			</a>
+
+			<div className="flex flex-col items-center">
+				<p className="text-sm">Don't have an account?</p>
+				<Button onClick={() => navigate("/signup")}>Sign Up</Button>
 			</div>
 		</div>
 	);

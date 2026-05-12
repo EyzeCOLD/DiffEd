@@ -1,40 +1,34 @@
-import {NavLink, useNavigate} from "react-router";
+import {useNavigate} from "react-router";
+import TopBarLink from "#/src/components/TopBarLink";
 import {useShowToast} from "../stores/toastStore.ts";
 import {useCurrentUser, useClearUser} from "../stores/userStore.ts";
 import type {MouseEvent} from "react";
+import Button from "#/src/components/Button";
 
-function navLinkClass({isActive}: {isActive: boolean}) {
-	return `text-foreground px-3 py-2 hover:text-accent ${isActive ? "underline underline-offset-4 font-bold" : ""}`;
+function ContentSkipLink() {
+	return (
+		<>
+			<a
+				href="#main"
+				className="sr-only text-foreground-light focus:not-sr-only focus:absolute focus:z-50 focus:px-4 focus:py-2 focus:bg-surface focus:text-accent focus:underline"
+			>
+				Skip to content
+			</a>
+		</>
+	);
 }
-
-const contentSkipLink = (
-	<a
-		href="#main"
-		className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:px-4 focus:py-2 focus:bg-surface focus:text-foreground focus:underline"
-	>
-		Skip to content
-	</a>
-);
 
 export function PublicTopBar() {
 	const currentUser = useCurrentUser();
 
 	return (
 		<nav className="flex items-center justify-between bg-surface px-2 py-2">
-			{contentSkipLink}
-			<NavLink to="/" end className={navLinkClass}>
+			<ContentSkipLink />
+			<TopBarLink to="/" end>
 				Home
-			</NavLink>
+			</TopBarLink>
 			<div className="flex gap-2">
-				{currentUser ? (
-					<NavLink to="/dashboard" className={navLinkClass}>
-						Dashboard
-					</NavLink>
-				) : (
-					<NavLink to="/login" className={navLinkClass}>
-						Log In
-					</NavLink>
-				)}
+				{currentUser ? <TopBarLink to="/dashboard">Dashboard</TopBarLink> : <TopBarLink to="/login">Log In</TopBarLink>}
 			</div>
 		</nav>
 	);
@@ -67,22 +61,16 @@ export function UserTopBar() {
 
 	return (
 		<nav className="flex items-center justify-between bg-surface px-2 py-2">
-			{contentSkipLink}
+			<ContentSkipLink />
 			<div className="flex items-center gap-2">
-				<NavLink to="/dashboard" className={navLinkClass}>
-					Dashboard
-				</NavLink>
-				<NavLink to="/filebrowser" className={navLinkClass}>
-					Files
-				</NavLink>
+				<TopBarLink to="/dashboard">Dashboard</TopBarLink>
+				<TopBarLink to="/filebrowser">Files</TopBarLink>
 			</div>
 			<div className="flex items-center gap-2">
-				<NavLink to="/account" className={navLinkClass}>
-					Account
-				</NavLink>
-				<button type="button" className={`${navLinkClass({isActive: false})} cursor-pointer`} onClick={logout}>
+				<TopBarLink to="/account">Account</TopBarLink>
+				<Button type="button" onClick={logout}>
 					Logout
-				</button>
+				</Button>
 			</div>
 		</nav>
 	);
