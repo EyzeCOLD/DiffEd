@@ -5,10 +5,11 @@ import Input from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
 
 type NewFileProps = {
-	onFileCreate: (fileId: string) => void;
+	onFileCreate: (fileId: string) => Promise<void>;
+	refreshFileList: () => Promise<void>;
 };
 
-function NewFile({onFileCreate}: NewFileProps): JSX.Element {
+function NewFile({onFileCreate, refreshFileList}: NewFileProps): JSX.Element {
 	const [newFilename, setNewFilename] = useState<string>("");
 	const showToast = useShowToast();
 
@@ -30,6 +31,7 @@ function NewFile({onFileCreate}: NewFileProps): JSX.Element {
 
 		if (!fileResult.ok) {
 			showToast("error", `File creation failed: ${fileResult.error}`);
+			refreshFileList();
 			return;
 		}
 		const fileId = fileResult.data;
