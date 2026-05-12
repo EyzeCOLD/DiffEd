@@ -144,8 +144,12 @@ function Password() {
 	const [isEditing, setIsEditing] = useState(false);
 	const [newPassword, setNewPassword] = useState("");
 	const [newPassword2, setNewPassword2] = useState("");
-	const [isLoading, setIsLoading] = useState(false);
 	const showToast = useShowToast();
+
+	useEffect(() => {
+		if (!newPassword && !newPassword2) setPasswordConfirm(false);
+		else setPasswordConfirm(true);
+	}, [newPassword, newPassword2]);
 
 	function resetState() {
 		setIsEditing(false);
@@ -155,11 +159,14 @@ function Password() {
 	}
 
 	async function handleConfirmClick(password: string) {
+		if (!newPassword || !newPassword2) {
+			return showToast("error", "Please fill all the fields!");
+		}
+
 		if (newPassword !== newPassword2) {
 			return showToast("error", "The passwords do not match!");
 		}
 
-		setIsLoading(true);
 		try {
 			const response: ApiResponse<null> = await apiFetch("/api/user", {
 				method: "PATCH",
@@ -176,21 +183,7 @@ function Password() {
 			resetState();
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
-		} finally {
-			setIsLoading(false);
 		}
-	}
-
-	function handleSubmitClick() {
-		if (!newPassword || !newPassword2) {
-			return showToast("error", "Please fill all the fields!");
-		}
-
-		if (newPassword !== newPassword2) {
-			return showToast("error", "The passwords do not match!");
-		}
-
-		setPasswordConfirm(true);
 	}
 
 	return (
@@ -200,7 +193,6 @@ function Password() {
 					<div>
 						<Input
 							placeholder="new password"
-							disabled={isLoading}
 							type="password"
 							value={newPassword}
 							onChange={(e) => setNewPassword(e.target.value)}
@@ -209,26 +201,24 @@ function Password() {
 					<div>
 						<Input
 							placeholder="new password, again"
-							disabled={isLoading}
 							type="password"
 							value={newPassword2}
 							onChange={(e) => setNewPassword2(e.target.value)}
 						/>
 					</div>
 					<div>
-						{!passwordConfirm ? (
+						{passwordConfirm ? (
 							<div>
-								<Button onClick={handleSubmitClick} aria-label="Submit password change">
-									Submit
-								</Button>
-								<Button onClick={resetState} aria-label="Cancel password change">
-									Cancel
-								</Button>
+								<Confirm
+									onConfirm={handleConfirmClick}
+									onCancel={() => {
+										setPasswordConfirm(false);
+										resetState();
+									}}
+								/>
 							</div>
 						) : (
-							<div>
-								<Confirm onConfirm={handleConfirmClick} onCancel={resetState} />
-							</div>
+							<div></div>
 						)}
 					</div>
 				</>

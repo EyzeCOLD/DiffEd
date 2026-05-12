@@ -56,7 +56,7 @@ function modifyUser(app: Express) {
 				throw new Error(`User with id: ${id} not found in database`);
 			}
 
-			if (!vim_bindings && !(await argon2.verify(user.hashed_password, password))) {
+			if (vim_bindings === undefined && !(await argon2.verify(user.hashed_password, password))) {
 				return res.status(400).json({ok: false, error: "Incorrect password"});
 			}
 
