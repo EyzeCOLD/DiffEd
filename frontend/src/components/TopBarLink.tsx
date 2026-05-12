@@ -1,12 +1,7 @@
 import React from "react";
 import {NavLink, type NavLinkProps} from "react-router";
 
-type StyledNavLinkProps = Omit<NavLinkProps, "className"> & {
-	children: React.ReactNode;
-	className?: string;
-};
-
-const TopBarLink = React.forwardRef<HTMLAnchorElement, StyledNavLinkProps>(({children, className, ...props}, ref) => {
+const TopBarLink = React.forwardRef<HTMLAnchorElement, NavLinkProps>(({children, className, ...props}, ref) => {
 	return (
 		<NavLink
 			ref={ref}

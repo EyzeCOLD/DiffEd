@@ -48,9 +48,8 @@ export default function LoginPage() {
 		navigate("/dashboard");
 	}
 
-	//should we use maxlength for the input fields?
 	return (
-		<div className="flex flex-col items-center justify-center min-h-screen gap-2">
+		<div className="flex flex-col items-center justify-center pt-12 gap-2">
 			<form onSubmit={login} className="grid grid-cols-[auto_1fr] items-center gap-y-2 gap-x-2 w-fit">
 				<label htmlFor="login" className="text-right">
 					Login

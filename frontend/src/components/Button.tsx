@@ -1,8 +1,6 @@
 import React from "react";
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-	children: React.ReactNode;
-};
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const disabledStyle = "bg-gray-700 text-stone-300";
 const enabledStyle = "bg-surface text-foreground-light hover:text-accent cursor-pointer";
