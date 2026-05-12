@@ -22,15 +22,6 @@ import {tags} from "@lezer/highlight";
 import {type CollabConnection} from "./collabClient";
 import {peerExtension} from "./peerExtension";
 
-const keybinds = keymap.of([
-	...defaultKeymap,
-	{
-		key: "Tab",
-		preventDefault: true,
-		run: insertTab,
-	},
-]);
-
 const langServer = {
 	md: () => markdown({codeLanguages: languages}),
 	cpp: () => cpp(),
@@ -175,6 +166,7 @@ type EditorConfig = {
 	myOwnerId: number;
 	memberInitialDoc: Text | null;
 	vimBindings: boolean;
+	onVimToggle: () => void;
 };
 
 export function getEditorExtensions({
@@ -184,7 +176,20 @@ export function getEditorExtensions({
 	myOwnerId,
 	memberInitialDoc,
 	vimBindings,
+	onVimToggle,
 }: EditorConfig): Extension[] {
+	const keybinds = keymap.of([
+		...defaultKeymap,
+		{key: "Tab", preventDefault: true, run: insertTab},
+		{
+			key: "Ctrl-Alt-v",
+			run: () => {
+				onVimToggle();
+				return true;
+			},
+		},
+	]);
+
 	const extensions: Extension[] = [
 		vimCompartment.of(vimBindings ? vim() : []),
 		basicSetup,
