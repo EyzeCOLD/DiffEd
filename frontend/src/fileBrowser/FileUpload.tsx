@@ -6,15 +6,21 @@ import {apiFetch} from "#/src/utils.js";
 import type {ApiResponse, FileListItem} from "#shared/src/types.ts";
 import {validateFile} from "#shared/src/fileValidation";
 
-function FileUploader({pushToFileList}: {pushToFileList: (file: FileListItem) => void}) {
-	const [fileUploads, setFileUploads] = useState<Map<string, File> | null>(null);
+type FileUploaderProps = {
+	pushToFileList: (file: FileListItem) => void;
+	refreshFileList: () => Promise<void>;
+};
 
+function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
+	const [fileUploads, setFileUploads] = useState<Map<string, File> | null>(null);
+	const [uploadOnGoing, setUploadOnGoing] = useState<boolean>(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const showToast = useShowToast();
 
 	async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 		if (!e.target.files) return;
 
+		setUploadOnGoing(true);
 		const newFileArray: File[] = [];
 		const newFilemap = fileUploads ?? new Map<string, File>();
 		for (const f of e.target.files) {
@@ -34,9 +40,12 @@ function FileUploader({pushToFileList}: {pushToFileList: (file: FileListItem) =>
 		if (newFilemap.size > 0) setFileUploads(newFilemap);
 		if (fileInputRef.current) fileInputRef.current.value = "";
 
-		for (const f of newFileArray) {
-			uploadFile(f);
-		}
+		const uploads: Promise<void>[] = newFileArray.map(async (f) => {
+			return await uploadFile(f);
+		});
+		await Promise.allSettled(uploads);
+		refreshFileList();
+		setUploadOnGoing(false);
 	}
 
 	async function handleRemove(name: string) {
@@ -53,9 +62,9 @@ function FileUploader({pushToFileList}: {pushToFileList: (file: FileListItem) =>
 	async function uploadFile(file: File) {
 		if (!file) {
 			console.log("Tried to upload non existent file");
-			return {ok: false, error: "Tried to upload non existent file"} as ApiResponse<string>;
+			return Promise.resolve();
 		}
-		showToast("info", `Uploading file ${file.name}`);
+
 		const formData = new FormData();
 		formData.append("file", file);
 
@@ -73,11 +82,12 @@ function FileUploader({pushToFileList}: {pushToFileList: (file: FileListItem) =>
 			}
 		} else {
 			console.log(`File ${file.name} uploaded`);
-			showToast("success", `File ${file.name} uploaded`);
 			const listFile: FileListItem = {name: file.name, id: response.data};
 			pushToFileList(listFile);
 		}
+		await new Promise((r) => setTimeout(r, 15000));
 		handleRemove(file.name);
+		return Promise.resolve();
 	}
 
 	return (
@@ -91,21 +101,29 @@ function FileUploader({pushToFileList}: {pushToFileList: (file: FileListItem) =>
 					multiple
 					onChange={handleFileChange}
 				/>
-				<Button onClick={() => fileInputRef.current?.click()}>Upload Files</Button>
+				<Button
+					disabled={uploadOnGoing}
+					onClick={() => {
+						if (uploadOnGoing) return; // hack
+						fileInputRef.current?.click();
+					}}
+				>
+					Upload Files
+				</Button>
 			</div>
 			{fileUploads && (
 				<>
 					<table>
-						<thead>
-							<th>file(s)</th>
+						<thead className="pt-8">
+							<th></th>
 						</thead>
 						<tbody>
 							{fileUploads &&
 								[...fileUploads.values()].map((file) => (
 									<tr key={file.name}>
-										<td>🗎 {file.name}</td>
+										<td className="px-2">{file.name}</td>
 										<td className="text-center">
-											<Button onClick={() => handleRemove(file.name)}> ☒ </Button>
+											<span className="loader"></span>
 										</td>
 									</tr>
 								))}

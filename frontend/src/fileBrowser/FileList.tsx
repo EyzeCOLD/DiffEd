@@ -6,7 +6,7 @@ import {useShowToast} from "#/src/stores/toastStore";
 import Button from "#/src/components/Button";
 
 type fileListProps = {
-	onFileSelect: (fileId: string, refreshFileList: () => void) => void;
+	onFileSelect: (fileId: string) => void;
 	fileList: FileListItem[];
 	refreshFileList: () => void;
 	onSortToggle: () => void;
@@ -54,6 +54,17 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		refreshFileList();
 	}
 
+	async function selectFile(fileId: string) {
+		try {
+			await onFileSelect(fileId);
+		} catch (err) {
+			if (typeof err === "string" && err) {
+				showToast("error", err);
+			}
+			refreshFileList();
+		}
+	}
+
 	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: FileListItem) => {
 		return (
 			<tr key={file.id}>
@@ -61,7 +72,7 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 					<button
 						type="button"
 						className="bg-transparent border-0 p-0 text-inherit cursor-pointer hover:underline"
-						onClick={() => onFileSelect(file.id, refreshFileList)}
+						onClick={() => selectFile(file.id)}
 					>
 						{file.name}
 					</button>

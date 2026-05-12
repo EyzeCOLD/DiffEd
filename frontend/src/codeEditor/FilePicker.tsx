@@ -1,25 +1,21 @@
 import {type JSX} from "react";
 import {CollabConnection, pickFile} from "./collabClient";
 import FileBrowser from "../fileBrowser/FileBrowser";
-import {useShowToast} from "../stores/toastStore";
-import useFileBrowser from "../fileBrowser/useFileBrowser";
 
 type FilePickerProps = {
 	connection: CollabConnection;
 };
 
 function FilePicker({connection}: FilePickerProps): JSX.Element {
-	const showtoast = useShowToast();
-	const {refreshFileList} = useFileBrowser();
-
 	async function handlePick(fileId: string) {
 		try {
 			await pickFile(connection, fileId);
 		} catch (err) {
-			const error: Error = err as Error;
-			console.log(error.message);
-			showtoast("error", error.message);
-			refreshFileList();
+			if (err && typeof err === "object" && "message" in err) {
+				if (typeof err.message === "string") throw err.message;
+			} else {
+				throw "socker error";
+			}
 		}
 	}
 

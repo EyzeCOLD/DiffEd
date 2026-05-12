@@ -47,6 +47,7 @@ function useFileBrowser() {
 
 	const refreshFileList = useCallback(async () => {
 		const response: ApiResponse<FileListItem[]> = await apiFetch("/api/files");
+		console.log("refreshhhh");
 		if (response.ok) {
 			setFileList(response.data);
 		} else {

@@ -84,4 +84,61 @@
 	::-webkit-scrollbar-thumb:hover {
 		border-color: var(--color-canvas);
 	}
+
+	.loader {
+		display: block;
+		position: relative;
+		height: 10px;
+		width: 70px;
+		background-image:
+			linear-gradient(var(--color-foreground) 10px, transparent 0),
+			linear-gradient(var(--color-foreground) 10px, transparent 0),
+			linear-gradient(var(--color-foreground) 10px, transparent 0),
+			linear-gradient(var(--color-foreground) 10px, transparent 0);
+		background-repeat: no-repeat;
+		background-size: 10px auto;
+		background-position:
+			0 0,
+			20px 0,
+			40px 0,
+			60px 0;
+		animation: pgfill 1s linear infinite;
+	}
+	@keyframes pgfill {
+		0% {
+			background-image:
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0);
+		}
+		25% {
+			background-image:
+				linear-gradient(var(--color-accent) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0);
+		}
+		50% {
+			background-image:
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-accent) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0);
+		}
+		75% {
+			background-image:
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-accent) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0);
+		}
+		100% {
+			background-image:
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-foreground) 10px, transparent 0),
+				linear-gradient(var(--color-accent) 10px, transparent 0);
+		}
+	}
 }

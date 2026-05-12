@@ -6,7 +6,7 @@ import useFileBrowser from "./useFileBrowser";
 import Input from "#/src/components/Input";
 
 type fileBrowserProps = {
-	onFileSelect: (fileId: string) => void;
+	onFileSelect: (fileId: string) => Promise<void>;
 };
 
 function FileBrowser({onFileSelect}: fileBrowserProps) {
@@ -41,7 +41,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 			/>
 			{totalPages ? <PageSelector currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
 			<NewFile onFileCreate={onFileSelect} />
-			<FileUploader pushToFileList={pushToFileList} />
+			<FileUploader pushToFileList={pushToFileList} refreshFileList={refreshFileList} />
 		</div>
 	);
 }
