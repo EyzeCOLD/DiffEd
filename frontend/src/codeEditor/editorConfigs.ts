@@ -237,11 +237,9 @@ export function getEditorExtensions({
 			},
 
 			// Styles the cursor's current line
-			"& .cm-activeLine, &.cm-merge-b .cm-activeLine": {
-				backgroundColor: "color-mix(in srgb, var(--color-accent) 7.5%, transparent)",
-			},
+			"& .cm-activeLine, &.cm-merge-b .cm-activeLine": {backgroundColor: "color-mix(in srgb, #cceeff44, transparent)"},
 			"& .cm-activeLineGutter, &.cm-merge-b .cm-activeLineGutter": {
-				backgroundColor: "color-mix(in srgb, var(--color-accent) 7.5%, transparent)",
+				backgroundColor: "color-mix(in srgb, #cceeff44, transparent)",
 			},
 
 			// Styles the button to expand section folds
