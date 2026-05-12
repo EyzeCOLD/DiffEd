@@ -284,7 +284,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 				<div className="flex items-center">
 					<Button
 						type="button"
-						className={vimBindings ? "border" : "border-transparent"}
+						className={vimBindings ? "border" : "border border-transparent"}
 						onClick={handleVimToggle}
 						title="Toggle Vim mode (Ctrl+Alt+v)"
 					>
