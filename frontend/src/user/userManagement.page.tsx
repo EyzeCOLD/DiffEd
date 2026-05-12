@@ -23,29 +23,39 @@ function UserSettings({user, onUpdate}: UserSettingProps) {
 	const [passwordConfirm, setPasswordConfirm] = useState(false);
 	const showToast = useShowToast();
 
+	useEffect(() => {
+		if (!newUsername && !newEmail) setPasswordConfirm(false);
+		else setPasswordConfirm(true);
+	}, [newUsername, newEmail]);
+
 	async function resetState() {
 		setNewUsername("");
 		setNewEmail("");
 		setPasswordConfirm(false);
 	}
 
-	function handleSubmitClick() {
-		if (!newUsername && !newEmail) return showToast("error", "No changes available");
-		if (newEmail) {
-			if (!emailSchema.safeParse(newEmail).success)
-				return showToast("error", "Invalid email. If you don't want to change email, please leave the field empty.");
-			if (newEmail == currentEmail) return showToast("error", "New email same as current email");
-		}
+	function isValidInput() {
+		const errors: string[] = [];
 
 		if (newUsername) {
-			if (newUsername.length < 3) return showToast("error", "Username has to be at least 3 characters long");
-			if (newUsername === currentUsername) return showToast("error", "New Username same as current username");
+			if (newUsername.length < 3) errors.push("Username has to be at least 3 characters long");
+			if (newUsername === currentUsername) errors.push("New Username same as current username");
+		}
+		if (newEmail) {
+			if (!emailSchema.safeParse(newEmail).success) errors.push("Invalid email");
+			if (newEmail == currentEmail) errors.push("error", "New email same as current email");
 		}
 
-		setPasswordConfirm(true);
+		if (errors.length > 0) {
+			errors.forEach((error) => showToast("error", error));
+			return false;
+		}
+		return true;
 	}
 
-	async function handleAcceptClick(password: string) {
+	async function handleConfirmClick(password: string) {
+		if (!isValidInput()) return;
+
 		try {
 			if (newUsername) {
 				const response: ApiResponse<null> = await apiFetch("/api/user", {
@@ -95,7 +105,6 @@ function UserSettings({user, onUpdate}: UserSettingProps) {
 				<div>
 					<Input
 						type="text"
-						disabled={passwordConfirm}
 						placeholder={currentUsername}
 						value={newUsername}
 						onChange={(e) => setNewUsername(e.target.value)}
@@ -105,7 +114,6 @@ function UserSettings({user, onUpdate}: UserSettingProps) {
 				<div>
 					<Input
 						type="email"
-						disabled={passwordConfirm}
 						placeholder={currentEmail}
 						value={newEmail}
 						onChange={(e) => setNewEmail(e.target.value)}
@@ -115,14 +123,16 @@ function UserSettings({user, onUpdate}: UserSettingProps) {
 			<div>
 				{passwordConfirm ? (
 					<div>
-						<Confirm onConfirm={handleAcceptClick} onCancel={() => setPasswordConfirm(false)} />
+						<Confirm
+							onConfirm={handleConfirmClick}
+							onCancel={() => {
+								setPasswordConfirm(false);
+								resetState();
+							}}
+						/>
 					</div>
 				) : (
-					<div>
-						<Button onClick={handleSubmitClick} aria-label="Update Profile">
-							Submit Changes
-						</Button>
-					</div>
+					<div></div>
 				)}
 			</div>
 		</>
@@ -144,7 +154,7 @@ function Password() {
 		setNewPassword2("");
 	}
 
-	async function handleAcceptClick(password: string) {
+	async function handleConfirmClick(password: string) {
 		if (newPassword !== newPassword2) {
 			return showToast("error", "The passwords do not match!");
 		}
@@ -217,7 +227,7 @@ function Password() {
 							</div>
 						) : (
 							<div>
-								<Confirm onConfirm={handleAcceptClick} onCancel={resetState} />
+								<Confirm onConfirm={handleConfirmClick} onCancel={resetState} />
 							</div>
 						)}
 					</div>
@@ -389,7 +399,7 @@ function Confirm({onConfirm, onCancel}: PasswordConfirmProps) {
 					onChange={(e) => setPassword(e.target.value)}
 				/>
 				<Button onClick={handleSubmitClick} disabled={isLoading} aria-label="Accept profile updates">
-					Accept
+					Confirm
 				</Button>
 			</div>
 			<div>

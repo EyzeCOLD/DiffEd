@@ -56,7 +56,7 @@ function modifyUser(app: Express) {
 				throw new Error(`User with id: ${id} not found in database`);
 			}
 
-			if (!(await argon2.verify(user.hashed_password, password))) {
+			if (!vim_bindings && !(await argon2.verify(user.hashed_password, password))) {
 				return res.status(400).json({ok: false, error: "Incorrect password"});
 			}
 
@@ -75,7 +75,7 @@ function modifyUser(app: Express) {
 					return res.status(409).json({ok: false, error: "Username already taken"});
 				}
 
-				if ((await userQueryService.updateUsername(username, id)) == false)
+				if ((await userQueryService.updateUsername(username, id)) === false)
 					throw new Error(`Could not update username for id: ${id}`);
 			}
 
@@ -94,7 +94,7 @@ function modifyUser(app: Express) {
 					return res.status(409).json({ok: false, error: "Email already taken"});
 				}
 
-				if ((await userQueryService.updateEmail(email, id)) == false)
+				if ((await userQueryService.updateEmail(email, id)) === false)
 					throw new Error(`Could not update email for id: ${id}`);
 			}
 
@@ -115,7 +115,7 @@ function modifyUser(app: Express) {
 					type: argon2.argon2id,
 				});
 
-				if ((await userQueryService.updatePassword(hash, id)) == false)
+				if ((await userQueryService.updatePassword(hash, id)) === false)
 					throw new Error(`Could not update password for id :${id}`);
 			}
 
@@ -124,7 +124,7 @@ function modifyUser(app: Express) {
 					return res.status(400).json({ok: false, error: "Vim bindings must be a boolean"});
 				}
 
-				if ((await userQueryService.updateVimBindings(vim_bindings, id)) == false)
+				if ((await userQueryService.updateVimBindings(vim_bindings, id)) === false)
 					throw new Error(`Could not update vim_bindings for id: ${id}`);
 			}
 
