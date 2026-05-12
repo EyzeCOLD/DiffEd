@@ -23,7 +23,7 @@ export default function LoginPage() {
 		if (githubError === "no_account") showToast("error", "No account linked to your GitHub profile");
 		if (githubError === "email_exists") showToast("error", "An account with this email already exists");
 		getSession().then((ok) => {
-			if (ok) navigate("/dashboard");
+			if (ok) navigate("/filebrowser");
 		});
 	}, [navigate]);
 
@@ -45,7 +45,7 @@ export default function LoginPage() {
 		}
 		setUser(response.data);
 		showToast("success", "Login successful");
-		navigate("/dashboard");
+		navigate("/filebrowser");
 	}
 
 	//should we use maxlength for the input fields?

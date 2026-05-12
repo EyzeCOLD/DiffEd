@@ -27,8 +27,8 @@ export function PublicTopBar() {
 			</NavLink>
 			<div className="flex gap-2">
 				{currentUser ? (
-					<NavLink to="/dashboard" className={navLinkClass}>
-						Dashboard
+					<NavLink to="/filebrowser" className={navLinkClass}>
+						Files
 					</NavLink>
 				) : (
 					<NavLink to="/login" className={navLinkClass}>
@@ -69,9 +69,6 @@ export function UserTopBar() {
 		<nav className="flex items-center justify-between bg-surface px-2 py-2">
 			{contentSkipLink}
 			<div className="flex items-center gap-2">
-				<NavLink to="/dashboard" className={navLinkClass}>
-					Dashboard
-				</NavLink>
 				<NavLink to="/filebrowser" className={navLinkClass}>
 					Files
 				</NavLink>
