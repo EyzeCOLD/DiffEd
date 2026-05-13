@@ -36,7 +36,12 @@ function NewFile({onFileCreate, refreshFileList}: NewFileProps): JSX.Element {
 		}
 		const fileId = fileResult.data;
 
-		onFileCreate(fileId);
+		try {
+			await onFileCreate(fileId);
+		} catch (err) {
+			showToast("error", `File creation failed: ${err}`);
+			refreshFileList();
+		}
 	}
 
 	return (

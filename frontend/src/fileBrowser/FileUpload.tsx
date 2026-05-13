@@ -27,7 +27,6 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 			const err = validateFile(f.type, f.size, await f.text(), f.name);
 			if (err) {
 				showToast("error", `File '${f.name}': ${err}`);
-				console.log(`File '${f.name}': ${err}`);
 			} else {
 				if (newFilemap.has(f.name)) {
 					showToast("error", `Duplicate file ${f.name}`);
@@ -74,14 +73,12 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 		});
 
 		if (!response.ok) {
-			console.log(response.error);
 			if (response.error === "Network error") {
 				showToast("error", "Network error: Try to reupload files");
 			} else {
 				showToast("error", response.error);
 			}
 		} else {
-			console.log(`File ${file.name} uploaded`);
 			const listFile: FileListItem = {name: file.name, id: response.data};
 			pushToFileList(listFile);
 		}
@@ -105,24 +102,19 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 				</Button>
 			</div>
 			{fileUploads && (
-				<>
-					<table>
-						<thead className="pt-8">
-							<th></th>
-						</thead>
-						<tbody>
-							{fileUploads &&
-								[...fileUploads.values()].map((file) => (
-									<tr key={file.name}>
-										<td className="px-2">{file.name}</td>
-										<td className="text-center">
-											<span className="loader"></span>
-										</td>
-									</tr>
-								))}
-						</tbody>
-					</table>
-				</>
+				<table className="pt-8">
+					<tbody>
+						{fileUploads &&
+							[...fileUploads.values()].map((file) => (
+								<tr key={file.name}>
+									<td className="px-2">{file.name}</td>
+									<td className="text-center">
+										<span className="loader"></span>
+									</td>
+								</tr>
+							))}
+					</tbody>
+				</table>
 			)}
 		</>
 	);

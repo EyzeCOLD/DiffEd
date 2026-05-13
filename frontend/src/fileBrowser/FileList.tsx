@@ -22,7 +22,6 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		const response: ApiResponse<Pick<UserFile, "content">> = await apiFetch(`/api/files/${file.id}`);
 
 		if (!response.ok) {
-			console.log(response.error);
 			showToast("error", `${response.error}`);
 			refreshFileList();
 			return;
@@ -46,7 +45,6 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		});
 
 		if (!response.ok) {
-			console.log(response.error);
 			showToast("error", `${response.error}`);
 		} else {
 			showToast("info", "File deleted");

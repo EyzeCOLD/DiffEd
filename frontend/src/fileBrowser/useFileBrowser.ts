@@ -50,7 +50,6 @@ function useFileBrowser() {
 		if (response.ok) {
 			setFileList(response.data);
 		} else {
-			console.log(response.error);
 			showToast("error", `${response.error}`);
 		}
 	}, [showToast]);
