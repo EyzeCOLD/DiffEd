@@ -1,5 +1,6 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router";
+import Footer from "#/src/layout/Footer";
 import {z} from "zod";
 import Button from "#/src/components/Button";
 import Input from "#/src/components/Input";
@@ -447,6 +448,9 @@ export default function UserManagementPage() {
 			<div>
 				DANGER ZONE!!!
 				<Delete />
+			</div>
+			<div className="mt-12">
+				<Footer />
 			</div>
 		</div>
 	);

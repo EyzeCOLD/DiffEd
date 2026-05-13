@@ -10,6 +10,8 @@ import EditorPage from "./codeEditor/Editor.page.tsx";
 import FileBrowserPage from "./fileBrowser/FileBrowser.page.tsx";
 import {UserLayout, PublicLayout} from "./layout/Layouts.tsx";
 import UserManagementPage from "./user/userManagement.page.tsx";
+import TermsPage from "./legal/terms.page.tsx";
+import PrivacyPage from "./legal/privacy.page.tsx";
 import {ToastContainer} from "./layout/Toast.tsx";
 
 createRoot(document.getElementById("root")!).render(
@@ -26,6 +28,8 @@ createRoot(document.getElementById("root")!).render(
 					<Route path="/" element={<HomePage />} />
 					<Route path="/signup" element={<SignupPage />} />
 					<Route path="/login" element={<LoginPage />} />
+					<Route path="/terms" element={<TermsPage />} />
+					<Route path="/privacy" element={<PrivacyPage />} />
 					<Route path="*" element={<NotFoundPage />} />
 				</Route>
 			</Routes>
