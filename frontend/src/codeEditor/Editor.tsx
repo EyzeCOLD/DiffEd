@@ -1,13 +1,20 @@
-import {useEffect, useMemo, useRef, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import type {JSX} from "react";
 import type {WorkspaceMember} from "#shared/src/types";
 import {EditorState, Transaction} from "@codemirror/state";
 import {EditorView} from "@codemirror/view";
 import {updateOriginalDoc} from "@codemirror/merge";
-import {vim} from "@replit/codemirror-vim";
+import {vim, getCM} from "@replit/codemirror-vim";
 import {CollabConnection, getInitialDocument, pushFileName, pullFileName} from "./collabClient";
 import {CollabPeersPool} from "./collabPeerDocs";
-import {getEditorExtensions, langServer, vimCompartment} from "./editorConfigs";
+import {
+	getEditorExtensions,
+	getLangExtension,
+	getLangOption,
+	langOptions,
+	langCompartment,
+	vimCompartment,
+} from "./editorConfigs";
 import PeerBar from "./PeerBar";
 import {delay} from "../utils";
 import Input from "../components/Input";
@@ -39,8 +46,11 @@ type SharedEditorProps = {
 
 export default function Editor({connection, myOwnerId, initialMembers, onRepickFile}: SharedEditorProps): JSX.Element {
 	const showToast = useShowToast();
-	const currentUser = useCurrentUser();
-	const [vimBindings, setVimBindings] = useState<boolean>(currentUser!.vim_bindings);
+	const currentUser = useCurrentUser()!;
+
+	const [vimBindings, setVimBindings] = useState<boolean>(currentUser.vim_bindings);
+	const [vimMode, setVimMode] = useState<{mode: string; subMode?: string} | null>(null);
+
 	const [selectedPeerId, setSelectedPeerId] = useState<number | null>(null);
 	const [readyPeerIds, setReadyPeerIds] = useState<ReadonlySet<number>>(new Set());
 
@@ -49,7 +59,9 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [retryCount, setRetryCount] = useState(0);
+	const [newFileName, setNewFileName] = useState("");
 	const [fileName, setFileName] = useState("");
+	const [langSelected, setLangSelected] = useState<string | null>(null);
 	const [prevEditorKey, setPrevEditorKey] = useState<number | "solo">("solo");
 
 	const [members, setMembers] = useState<WorkspaceMember[]>(() => initialMembers.filter((m) => m.id !== myOwnerId));
@@ -71,7 +83,10 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			while (!done) {
 				try {
 					const name = await pullFileName(connection);
-					if (!done) setFileName(name);
+					if (!done) {
+						setFileName(name);
+						setNewFileName(name);
+					}
 				} catch {
 					if (!done) await delay(1000);
 				}
@@ -109,7 +124,21 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 		});
 	}, [pool, basePeerId]);
 
+	useEffect(() => {
+		setLangSelected(getLangOption(fileName));
+	}, [fileName]);
+
+	useEffect(() => {
+		if (!viewRef.current) return;
+		const extension = langOptions[langSelected ?? ""]?.() ?? [];
+		viewRef.current.dispatch({effects: langCompartment.reconfigure(extension)});
+	}, [langSelected]);
+
 	const memberInitialDoc = basePeerId === null ? null : (pool.getPeerDoc(basePeerId)?.doc ?? null);
+
+	const handleVimToggle = useCallback(() => {
+		setVimBindings((prev) => !prev);
+	}, []);
 
 	useEffect(() => {
 		const editorElement = editorDomRef.current;
@@ -144,16 +173,19 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 				const {doc, version, fileName: initialFileName} = await getInitialDocumentWithRetry();
 				if (hasUnmounted) return;
 				setFileName(initialFileName);
+				setNewFileName(initialFileName);
+				setLangSelected(getLangOption(initialFileName));
 
 				const state = EditorState.create({
 					doc,
 					extensions: getEditorExtensions({
-						langExtension: langServer.markdown(),
+						langExtension: getLangExtension(initialFileName),
 						version,
 						connection,
 						myOwnerId,
 						memberInitialDoc,
 						vimBindings,
+						onVimToggle: handleVimToggle,
 					}),
 				});
 				const editorView = new EditorView({
@@ -194,20 +226,32 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 		setRetryCount((count) => count + 1);
 	}
 
-	async function handleVimToggle(): Promise<void> {
-		const newVimBindings = !vimBindings; // Can't use the useState value because the setter doesn't update it immediately
-
-		setVimBindings(newVimBindings);
+	useEffect(() => {
 		viewRef.current?.dispatch({
-			effects: vimCompartment.reconfigure(newVimBindings ? vim() : []),
+			effects: vimCompartment.reconfigure(vimBindings ? vim() : []),
 		});
-	}
+	}, [vimBindings]);
+
+	useEffect(() => {
+		const cm = viewRef.current ? getCM(viewRef.current) : null;
+		if (!cm || !vimBindings || isLoading) {
+			setVimMode(null);
+			return;
+		}
+		setVimMode({mode: "normal"});
+		function handleModeChange(e: {mode: string; subMode?: string}): void {
+			setVimMode({mode: e.mode, subMode: e.subMode ? e.subMode.replace("wise", "") : undefined});
+		}
+		cm.on("vim-mode-change", handleModeChange);
+		return () => cm.off("vim-mode-change", handleModeChange);
+	}, [vimBindings, isLoading]);
 
 	async function handleRename(): Promise<void> {
 		if (!connection) return;
 		try {
-			const response = await pushFileName(connection, fileName);
+			const response = await pushFileName(connection, newFileName);
 			setFileName(response.name);
+			setNewFileName(response.name);
 		} catch (err) {
 			showToast("error", errorMessage(err));
 		}
@@ -223,32 +267,50 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			/>
 			<div className="flex items-center justify-between p-1">
 				<form
-					className="flex gap-2"
+					className="flex gap-1"
 					onSubmit={(e) => {
 						e.preventDefault();
 						void handleRename();
 					}}
 				>
-					<Input type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} />
-					<Button type="submit" className="border px-2">
+					<label>
+						Filename
+						<Input type="text" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} />
+					</label>
+					<Button disabled={newFileName === fileName ? true : undefined} type="submit">
 						Rename
 					</Button>
 				</form>
-				<Button
-					type="button"
-					className="border px-2"
-					style={
-						vimBindings
-							? {boxShadow: "0 0 4px 1px color-mix(in srgb, var(--color-foreground) 40%, transparent)"}
-							: {opacity: 0.6}
-					}
-					onClick={() => void handleVimToggle()}
-				>
-					Vim
-				</Button>
-				<Button type="button" className="border px-2" onClick={onRepickFile}>
-					Change file
-				</Button>
+				<div className="flex items-center">
+					<Button
+						type="button"
+						className={vimBindings ? "border" : "border border-transparent"}
+						onClick={handleVimToggle}
+						title="Toggle Vim mode (Ctrl+Alt+v)"
+					>
+						Vim
+					</Button>
+					<label className="text-sm">
+						Syntax Highlighting
+						<select
+							className="m-1 px-1 border-2 border-surface bg-canvas text-foreground"
+							value={langSelected ?? ""}
+							onChange={(e) => setLangSelected(e.target.value || null)}
+						>
+							<option className="bg-canvas" value="">
+								Plain Text
+							</option>
+							{Object.keys(langOptions).map((name) => (
+								<option className="bg-canvas" key={name} value={name}>
+									{name}
+								</option>
+							))}
+						</select>
+					</label>
+					<Button type="button" onClick={onRepickFile}>
+						Change File
+					</Button>
+				</div>
 			</div>
 			{error ? (
 				<div className="border border-error-accent p-2 text-error-accent">
@@ -262,6 +324,21 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			) : null}
 			<div ref={editorDomRef} className="h-full w-full" />
 			<p className="m-0 text-sm text-(--text-secondary)">{TAB_USAGE_HINT}</p>
+
+			<span role="status" className="sr-only">
+				{vimBindings && vimMode ? `${vimMode.mode}${vimMode.subMode ? ` ${vimMode.subMode}` : ""}` : ""}
+			</span>
+			{vimBindings && vimMode && (
+				<>
+					<div className="fixed bottom-0 left-0 right-0 z-10 flex items-center px-2 py-0.5 bg-surface text-sm">
+						<span aria-hidden className="font-mono font-bold uppercase">
+							{vimMode.mode}
+							{vimMode.subMode ? ` ${vimMode.subMode}` : ""}
+						</span>
+					</div>
+					<div className="h-6" />
+				</>
+			)}
 		</div>
 	);
 }

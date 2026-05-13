@@ -43,7 +43,6 @@ function signupUser(app: Express) {
 function modifyUser(app: Express) {
 	app.patch("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-
 		const {username, email, password, newPassword, newPassword2, vim_bindings} = req.body;
 		const id = req.session.userId!;
 
@@ -144,9 +143,9 @@ function modifyUser(app: Express) {
 function deleteUser(app: Express) {
 	app.delete("/api/user", requireAuth, async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-
 		const {password} = req.body;
 		const id = req.session.userId!;
+
 		try {
 			const user = await userQueryService.getUserWithPasswordById(id);
 			if (!user) {
@@ -204,7 +203,7 @@ function getUserAPIKey(app: Express) {
 		try {
 			const key = await userQueryService.getAPIKeyById(id);
 			if (!key) {
-				return res.status(404)("User doesn't yet have a API key");
+				return res.status(404).json({ok: false, error: "User doesn't yet have a API key"});
 			}
 
 			res.status(200).json({ok: true, data: key});
