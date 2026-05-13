@@ -38,7 +38,7 @@ export default function SignupPage() {
 
 	useEffect(() => {
 		getSession().then((ok) => {
-			if (ok) navigate("/dashboard");
+			if (ok) navigate("/filebrowser");
 		});
 		if (pendingGithub) {
 			setUserName(pendingGithub.displayName.slice(0, 20).replace(/[^a-zA-Z0-9_]/g, "_"));
@@ -103,7 +103,7 @@ export default function SignupPage() {
 
 			setUser(response.data);
 			showToast("success", "Account created");
-			navigate("/dashboard");
+			navigate("/filebrowser");
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
 		}
