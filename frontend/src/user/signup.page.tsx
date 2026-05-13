@@ -1,7 +1,8 @@
 import Button from "#/src/components/Button";
 import Input from "#/src/components/Input";
 import {useState, useEffect} from "react";
-import {useNavigate, useSearchParams} from "react-router";
+import {useNavigate, useSearchParams, useLocation} from "react-router";
+import type {Location} from "react-router";
 import type {SubmitEvent} from "react";
 import type {SigningUser, ApiResponse, User, PendingGithubPayload} from "#shared/src/types";
 import {apiFetch, getSession} from "#/src/utils.ts";
@@ -30,15 +31,19 @@ export default function SignupPage() {
 	const [password2, setUserPassword2] = useState("");
 	const [searchParams] = useSearchParams();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const showToast = useShowToast();
 	const setUser = useSetUser();
 
 	const githubToken = searchParams.get("github_token");
 	const pendingGithub = githubToken ? decodeGithubToken(githubToken) : null;
 
+	const from: Location | null = location.state?.from ?? null;
+	const redirectTo = from ? from.pathname + from.search : "/filebrowser";
+
 	useEffect(() => {
 		getSession().then((ok) => {
-			if (ok) navigate("/filebrowser");
+			if (ok) navigate(redirectTo, {replace: true});
 		});
 		if (pendingGithub) {
 			setUserName(pendingGithub.displayName.slice(0, 20).replace(/[^a-zA-Z0-9_]/g, "_"));
@@ -80,7 +85,7 @@ export default function SignupPage() {
 			}
 
 			showToast("success", "Signup successful");
-			navigate("/login");
+			navigate("/login", {state: from ? {from} : undefined});
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
 		}
@@ -103,7 +108,7 @@ export default function SignupPage() {
 
 			setUser(response.data);
 			showToast("success", "Account created");
-			navigate("/filebrowser");
+			navigate(redirectTo, {replace: true});
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
 		}
@@ -176,7 +181,10 @@ export default function SignupPage() {
 			</div>
 			<div>
 				Already have an account? Go to&nbsp;
-				<button onClick={() => navigate("/login")} className="hover:text-accent font-bold underline cursor-pointer">
+				<button
+					onClick={() => navigate("/login", {state: from ? {from} : undefined})}
+					className="hover:text-accent font-bold underline cursor-pointer"
+				>
 					login page
 				</button>
 			</div>
