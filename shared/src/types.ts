@@ -1,3 +1,4 @@
+import {Request} from "express";
 // id here for testing
 export type UserFile = {
 	id: string;
@@ -11,7 +12,7 @@ export type User = {
 	username: string;
 	email: string;
 	github_linked?: boolean;
-	APIKey?: string;
+	has_apikey?: boolean;
 	vim_bindings: boolean;
 };
 
@@ -103,4 +104,8 @@ export type PendingGithubPayload = {
 	email: string;
 	displayName: string;
 	expiration: number;
+};
+
+export type AuthRequest = Request & {
+	userId?: number;
 };
