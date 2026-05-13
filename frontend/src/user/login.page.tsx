@@ -34,18 +34,24 @@ export default function LoginPage() {
 			return showToast("error", "Please fill all the fields.");
 		}
 
-		const response: ApiResponse<User> = await apiFetch("/api/session", {
-			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			credentials: "include",
-			body: JSON.stringify({loginIdentifier, password: loginPassword}),
-		});
-		if (!response.ok) {
-			return showToast("error", `Login failed. ${response.error}`);
+		try {
+			const response: ApiResponse<User> = await apiFetch("/api/session", {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({loginIdentifier, password: loginPassword}),
+			});
+
+			if (!response.ok) {
+				throw new Error(response.error);
+			}
+
+			setUser(response.data);
+			showToast("success", "Login successful");
+			navigate("/dashboard");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
 		}
-		setUser(response.data);
-		showToast("success", "Login successful");
-		navigate("/dashboard");
 	}
 
 	return (
