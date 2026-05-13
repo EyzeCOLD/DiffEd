@@ -1,13 +1,7 @@
 import {type UserFile, type SigningUser} from "#shared/src/types.js";
 import {z, type ZodType} from "zod";
 
-export const passwordSchema = z
-	.string()
-	.min(8, "Password must be at least 8 characters long")
-	.refine((password) => /[a-z]/.test(password), "Password must contain at least 1 small letter")
-	.refine((password) => /[A-Z]/.test(password), "Password must contain at least 1 capital letter")
-	.refine((password) => /[0-9]/.test(password), "password must contain at least 1 number")
-	.refine((password) => /[!@#$%^&*]/.test(password), "Password must contain at least 1 special character '!@#$%^&*'");
+export const passwordSchema = z.string().min(14, "Password must be at least 8 characters long");
 
 export const usernameSchema = z
 	.string()
