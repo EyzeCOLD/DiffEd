@@ -2,7 +2,7 @@ import React from "react";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-const disabledStyle = "bg-gray-700 text-stone-300";
+const disabledStyle = "bg-surface-dark text-foreground";
 const enabledStyle = "bg-surface text-foreground-light hover:text-accent cursor-pointer";
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({children, className, disabled, ...props}, ref) => {

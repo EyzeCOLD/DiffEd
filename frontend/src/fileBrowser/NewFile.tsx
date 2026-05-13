@@ -52,7 +52,7 @@ function NewFile({onFileCreate, refreshFileList}: NewFileProps): JSX.Element {
 			}}
 		>
 			<label>
-				New File:
+				New File
 				<Input
 					id="fileNameInput"
 					value={newFilename}

@@ -38,6 +38,7 @@ export function UserTopBar() {
 	const navigate = useNavigate();
 	const showToast = useShowToast();
 	const clearUser = useClearUser();
+	const currentUser = useCurrentUser();
 
 	async function logout(event: MouseEvent<HTMLButtonElement>) {
 		event.preventDefault();
@@ -66,7 +67,7 @@ export function UserTopBar() {
 				<TopBarLink to="/filebrowser">Files</TopBarLink>
 			</div>
 			<div className="flex items-center gap-2">
-				<TopBarLink to="/account">Account</TopBarLink>
+				<TopBarLink to="/account">👤 {currentUser?.username}</TopBarLink>
 				<Button type="button" onClick={logout}>
 					Logout
 				</Button>

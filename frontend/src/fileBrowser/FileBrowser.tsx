@@ -25,12 +25,14 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 	} = useFileBrowser();
 
 	return (
-		<div className="flex flex-col center-items justify-center">
+		<div className="flex flex-col center-items justify-center gap-4">
 			{totalFiles > 0 ? (
-				<label>
-					Filter:
-					<Input type="text" id="fileListFilter" value={filter} onChange={(event) => setFilter(event.target.value)} />
-				</label>
+				<div className="flex center-items justify-center">
+					<label>
+						Filter
+						<Input type="text" id="fileListFilter" value={filter} onChange={(event) => setFilter(event.target.value)} />
+					</label>
+				</div>
 			) : null}
 			<FileList
 				onFileSelect={onFileSelect}

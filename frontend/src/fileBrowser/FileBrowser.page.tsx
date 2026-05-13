@@ -18,7 +18,7 @@ function FileBrowserPage() {
 	}
 
 	return (
-		<div className="p-4 flex flex-col gap-2">
+		<div className="p-4 flex flex-col items-center justify-center gap-2">
 			<FileBrowser onFileSelect={startSessionFromFile} />
 		</div>
 	);

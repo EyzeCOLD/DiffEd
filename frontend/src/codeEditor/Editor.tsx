@@ -282,14 +282,6 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 					</Button>
 				</form>
 				<div className="flex items-center">
-					<Button
-						type="button"
-						className={vimBindings ? "border" : "border border-transparent"}
-						onClick={handleVimToggle}
-						title="Toggle Vim mode (Ctrl+Alt+v)"
-					>
-						Vim
-					</Button>
 					<label className="text-sm">
 						Syntax Highlighting
 						<select
@@ -307,6 +299,14 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 							))}
 						</select>
 					</label>
+					<Button
+						type="button"
+						className={vimBindings ? "border" : "border border-transparent"}
+						onClick={handleVimToggle}
+						title="Toggle Vim mode (Ctrl+Alt+v)"
+					>
+						Vim Mode
+					</Button>
 					<Button type="button" onClick={onRepickFile}>
 						Change File
 					</Button>

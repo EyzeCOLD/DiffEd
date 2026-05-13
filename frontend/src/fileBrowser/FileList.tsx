@@ -13,6 +13,8 @@ type fileListProps = {
 	descending: boolean;
 };
 
+const MAX_VIEWABLE_FILENAME_LEN = 32;
+
 function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descending}: fileListProps): JSX.Element {
 	const showToast = useShowToast();
 
@@ -65,16 +67,16 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		}
 	}
 
+	function truncateFileName(filename: string) {
+		return filename.slice(0, MAX_VIEWABLE_FILENAME_LEN - 9) + "..." + filename.slice(filename.length - 6);
+	}
+
 	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: FileListItem) => {
 		return (
 			<tr key={file.id}>
 				<td>
-					<button
-						type="button"
-						className="bg-transparent border-0 p-0 text-inherit cursor-pointer hover:underline"
-						onClick={() => selectFile(file.id)}
-					>
-						{file.name}
+					<button type="button" className="cursor-pointer hover:underline m-2" onClick={() => selectFile(file.id)}>
+						{file.name.length <= MAX_VIEWABLE_FILENAME_LEN ? file.name : truncateFileName(file.name)}
 					</button>
 				</td>
 				<td className="text-center w-24">
@@ -92,7 +94,7 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 	return (
 		<table id="file-list" className="max-w-4/5">
 			<thead>
-				<th>
+				<th className="min-w-64">
 					filename
 					<Button className="bg-transparent" onClick={() => onSortToggle()}>
 						{descending ? "▾" : "▴"}
