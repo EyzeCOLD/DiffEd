@@ -7,8 +7,8 @@ export default function TermsPage() {
 
 				<div className="space-y-6 text-foreground/80 text-base leading-relaxed">
 					<p>
-						DiffEd is a non-commercial educational project. It is provided as-is, with no warranties and no guarantee
-						of uptime, data durability, or fitness for any particular purpose.
+						DiffEd is a non-commercial educational project. It is provided as-is, with no warranties and no guarantee of
+						uptime, data durability, or fitness for any particular purpose.
 					</p>
 
 					<section>
@@ -22,8 +22,8 @@ export default function TermsPage() {
 					<section>
 						<h2 className="font-mono text-accent/90 text-lg mb-2">Acceptable use</h2>
 						<p>
-							Don't use DiffEd to store or share illegal content, malware, or material intended to harm or harass
-							other people. Accounts that abuse the service may be suspended or removed without notice.
+							Don't use DiffEd to store or share illegal content, malware, or material intended to harm or harass other
+							people. Accounts that abuse the service may be suspended or removed without notice.
 						</p>
 					</section>
 
