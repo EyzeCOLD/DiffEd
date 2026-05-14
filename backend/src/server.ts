@@ -13,6 +13,7 @@ import UserEndpoints from "./endpoints/users.js";
 import SessionEndpoints from "./endpoints/sessions.js";
 import OAuthEndpoints from "./endpoints/oauth.js";
 import workspaceEndpoints from "./endpoints/workspace.js";
+import avatarEndpoints from "./endpoints/avatars.js";
 import "./passportConfig.js";
 
 import {initCollabSocket} from "./endpoints/collabSocket.js";
@@ -26,6 +27,8 @@ const collabApi = initCollabSocket(sockets, postgres);
 app.use(sessionConfig);
 app.use(passport.initialize());
 app.use(express.static("../frontend/dist"));
+// TODO: should the below be "/shared/avatars"??
+app.use("/avatars", express.static("../shared/avatars"));
 app.use(express.json());
 app.use(helmetSecurity());
 
@@ -51,6 +54,7 @@ OAuthEndpoints.githubUnlink(app);
 workspaceEndpoints.createWorkspace(app, collabApi);
 workspaceEndpoints.getWorkspace(app, collabApi);
 
+avatarEndpoints.updateUserAvatar(app, postgres);
 // Catch-all to serve the frontend, needed for subroutes.
 app.get("/*splat", function (_, response) {
 	response.sendFile(path.join(process.cwd(), "/../frontend/dist/index.html"));

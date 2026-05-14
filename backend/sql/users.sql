@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS "users" (
     hashed_password TEXT,
     github_id       TEXT UNIQUE,
     apikey          TEXT UNIQUE,
+    avatar_filename TEXT,
     vim_bindings    BOOLEAN NOT NULL DEFAULT false,
     change_date     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
