@@ -123,7 +123,7 @@ async function linkGithubId(userId: number, githubId: string): Promise<boolean> 
 
 async function createUser(username: string, email: string, hash: string): Promise<number> {
 	const query = "INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3) RETURNING id";
-	const values = [username, email, hash || null];
+	const values = [username, email, hash];
 	timestampedLog(`DB QUERY >>> ${query}`);
 	timestampedLog(`DB VALUES >>> ${values}`);
 	const {rows} = await db.query(query, values);

@@ -415,12 +415,10 @@ function ApiKey({hasApiKey}: {hasApiKey: boolean}) {
 		try {
 			setIsLoading(true);
 
-			const hash = window.crypto.randomUUID();
-			const response: ApiResponse<string> = await apiFetch("/api/user/api", {
+			const response: ApiResponse<string> = await apiFetch("/api/user/api-key", {
 				method: "PATCH",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
-				body: JSON.stringify({hash}),
 			});
 
 			if (!response.ok) {
@@ -440,7 +438,7 @@ function ApiKey({hasApiKey}: {hasApiKey: boolean}) {
 	async function copyApiKey() {
 		try {
 			setIsLoading(true);
-			const response: ApiResponse<string> = await apiFetch("/api/user/api", {
+			const response: ApiResponse<string> = await apiFetch("/api/user/api-key", {
 				method: "GET",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",
@@ -464,7 +462,7 @@ function ApiKey({hasApiKey}: {hasApiKey: boolean}) {
 		try {
 			setIsLoading(true);
 
-			const response: ApiResponse<null> = await apiFetch("/api/user/api", {
+			const response: ApiResponse<null> = await apiFetch("/api/user/api-key", {
 				method: "PATCH",
 				headers: {"Content-Type": "application/json"},
 				credentials: "include",

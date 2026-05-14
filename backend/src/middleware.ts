@@ -1,5 +1,5 @@
 import {Request, Response, NextFunction} from "express";
-import type {ApiResponse, AuthRequest} from "#shared/src/types.js";
+import type {ApiResponse} from "#shared/src/types.js";
 import userQueryService from "#/src/queries/users.js";
 
 export function requireAuth(req: Request, res: Response<ApiResponse<null>>, next: NextFunction) {
@@ -9,6 +9,10 @@ export function requireAuth(req: Request, res: Response<ApiResponse<null>>, next
 		res.status(401).json({ok: false, error: "Unauthorized"});
 	}
 }
+
+export type AuthRequest = Request & {
+	userId?: number;
+};
 
 export async function requireAuthOrApiKey(req: AuthRequest, res: Response<ApiResponse<null>>, next: NextFunction) {
 	if (req.session.userId) {

@@ -1,4 +1,3 @@
-import {Request} from "express";
 // id here for testing
 export type UserFile = {
 	id: string;
@@ -104,8 +103,4 @@ export type PendingGithubPayload = {
 	email: string;
 	displayName: string;
 	expiration: number;
-};
-
-export type AuthRequest = Request & {
-	userId?: number;
 };

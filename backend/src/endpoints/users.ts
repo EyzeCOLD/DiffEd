@@ -2,9 +2,10 @@ import type {Express, Request, Response} from "express";
 import argon2 from "argon2";
 import {SignupSchema, usernameSchema, emailSchema, passwordSchema} from "#/src/validation/schemas.js";
 import {isDbError, isUniqueViolation} from "#/src/utils.js";
-import type {ApiResponse, User, AuthRequest} from "#shared/src/types.js";
+import type {ApiResponse, User} from "#shared/src/types.js";
 import {timestampedLog} from "#/src/logging.js";
 import {requireAuth, requireAuthOrApiKey} from "#/src/middleware.js";
+import {type AuthRequest} from "#/src/middleware.js";
 import userQueryService from "#/src/queries/users.js";
 
 function signupUser(app: Express) {
@@ -23,8 +24,7 @@ function signupUser(app: Express) {
 			});
 
 			const id = await userQueryService.createUser(username, email, hash);
-			const user = await userQueryService.getUserById(id);
-			if (!user) throw new Error("User not found after creation");
+			if (!id) throw new Error("User creation failed");
 			res.status(201).json({ok: true, data: null});
 		} catch (error: unknown) {
 			if (isDbError(error) && isUniqueViolation(error)) {
@@ -196,10 +196,10 @@ function getUser(app: Express) {
 }
 
 function getUserApiKey(app: Express) {
-	app.get("/api/user/api", requireAuthOrApiKey, async (req: AuthRequest, res: Response<ApiResponse<string>>) => {
+	app.get("/api/user/api-key", requireAuthOrApiKey, async (req: AuthRequest, res: Response<ApiResponse<string>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
-		const id = req.session.userId! ?? req.userId;
+		const id = req.session.userId ?? req.userId!;
 		try {
 			const key = await userQueryService.getApiKeyById(id);
 			if (!key) {
@@ -219,12 +219,12 @@ function getUserApiKey(app: Express) {
 }
 
 function updateUserApiKey(app: Express) {
-	app.patch("/api/user/api", requireAuth, async (req: Request, res: Response<ApiResponse<string | null>>) => {
+	app.patch("/api/user/api-key", requireAuth, async (req: Request, res: Response<ApiResponse<string | null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
-		const {hash} = req.body;
 		const id = req.session.userId!;
 		try {
+			const hash = crypto.randomUUID();
 			const key = await userQueryService.updateApiKey(hash, id);
 
 			res.status(200).json({ok: true, data: key});
