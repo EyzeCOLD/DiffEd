@@ -1,7 +1,7 @@
 import FileList from "./FileList";
 import PageSelector from "./PageSelector";
 import NewFile from "./NewFile";
-import FileUploader from "./FileUpload";
+import FileUploader from "./FileUploader";
 import useFileBrowser from "./useFileBrowser";
 import Input from "#/src/components/Input";
 

@@ -36,13 +36,18 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 				}
 			}
 		}
-		if (newFilemap.size > 0) setFileUploads(newFilemap);
 		if (fileInputRef.current) fileInputRef.current.value = "";
+		if (newFilemap.size <= 0) return;
+
+		setFileUploads(newFilemap);
 
 		const uploads: Promise<void>[] = newFileArray.map(async (f) => {
 			return await uploadFile(f);
 		});
 		await Promise.allSettled(uploads);
+		const msg =
+			newFileArray.length == 1 ? `File ${newFileArray[0].name} uploaded` : `All ${newFileArray.length} uploaded`;
+		showToast("success", msg);
 		refreshFileList();
 		setUploadOnGoing(false);
 	}
