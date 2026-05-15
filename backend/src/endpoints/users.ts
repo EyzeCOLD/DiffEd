@@ -4,14 +4,15 @@ import {SignupSchema, usernameSchema, emailSchema, passwordSchema} from "#/src/v
 import {isDbError, isUniqueViolation} from "#/src/utils.js";
 import type {ApiResponse, User} from "#shared/src/types.js";
 import {timestampedLog} from "#/src/logging.js";
-import {requireAuth} from "#/src/middleware.js";
+import {requireAuth, requireAuthOrApiKey} from "#/src/middleware.js";
+import {type AuthRequest} from "#/src/middleware.js";
 import userQueryService from "#/src/queries/users.js";
 
 function signupUser(app: Express) {
 	app.post("/api/user", async (req: Request, res: Response<ApiResponse<null>>) => {
 		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
-		const {username, email, password} = req.body;
 
+		const {username, email, password} = req.body;
 		try {
 			const parsedSchema = SignupSchema.safeParse(req.body);
 			if (!parsedSchema.success) {
@@ -22,9 +23,8 @@ function signupUser(app: Express) {
 				type: argon2.argon2id,
 			});
 
-			/* createUser returns id. Let's keep this call here if it is ever needed */
-			//const id = await createUser({username, email} as User, hash);
-			await userQueryService.createUser({username, email} as User, hash);
+			const id = await userQueryService.createUser(username, email, hash);
+			if (!id) throw new Error("User creation failed");
 			res.status(201).json({ok: true, data: null});
 		} catch (error: unknown) {
 			if (isDbError(error) && isUniqueViolation(error)) {
@@ -195,4 +195,48 @@ function getUser(app: Express) {
 	});
 }
 
-export default {signupUser, deleteUser, getUser, modifyUser};
+function getUserApiKey(app: Express) {
+	app.get("/api/user/api-key", requireAuthOrApiKey, async (req: AuthRequest, res: Response<ApiResponse<string>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+
+		const id = req.session.userId ?? req.userId!;
+		try {
+			const key = await userQueryService.getApiKeyById(id);
+			if (!key) {
+				return res.status(404).json({ok: false, error: "NO_API_KEY"});
+			}
+
+			res.status(200).json({ok: true, data: key});
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
+			return res.status(500).json({ok: false, error: "Internal server error"});
+		}
+	});
+}
+
+function updateUserApiKey(app: Express) {
+	app.patch("/api/user/api-key", requireAuth, async (req: Request, res: Response<ApiResponse<string | null>>) => {
+		timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
+
+		const id = req.session.userId!;
+		try {
+			const hash = crypto.randomUUID();
+			const key = await userQueryService.updateApiKey(hash, id);
+
+			res.status(200).json({ok: true, data: key});
+		} catch (error: unknown) {
+			if (isDbError(error)) {
+				timestampedLog(`ERROR <<< ${error.code}: ${error.detail}`);
+			} else {
+				timestampedLog(`ERROR <<< ${error}`);
+			}
+			return res.status(500).json({ok: false, error: "Internal server error"});
+		}
+	});
+}
+
+export default {signupUser, deleteUser, getUser, modifyUser, getUserApiKey, updateUserApiKey};
