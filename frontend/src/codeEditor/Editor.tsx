@@ -275,9 +275,19 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 				>
 					<label>
 						Filename
-						<Input type="text" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} />
+						<Input
+							type="text"
+							value={newFileName}
+							onChange={(e) => setNewFileName(e.target.value)}
+							onBlur={() => setNewFileName(fileName)}
+						/>
 					</label>
-					<Button disabled={newFileName === fileName ? true : undefined} type="submit">
+					<Button
+						onMouseDown={(e) => e.preventDefault()}
+						disabled={newFileName === fileName ? true : undefined}
+						type="submit"
+						className="border border-transparent"
+					>
 						Rename
 					</Button>
 				</form>
@@ -307,7 +317,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 					>
 						Vim Mode
 					</Button>
-					<Button type="button" onClick={onRepickFile}>
+					<Button type="button" onClick={onRepickFile} className="border border-transparent">
 						Change File
 					</Button>
 				</div>
@@ -322,7 +332,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			) : isLoading ? (
 				<div className="p-2">Initializing collaborative editor...</div>
 			) : null}
-			<div ref={editorDomRef} className="h-full w-full" />
+			<div ref={editorDomRef} className="h-full w-full bg-editor-bg text-white" />
 			<p className="m-0 text-sm text-(--text-secondary)">{TAB_USAGE_HINT}</p>
 
 			<span role="status" className="sr-only">

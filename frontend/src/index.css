@@ -15,12 +15,21 @@
 
 	--font-family-sans: Arial, sans-serif;
 
-	--color-syntax-keyword: #ff79c6;
-	--color-syntax-string: #f1fa8c;
-	--color-syntax-comment: #6d7fc4;
-	--color-syntax-number: #ffb86c;
-	--color-syntax-function: #8be9fd;
-	--color-syntax-type: #50fa7b;
+	--color-editor-bg: #0d1117;
+
+	--color-active-line: #151b23;
+	--color-diff-add: #12261d;
+	--color-diff-add-word: #1c562c;
+	--color-diff-del: #24171b;
+	--color-diff-del-word: #782d2d;
+
+	--color-syntax-keyword: #ff7b72;
+	--color-syntax-string: #a5d6ff;
+	--color-syntax-comment: #9198a1;
+	--color-syntax-number: #79c0ff;
+	--color-syntax-function: #d2a8ff;
+	--color-syntax-type: #ff7b72;
+	--color-syntax-variable: #ffffff;
 }
 
 @layer base {

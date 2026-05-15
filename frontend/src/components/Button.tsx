@@ -1,18 +1,22 @@
 import React from "react";
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+	danger?: boolean;
+};
 
 const disabledStyle = "bg-surface-dark text-foreground";
 const enabledStyle = "bg-surface text-foreground-light hover:text-accent cursor-pointer";
+const dangerStyle = "bg-canvas border border-surface-dark text-error hover:text-error-accent cursor-pointer";
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({children, className, disabled, ...props}, ref) => {
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({children, className, danger, ...props}, ref) => {
 	function getStyle() {
-		if (disabled || props["aria-current"]) return disabledStyle;
+		if (props.disabled || props["aria-current"]) return disabledStyle;
+		if (danger) return dangerStyle;
 		return enabledStyle;
 	}
 
 	return (
-		<button ref={ref} className={`${getStyle()} m-1 p-1 ${className ?? ""}`} disabled={disabled} {...props}>
+		<button ref={ref} className={`${getStyle()} rounded-sm m-1 p-1 ${className ?? ""}`} {...props}>
 			{children}
 		</button>
 	);

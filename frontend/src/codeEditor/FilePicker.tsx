@@ -20,8 +20,10 @@ function FilePicker({connection}: FilePickerProps): JSX.Element {
 	}
 
 	return (
-		<div className="p-4 flex flex-col gap-2">
-			<h2 className="text-lg">Pick a file to bring into this session</h2>
+		<div className="p-4 flex flex-col items-center justify-center gap-2">
+			<h2 className="text-xl w-max px-12 outline outline-offset-2 rounded-sm text-foreground-light bg-surface-dark">
+				Pick a file to bring into this session
+			</h2>
 			<FileBrowser onFileSelect={handlePick} />
 		</div>
 	);
