@@ -2,7 +2,8 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import {useState, useEffect} from "react";
 import type {SubmitEvent} from "react";
-import {useNavigate, useSearchParams} from "react-router";
+import {useNavigate, useSearchParams, useLocation} from "react-router";
+import type {Location} from "react-router";
 import {getSession, apiFetch} from "#/src/utils.ts";
 import {useShowToast} from "#/src/stores/toastStore";
 import {useSetUser} from "#/src/stores/userStore.ts";
@@ -12,9 +13,13 @@ export default function LoginPage() {
 	const [loginIdentifier, setLoginIdentifier] = useState("");
 	const [loginPassword, setLoginPassword] = useState("");
 	const navigate = useNavigate();
+	const location = useLocation();
 	const showToast = useShowToast();
 	const setUser = useSetUser();
 	const [searchParams] = useSearchParams();
+
+	const from: Location | null = location.state?.from ?? null;
+	const redirectTo = from ? from.pathname + from.search : "/filebrowser";
 
 	useEffect(() => {
 		const githubExists = searchParams.get("github_exists");
@@ -23,7 +28,7 @@ export default function LoginPage() {
 		if (githubError === "no_account") showToast("error", "No account linked to your GitHub profile");
 		if (githubError === "email_exists") showToast("error", "An account with this email already exists");
 		getSession().then((ok) => {
-			if (ok) navigate("/filebrowser");
+			if (ok) navigate(redirectTo, {replace: true});
 		});
 	}, [navigate]);
 
@@ -48,7 +53,7 @@ export default function LoginPage() {
 
 			setUser(response.data);
 			showToast("success", "Login successful");
-			navigate("/filebrowser");
+			navigate(redirectTo, {replace: true});
 		} catch (e) {
 			showToast("error", e instanceof Error ? e.message : String(e));
 		}
@@ -87,7 +92,7 @@ export default function LoginPage() {
 
 			<div className="flex flex-col items-center">
 				<p className="text-sm">Don't have an account?</p>
-				<Button onClick={() => navigate("/signup")}>Sign Up</Button>
+				<Button onClick={() => navigate("/signup", {state: from ? {from} : undefined})}>Sign Up</Button>
 			</div>
 		</div>
 	);

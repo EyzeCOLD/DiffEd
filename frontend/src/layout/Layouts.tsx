@@ -1,5 +1,5 @@
 import {PublicTopBar, UserTopBar} from "./TopBars";
-import {Outlet, useNavigate} from "react-router";
+import {Outlet, useNavigate, useLocation} from "react-router";
 import {useEffect, useState} from "react";
 import {getSession, apiFetch} from "../utils";
 import {useCurrentUser, useSetUser, useClearUser} from "../stores/userStore";
@@ -31,6 +31,7 @@ export function PublicLayout() {
 
 export function UserLayout() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const storeUser = useCurrentUser();
 	const setUser = useSetUser();
 	const clearUser = useClearUser();
@@ -42,12 +43,12 @@ export function UserLayout() {
 			getSession().then((ok) => {
 				if (!ok) {
 					clearUser();
-					navigate("/login", {replace: true});
+					navigate("/login", {replace: true, state: {from: location}});
 				}
 			});
 		} else {
 			fetchAndSetUser(setUser).then((ok) => {
-				if (!ok) navigate("/login", {replace: true});
+				if (!ok) navigate("/login", {replace: true, state: {from: location}});
 				else setReady(true);
 			});
 		}
