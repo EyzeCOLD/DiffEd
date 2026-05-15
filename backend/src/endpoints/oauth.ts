@@ -199,7 +199,7 @@ function establishSession(req: Request, res: Response, userId: number) {
 		req.session.userId = userId;
 		req.session.save((error) => {
 			if (error) return res.redirect("/login");
-			res.redirect("/dashboard");
+			res.redirect("/filebrowser");
 		});
 	});
 }
