@@ -13,7 +13,7 @@ type fileListProps = {
 	descending: boolean;
 };
 
-const MAX_VIEWABLE_FILENAME_LEN = 32;
+const MAX_VIEWABLE_FILENAME_LEN = 24;
 
 function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descending}: fileListProps): JSX.Element {
 	const showToast = useShowToast();
@@ -73,36 +73,36 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 
 	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: FileListItem) => {
 		return (
-			<tr key={file.id} className="bg-surface-dark border-4 border-collapse border-canvas">
-				<td>
-					<button type="button" className="cursor-pointer hover:underline mx-4" onClick={() => selectFile(file.id)}>
+			<li key={file.id} className="bg-surface-dark border-2 rounded-sm border-canvas">
+				<span className="flex items-center">
+					<button
+						type="button"
+						className="cursor-pointer hover:underline mx-4 flex-1 text-left"
+						onClick={() => selectFile(file.id)}
+					>
 						{file.name.length <= MAX_VIEWABLE_FILENAME_LEN ? file.name : truncateFileName(file.name)}
 					</button>
-				</td>
-				<td className="text-center w-fit">
-					<Button onClick={() => handleDownload(file)}>{" 🡻 "}</Button>
-				</td>
-				<td className="text-center w-fit">
-					<Button onClick={() => handleDelete(file.id)} className="font-bold" danger={true}>
-						{" X "}
-					</Button>
-				</td>
-			</tr>
+					<span className="ml-auto flex items-center">
+						<Button onClick={() => handleDownload(file)}>{" 🡻 "}</Button>
+						<Button onClick={() => handleDelete(file.id)} className="font-bold" danger={true}>
+							{" X "}
+						</Button>
+					</span>
+				</span>
+			</li>
 		);
 	});
 
 	return (
-		<table id="file-list" className="mx-auto w-full max-w-2xl">
-			<thead>
-				<th className="min-w-64">
-					filename
-					<Button className="bg-transparent" onClick={() => onSortToggle()}>
-						{descending ? "▾" : "▴"}
-					</Button>
-				</th>
-			</thead>
-			<tbody>{listItems}</tbody>
-		</table>
+		<div id="file-list" className="mx-auto w-full max-w-2xl">
+			<span className="m-2">
+				filename
+				<Button className="bg-transparent" onClick={() => onSortToggle()}>
+					{descending ? "▾" : "▴"}
+				</Button>
+			</span>
+			<ol>{listItems}</ol>
+		</div>
 	);
 }
 

@@ -30,60 +30,50 @@ function PageSelector({currentPage, totalPages, onPageChange}: pageSelectorProps
 		<nav aria-label="Pagination" className="flex w-3/5 mx-auto items-center outline-surface outline-2 rounded-xs">
 			{/* Left: Previous button */}
 			<div className="flex flex-1 justify-start">
-				<ul className="flex list-none p-0 m-0">
-					<li key="Previous page">
-						<Button
-							aria-label="Previous page"
-							onClick={() => onPageChange(Math.max(0, currentPage - 1))}
-							disabled={currentPage === 0 || undefined}
-						>
-							<span aria-hidden="true">{"«"}</span>
-						</Button>
-					</li>
-				</ul>
+				<Button
+					aria-label="Previous page"
+					onClick={() => onPageChange(Math.max(0, currentPage - 1))}
+					disabled={currentPage === 0 || undefined}
+				>
+					<span aria-hidden="true">{"«"}</span>
+				</Button>
 			</div>
 
 			{/* Center: Page numbers */}
-			<div className="flex justify-center">
-				<ul className="flex list-none p-0 m-0">
-					{pageNumbers.map((p, i) => {
-						if (p === "...") {
-							return (
-								<li key={i}>
-									<span role="img" aria-label="More pages">
-										<span aria-hidden="true">...</span>
-									</span>
-								</li>
-							);
-						} else if (p === currentPage + 1) {
-							return (
-								<li key={i}>
-									<Button aria-current="page">{p}</Button>
-								</li>
-							);
-						}
+			<ul className="flex justify-center list-none p-0 m-0">
+				{pageNumbers.map((p, i) => {
+					if (p === "...") {
 						return (
 							<li key={i}>
-								<Button onClick={() => onPageChange(p - 1)}>{p}</Button>
+								<span role="img" aria-label="More pages">
+									<span aria-hidden="true">...</span>
+								</span>
 							</li>
 						);
-					})}
-				</ul>
-			</div>
+					} else if (p === currentPage + 1) {
+						return (
+							<li key={i}>
+								<Button aria-current="page">{p}</Button>
+							</li>
+						);
+					}
+					return (
+						<li key={i}>
+							<Button onClick={() => onPageChange(p - 1)}>{p}</Button>
+						</li>
+					);
+				})}
+			</ul>
 
 			{/* Right: Next button */}
 			<div className="flex flex-1 justify-end">
-				<ul className="flex list-none p-0 m-0">
-					<li key="Next page">
-						<Button
-							aria-label="Next page"
-							onClick={() => onPageChange(Math.min(currentPage + 1, totalPages - 1))}
-							disabled={currentPage === totalPages - 1 || undefined}
-						>
-							<span aria-hidden="true">{"»"}</span>
-						</Button>
-					</li>
-				</ul>
+				<Button
+					aria-label="Next page"
+					onClick={() => onPageChange(Math.min(currentPage + 1, totalPages - 1))}
+					disabled={currentPage === totalPages - 1 || undefined}
+				>
+					<span aria-hidden="true">{"»"}</span>
+				</Button>
 			</div>
 		</nav>
 	);

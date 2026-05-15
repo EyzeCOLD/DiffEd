@@ -16,6 +16,7 @@
 	--font-family-sans: Arial, sans-serif;
 
 	--color-editor-bg: #0d1117;
+	--color-editor-search-match: #604d23;
 
 	--color-active-line: #151b23;
 	--color-diff-add: #12261d;
@@ -37,9 +38,9 @@
 		background-color: var(--color-canvas);
 	}
 
-	@media (prefers-color-scheme: light) {
+	@media (prefers-color-scheme: dark) {
 		html {
-			color-scheme: light;
+			color-scheme: dark;
 		}
 	}
 
@@ -69,10 +70,6 @@
 
 	table {
 		@apply border-collapse;
-	}
-
-	th {
-		@apply text-left px-2;
 	}
 
 	::-webkit-scrollbar {

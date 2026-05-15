@@ -283,6 +283,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 						/>
 					</label>
 					<Button
+						// This allows the button to submit the new filename without triggering the onBlur of the Input above
 						onMouseDown={(e) => e.preventDefault()}
 						disabled={newFileName === fileName ? true : undefined}
 						type="submit"
@@ -340,7 +341,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			</span>
 			{vimBindings && vimMode && (
 				<>
-					<div className="fixed bottom-0 left-0 right-0 z-10 flex items-center px-2 py-0.5 bg-surface text-sm">
+					<div className="fixed bottom-0 left-0 right-0 z-10 flex items-center px-2 py-0.5 text-foreground-light bg-surface text-sm">
 						<span aria-hidden className="font-mono font-bold uppercase">
 							{vimMode.mode}
 							{vimMode.subMode ? ` ${vimMode.subMode}` : ""}

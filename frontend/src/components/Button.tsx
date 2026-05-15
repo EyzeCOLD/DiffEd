@@ -6,7 +6,7 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const disabledStyle = "bg-surface-dark text-foreground";
 const enabledStyle = "bg-surface text-foreground-light hover:text-accent cursor-pointer";
-const dangerStyle = "bg-canvas border border-surface-dark text-error hover:text-error-accent cursor-pointer";
+const dangerStyle = "bg-canvas border border-surface-dark text-red-500 hover:text-red-300 cursor-pointer";
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({children, className, danger, ...props}, ref) => {
 	function getStyle() {

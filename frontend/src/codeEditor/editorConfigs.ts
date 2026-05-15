@@ -152,7 +152,7 @@ const codeHighlight = HighlightStyle.define([
 	// variables
 	{
 		tag: [tags.definition(tags.variableName), tags.definition(tags.attributeName), tags.definition(tags.propertyName)],
-		color: "var(--color-success-accent)",
+		color: "var(--color-syntax-variable)",
 	},
 	// Preprocessor stuff
 	{tag: tags.processingInstruction, color: "var(--color-syntax-keyword)"},
@@ -229,15 +229,25 @@ export function getEditorExtensions({
 				},
 
 				// Styles the `deleted` (addable from peer) lines and `changed` (added by self compared to peer) lines
-				"& .cm-deletedChunk": {backgroundColor: "var(--color-diff-del)"},
-				"& .cm-deletedChunk .cm-deletedLine": {
+
+				// THE GREENS
+				"& .cm-deletedChunk": {
 					backgroundColor: "var(--color-diff-add)",
 				},
-				"& .cm-deletedChunk .cm-deletedLine .cm-deletedText:not(:only-child)": {
+				"& .cm-deletedLine": {
+					backgroundColor: "var(--color-diff-add)",
+				},
+				"& .cm-deletedLine del:has(:not(.cm-deletedText)) .cm-deletedText": {
 					textDecoration: "none",
-					backgroundColor: "var(--color-diff-add-word) ",
+					color: "var(--color-white)",
+					backgroundColor: "var(--color-diff-add-word)",
+				},
+				"& .cm-deletedLine .cm-deletedText": {
+					textDecoration: "none",
+					backgroundColor: "var(--color-diff-add)",
 				},
 
+				// THE REDS
 				"& .cm-changedLine": {
 					backgroundColor: "var(--color-diff-del) !important",
 				},
@@ -245,8 +255,9 @@ export function getEditorExtensions({
 				"& .cm-changedText": {
 					background: "none !important",
 				},
-				"& .cm-changedLine .cm-changedText:not(:only-child)": {
-					backgroundColor: "var(--color-diff-del-word) !important",
+				"& .cm-insertedLine .cm-changedText:not(:only-child) *": {
+					color: "var(--color-white) !important",
+					backgroundColor: "var(--color-diff-del-word)",
 				},
 
 				// Styles the line gutter and diff indicators
@@ -278,23 +289,30 @@ export function getEditorExtensions({
 				// Styles the input cursor (normal mode) and vim block cursor
 				"& .cm-cursor, & .cm-cursorAnchor": {borderLeftColor: "var(--color-accent)"},
 				"& .cm-fat-cursor": {
-					backgroundColor: "color-mix(in srgb, var(--color-accent) 50%, transparent) !important",
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 33%, transparent) !important",
 					outline: "none !important",
 				},
 
+				"& .cm-searchMatch": {
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 25%, transparent) !important",
+				},
+
+				"& .cm-selectionMatch": {
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 25%, transparent) !important",
+				},
+
 				"& .cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-					backgroundColor: "color-mix(in srgb, var(--color-accent) 12.5%, transparent) !important",
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 25%, transparent) !important",
 				},
 
 				// Styles the vim command-line panel
 				"& .cm-panels": {backgroundColor: "var(--color-surface)", color: "var(--color-foreground)"},
 				"& .cm-panels .cm-vim-panel": {
-					borderTop: "1px solid color-mix(in srgb, var(--color-foreground) 12.5%, transparent)",
 					padding: "2px 4px",
 				},
 				"& .cm-panels .cm-vim-panel input": {
-					backgroundColor: "transparent",
-					color: "var(--color-foreground)",
+					backgroundColor: "var(--color-surface)",
+					color: "var(--color-foreground-light)",
 					outline: "none",
 				},
 				"& .cm-panels .cm-vim-message": {
