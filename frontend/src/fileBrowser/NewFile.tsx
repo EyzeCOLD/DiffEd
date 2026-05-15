@@ -5,35 +5,43 @@ import Input from "#/src/components/Input";
 import {apiFetch} from "#/src/utils.ts";
 
 type NewFileProps = {
-	onFileCreate: (fileId: string) => void;
+	onFileCreate: (fileId: string) => Promise<void>;
+	refreshFileList: () => Promise<void>;
 };
 
-function NewFile({onFileCreate}: NewFileProps): JSX.Element {
+function NewFile({onFileCreate, refreshFileList}: NewFileProps): JSX.Element {
 	const [newFilename, setNewFilename] = useState<string>("");
 	const showToast = useShowToast();
 
 	async function openNewFile() {
-		if (newFilename === "") {
+		if (!newFilename || !newFilename.trim().length) {
 			showToast("error", "Filename can't be empty");
 			return;
 		}
 
 		const formData = new FormData();
-		const file = new File([""], newFilename!, {type: "text/plain"});
+		const file = new File([""], newFilename, {type: "text/plain"});
+
 		formData.append("file", file);
 
-		const fileResult = await apiFetch<string[]>("/api/files", {
+		const fileResult = await apiFetch<string>("/api/files", {
 			method: "POST",
 			body: formData,
 		});
 
 		if (!fileResult.ok) {
 			showToast("error", `File creation failed: ${fileResult.error}`);
+			refreshFileList();
 			return;
 		}
-		const fileId = fileResult.data[0];
+		const fileId = fileResult.data;
 
-		onFileCreate(fileId);
+		try {
+			await onFileCreate(fileId);
+		} catch (err) {
+			showToast("error", `File creation failed: ${err}`);
+			refreshFileList();
+		}
 	}
 
 	return (

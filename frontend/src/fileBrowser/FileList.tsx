@@ -1,4 +1,4 @@
-import type {UserFile} from "#shared/src/types";
+import type {FileListItem, UserFile} from "#shared/src/types";
 import type {JSX} from "react";
 import type {ApiResponse} from "#shared/src/types.js";
 import {apiFetch} from "#/src/utils.js";
@@ -6,8 +6,8 @@ import {useShowToast} from "#/src/stores/toastStore";
 import Button from "#/src/components/Button";
 
 type fileListProps = {
-	onFileSelect: (fileId: string) => void;
-	fileList: UserFile[];
+	onFileSelect: (fileId: string) => Promise<void>;
+	fileList: FileListItem[];
 	refreshFileList: () => void;
 	onSortToggle: () => void;
 	descending: boolean;
@@ -18,19 +18,17 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 
 	if (fileList.length === 0) return <p>No files to show.</p>;
 
-	async function handleDownload(file: UserFile) {
-		const response: ApiResponse<UserFile> = await apiFetch(`/api/files/${file.id}`);
+	async function handleDownload(file: FileListItem) {
+		const response: ApiResponse<Pick<UserFile, "content">> = await apiFetch(`/api/files/${file.id}`);
 
 		if (!response.ok) {
-			console.error(response.error);
 			showToast("error", `${response.error}`);
+			refreshFileList();
 			return;
 		}
 
 		const blob = new Blob([response.data.content], {type: "text/plain"});
-
 		const url = URL.createObjectURL(blob);
-
 		const a = document.createElement("a");
 		a.href = url;
 		a.download = file.name;
@@ -47,7 +45,6 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		});
 
 		if (!response.ok) {
-			console.error(response.error);
 			showToast("error", `${response.error}`);
 		} else {
 			showToast("info", "File deleted");
@@ -55,14 +52,27 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		refreshFileList();
 	}
 
-	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: UserFile) => {
+	async function selectFile(fileId: string) {
+		try {
+			await onFileSelect(fileId);
+		} catch (err) {
+			if (typeof err === "string" && err) {
+				showToast("error", err);
+			} else if (err instanceof Error) {
+				showToast("error", err.message);
+			}
+			refreshFileList();
+		}
+	}
+
+	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: FileListItem) => {
 		return (
 			<tr key={file.id}>
 				<td>
 					<button
 						type="button"
 						className="bg-transparent border-0 p-0 text-inherit cursor-pointer hover:underline"
-						onClick={() => onFileSelect(file.id)}
+						onClick={() => selectFile(file.id)}
 					>
 						{file.name}
 					</button>

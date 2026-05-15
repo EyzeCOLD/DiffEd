@@ -1,10 +1,11 @@
-// id here for testing
 export type UserFile = {
 	id: string;
 	name: string;
 	content: string;
 	owner_id: number;
 };
+
+export type FileListItem = Pick<UserFile, "id" | "name">;
 
 export type User = {
 	id: number;

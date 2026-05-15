@@ -9,10 +9,8 @@ import {isDbError, isInvalidByteSequence, isUniqueViolation} from "#/src/utils.j
 import multer from "multer";
 
 // doing #shared does not work for some reason
-// having is text or binary package only in shard is not enought for some reason, also need in backend
 import {validateFile} from "../../../shared/src/fileValidation.js";
-
-// doing #shared does not work for some reason
+import assert from "node:assert";
 
 function getFiles(app: Express, db: Pool) {
 	app.get("/api/files", requireAuth, async (req: Request, res: Response<ApiResponse<UserFile[]>>) => {
@@ -69,51 +67,43 @@ function getFileById(app: Express, db: Pool) {
 	});
 }
 
-// const storage = multer.memoryStorage();
 const upload = multer({
 	storage: multer.memoryStorage(),
 });
 
-function uploadFiles(app: Express, db: Pool) {
+function uploadFile(app: Express, db: Pool) {
 	app.post(
 		"/api/files",
 		requireAuth,
-		upload.array("file", 100),
-		async (req: Request, res: Response<ApiResponse<string[]>>) => {
+		upload.single("file"),
+		async (req: Request, res: Response<ApiResponse<string>>) => {
 			timestampedLog(`REQUEST >>> ${req.method} ${req.url}`);
 
-			if (!Array.isArray(req.files) || !req.files.length) {
+			if (!req.file) {
 				return res.status(400).json({ok: false, error: "No files provided"});
 			}
 
-			const fileErrors: string[] = [];
-			for (const f of req.files) {
-				const err: string | null = validateFile(f.mimetype, f.size, f.buffer.toString("utf8"), f.originalname);
-				if (err) fileErrors.push(`File '${f.originalname}': ${err}`);
+			const f = req.file;
+			const fileText = f.buffer.toString("utf8");
+
+			const err: string | null = validateFile(f.mimetype, f.size, fileText, f.originalname);
+			if (err) {
+				return res.status(415).json({ok: false, error: err});
 			}
-			if (fileErrors.length > 0) {
-				return res.status(415).json({ok: false, error: fileErrors.join("\0")});
-			}
 
-			// build the parameterized sql query
-			const rows = req.files.map((_, i) => {
-				const offset = 4 * i;
-				return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`;
-			});
-
-			const query = `INSERT INTO files (id, name, content, owner_id) VALUES ${rows.join(", ")} RETURNING id;`;
-
-			const values = req.files.flatMap((file) => {
-				return [crypto.randomUUID(), file.originalname, file.buffer.toString("utf8"), req.session.userId];
-			});
+			const query = "INSERT INTO files (id, name, content, owner_id) VALUES ($1, $2, $3, $4) RETURNING id";
+			const values = [crypto.randomUUID(), f.originalname, fileText, req.session.userId];
 
 			timestampedLog(`DB QUERY >>> ${query}`);
 			timestampedLog(`DB VALUES >>> ${JSON.stringify(values)}`);
 
 			try {
 				const result = await db.query(query, values);
-				const ids = result.rows.map((row) => row.id);
-				return res.status(201).json({ok: true, data: ids});
+				assert(result.rowCount === 1, "Result did not contain any rows");
+				const fileId = result.rows[0].id;
+				assert(fileId, "Result did not contain an id field");
+
+				return res.status(201).json({ok: true, data: fileId});
 			} catch (error: unknown) {
 				if (!isDbError(error)) {
 					timestampedLog(`ERROR <<< ${error}`);
@@ -124,18 +114,10 @@ function uploadFiles(app: Express, db: Pool) {
 				// this binary file handling happens if the checks before db fail
 				// @NOTE the messaging is different from normal checks
 				if (isInvalidByteSequence(error)) {
-					const msg =
-						req.files.length === 1
-							? `File '${req.files[0].originalname}' has binary encoding`
-							: "One or more files have binary encoding";
-					return res.status(415).json({ok: false, error: msg});
+					return res.status(415).json({ok: false, error: `File '${f.originalname}' has binary encoding`});
 				}
 				if (isUniqueViolation(error)) {
-					const msg =
-						req.files.length === 1
-							? `A file with name '${req.files[0].originalname}' already exists`
-							: "One or more of the filenames already exist";
-					return res.status(409).json({ok: false, error: msg});
+					return res.status(409).json({ok: false, error: `A file with name '${f.originalname}' already exists`});
 				}
 
 				return res.status(500).json({ok: false, error: "Internal server error"});
@@ -177,4 +159,4 @@ function deleteFile(app: Express, db: Pool) {
 	});
 }
 
-export default {getFiles, getFileById, uploadFiles, deleteFile};
+export default {getFiles, getFileById, uploadFile, deleteFile};

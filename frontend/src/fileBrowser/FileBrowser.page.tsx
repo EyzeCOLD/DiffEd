@@ -1,11 +1,9 @@
 import FileBrowser from "./FileBrowser";
 import {useNavigate} from "react-router";
 import {apiFetch} from "#/src/utils.ts";
-import {useShowToast} from "#/src/stores/toastStore";
 
 function FileBrowserPage() {
 	const navigate = useNavigate();
-	const showToast = useShowToast();
 
 	async function startSessionFromFile(fileId: string) {
 		const response = await apiFetch<{workspaceId: string}>("/api/workspace", {
@@ -14,8 +12,7 @@ function FileBrowserPage() {
 			body: JSON.stringify({fileId: fileId}),
 		});
 		if (!response.ok) {
-			showToast("error", response.error);
-			return;
+			throw response.error;
 		}
 		navigate(`/collab/${response.data.workspaceId}`);
 	}

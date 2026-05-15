@@ -8,7 +8,15 @@ type FilePickerProps = {
 
 function FilePicker({connection}: FilePickerProps): JSX.Element {
 	async function handlePick(fileId: string) {
-		await pickFile(connection, fileId);
+		try {
+			await pickFile(connection, fileId);
+		} catch (err) {
+			if (err && typeof err === "object" && "message" in err) {
+				if (typeof err.message === "string") throw err.message;
+			} else {
+				throw "socker error";
+			}
+		}
 	}
 
 	return (

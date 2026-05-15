@@ -1,12 +1,12 @@
 import FileList from "./FileList";
 import PageSelector from "./PageSelector";
 import NewFile from "./NewFile";
-import FileUploader from "./FileUpload";
+import FileUploader from "./FileUploader";
 import useFileBrowser from "./useFileBrowser";
 import Input from "#/src/components/Input";
 
 type fileBrowserProps = {
-	onFileSelect: (fileId: string) => void;
+	onFileSelect: (fileId: string) => Promise<void>;
 };
 
 function FileBrowser({onFileSelect}: fileBrowserProps) {
@@ -20,6 +20,7 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 		sortDescending,
 		toggleSort,
 		refreshFileList,
+		pushToFileList,
 		totalFiles,
 	} = useFileBrowser();
 
@@ -39,8 +40,8 @@ function FileBrowser({onFileSelect}: fileBrowserProps) {
 				descending={sortDescending}
 			/>
 			{totalPages ? <PageSelector currentPage={page} totalPages={totalPages} onPageChange={setPage} /> : null}
-			<NewFile onFileCreate={onFileSelect} />
-			<FileUploader refreshFileList={refreshFileList} />
+			<NewFile onFileCreate={onFileSelect} refreshFileList={refreshFileList} />
+			<FileUploader pushToFileList={pushToFileList} refreshFileList={refreshFileList} />
 		</div>
 	);
 }
