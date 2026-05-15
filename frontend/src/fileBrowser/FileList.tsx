@@ -58,6 +58,8 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		} catch (err) {
 			if (typeof err === "string" && err) {
 				showToast("error", err);
+			} else if (err instanceof Error) {
+				showToast("error", err.message);
 			}
 			refreshFileList();
 		}

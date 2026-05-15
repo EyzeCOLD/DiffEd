@@ -21,6 +21,7 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 		if (!e.target.files) return;
 
 		setUploadOnGoing(true);
+		const fileCount: number = e.target.files.length;
 		const newFileArray: File[] = [];
 		const newFilemap = fileUploads ?? new Map<string, File>();
 		for (const f of e.target.files) {
@@ -40,14 +41,24 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 		if (newFilemap.size <= 0) return;
 
 		setFileUploads(newFilemap);
-
-		const uploads: Promise<void>[] = newFileArray.map(async (f) => {
-			return await uploadFile(f);
+		const succesfulUploads: string[] = [];
+		const uploads = newFileArray.map(async (f) => {
+			return await uploadFile(f).then((filename) => {
+				succesfulUploads.push(filename);
+				return;
+			});
 		});
 		await Promise.allSettled(uploads);
-		const msg =
-			newFileArray.length == 1 ? `File ${newFileArray[0].name} uploaded` : `All ${newFileArray.length} uploaded`;
-		showToast("success", msg);
+		console.log(succesfulUploads);
+		if (succesfulUploads.length <= 0) {
+			showToast("error", "All uploads failed");
+		} else if (succesfulUploads.length === 1) {
+			showToast("info", `File ${succesfulUploads[0]} uploaded`);
+		} else if (succesfulUploads.length < fileCount) {
+			showToast("info", `${succesfulUploads.length}/${fileCount} uploads successful`);
+		} else {
+			showToast("success", `All uploads successful`);
+		}
 		refreshFileList();
 		setUploadOnGoing(false);
 	}
@@ -66,7 +77,7 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 	async function uploadFile(file: File) {
 		if (!file) {
 			console.log("Tried to upload non existent file");
-			return Promise.resolve();
+			return Promise.reject();
 		}
 
 		const formData = new FormData();
@@ -77,18 +88,19 @@ function FileUploader({pushToFileList, refreshFileList}: FileUploaderProps) {
 			body: formData,
 		});
 
+		handleRemove(file.name);
 		if (!response.ok) {
 			if (response.error === "Network error") {
 				showToast("error", "Network error: Try to reupload files");
 			} else {
 				showToast("error", response.error);
 			}
+			return Promise.reject();
 		} else {
 			const listFile: FileListItem = {name: file.name, id: response.data};
 			pushToFileList(listFile);
+			return Promise.resolve(file.name);
 		}
-		handleRemove(file.name);
-		return Promise.resolve();
 	}
 
 	return (
