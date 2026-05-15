@@ -1,4 +1,5 @@
 import {PublicTopBar, UserTopBar} from "./TopBars";
+import Footer from "./Footer";
 import {Outlet, useNavigate, useLocation} from "react-router";
 import {useEffect, useState} from "react";
 import {getSession, apiFetch} from "../utils";
@@ -25,6 +26,7 @@ export function PublicLayout() {
 			<main id="main">
 				<Outlet />
 			</main>
+			<Footer />
 		</>
 	);
 }
