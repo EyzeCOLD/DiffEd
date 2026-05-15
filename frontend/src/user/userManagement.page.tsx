@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import {useNavigate} from "react-router";
 import {z} from "zod";
 import Button from "#/src/components/Button";
@@ -503,6 +503,53 @@ function ApiKey({hasApiKey}: {hasApiKey: boolean}) {
 	);
 }
 
+function Avatar() {
+	const [avatar, setAvatar] = useState("/api/user/avatar");
+	const [isLoading, setIsLoading] = useState(false);
+	const showToast = useShowToast();
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		const formData = new FormData();
+		formData.append("avatar", file);
+
+		try {
+			setIsLoading(true);
+
+			const response: ApiResponse<null> = await apiFetch("/api/user/avatar", {
+				method: "PATCH",
+				credentials: "include",
+				body: formData,
+			});
+
+			if (!response.ok) {
+				throw new Error(response.error);
+			}
+
+			showToast("success", "Successfully updated the avatar");
+			setAvatar("/api/user/avatar");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+	return (
+		<>
+			<div className="w-32 h-32 rounded-full overflow-hidden">
+				<img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+			</div>
+			<input type="file" accept="image/*" onChange={handleUpload} ref={fileInputRef} style={{display: "none"}} />
+			<Button disabled={isLoading} onClick={() => fileInputRef.current?.click()}>
+				Change avatar
+			</Button>
+		</>
+	);
+}
+
 export default function UserManagementPage() {
 	const currentUser = useCurrentUser();
 	const setUser = useSetUser();
@@ -547,6 +594,9 @@ export default function UserManagementPage() {
 			<div>
 				DANGER ZONE!!!
 				<Delete />
+			</div>
+			<div>
+				<Avatar />
 			</div>
 		</div>
 	);

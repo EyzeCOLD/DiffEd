@@ -39,11 +39,13 @@ if (process.env.NODE_ENV === "development") {
 		username: "testa",
 		email: "test@mail.fi",
 		hashed_password: await argon2.hash("testa"),
+		avatar_filename: "testa_avatar.jpg",
 	};
 	const testUserB = {
 		username: "testb",
 		email: "test@mail.no",
 		hashed_password: await argon2.hash("testb"),
+		avatar_filename: "testa_avatar.jpg",
 	};
 	const values: string[] = [];
 	Object.values(testUserA).forEach((v) => values.push(v));
@@ -51,7 +53,10 @@ if (process.env.NODE_ENV === "development") {
 	console.log("VALUES", values);
 
 	await postgres
-		.query("INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3), ($4, $5, $6)", values)
+		.query(
+			"INSERT INTO users (username, email, hashed_password, avatar_filename) VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)",
+			values,
+		)
 		.catch((error) => timestampedLog(error));
 }
 
