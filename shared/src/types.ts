@@ -11,6 +11,7 @@ export type User = {
 	username: string;
 	email: string;
 	github_linked?: boolean;
+	has_apikey?: boolean;
 	vim_bindings: boolean;
 };
 

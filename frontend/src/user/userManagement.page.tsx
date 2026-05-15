@@ -406,11 +406,108 @@ function Confirm({onConfirm, onCancel}: PasswordConfirmProps) {
 	);
 }
 
+function ApiKey({hasApiKey}: {hasApiKey: boolean}) {
+	const [isLoading, setIsLoading] = useState(false);
+	const updateUser = useUpdateUser();
+	const showToast = useShowToast();
+
+	async function createNewApiKey() {
+		try {
+			setIsLoading(true);
+
+			const response: ApiResponse<string> = await apiFetch("/api/user/api-key", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+			});
+
+			if (!response.ok) {
+				throw new Error(response.error);
+			}
+
+			updateUser({has_apikey: true});
+			await navigator.clipboard.writeText(response.data);
+			showToast("success", "Api key created and copied to clipboard");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	async function copyApiKey() {
+		try {
+			setIsLoading(true);
+			const response: ApiResponse<string> = await apiFetch("/api/user/api-key", {
+				method: "GET",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+			});
+
+			if (!response.ok) {
+				throw new Error(response.error);
+			}
+
+			const key = response.data;
+			await navigator.clipboard.writeText(key);
+			showToast("success", "Api key copied to clipboard");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	async function deleteApiKey() {
+		try {
+			setIsLoading(true);
+
+			const response: ApiResponse<null> = await apiFetch("/api/user/api-key", {
+				method: "PATCH",
+				headers: {"Content-Type": "application/json"},
+				credentials: "include",
+				body: JSON.stringify({hash: null}),
+			});
+
+			if (!response.ok) {
+				throw new Error(response.error);
+			}
+
+			updateUser({has_apikey: false});
+			showToast("success", "Successfully deleted Api key");
+		} catch (e) {
+			showToast("error", e instanceof Error ? e.message : String(e));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	return (
+		<>
+			<div>
+				<Button onClick={createNewApiKey} disabled={isLoading} aria-label="Create new Api key">
+					Create new Api key
+				</Button>
+				{hasApiKey ? (
+					<>
+						<Button onClick={copyApiKey} disabled={isLoading} aria-label="Get current Api key">
+							Copy current Api key
+						</Button>
+						<Button onClick={deleteApiKey} disabled={isLoading} aria-label="Delete Api key">
+							Delete Api key
+						</Button>
+					</>
+				) : null}
+			</div>
+		</>
+	);
+}
+
 export default function UserManagementPage() {
 	const currentUser = useCurrentUser();
 	const setUser = useSetUser();
 	const updateUser = useUpdateUser();
-	const [loading, setLoading] = useState(!currentUser);
+	const [isLoading, setIsLoading] = useState(!currentUser);
 	const showToast = useShowToast();
 	const navigate = useNavigate();
 
@@ -423,11 +520,11 @@ export default function UserManagementPage() {
 				return;
 			}
 			setUser(response.data);
-			setLoading(false);
+			setIsLoading(false);
 		});
 	}, [navigate]);
 
-	return loading || !currentUser ? (
+	return isLoading || !currentUser ? (
 		<div>Loading...</div>
 	) : (
 		<div>
@@ -440,6 +537,9 @@ export default function UserManagementPage() {
 			</div>
 			<div>
 				<GithubLink githubLinked={!!currentUser.github_linked} />
+			</div>
+			<div>
+				<ApiKey hasApiKey={!!currentUser.has_apikey} />
 			</div>
 			<div>
 				<VimBindings enabled={currentUser.vim_bindings} />

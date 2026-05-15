@@ -4,7 +4,7 @@ import {timestampedLog} from "#/src/logging.js";
 
 async function getUserById(id: number): Promise<User | null> {
 	const query =
-		"SELECT id, username, email, vim_bindings, (github_id IS NOT NULL) AS github_linked FROM users WHERE id = $1";
+		"SELECT id, username, email, vim_bindings, (github_id IS NOT NULL) AS github_linked, (apikey IS NOT NULL) AS has_apikey FROM users WHERE id = $1";
 	timestampedLog(`DB QUERY >>> ${query}`);
 	timestampedLog(`DB VALUES >>> ${[id]}`);
 	const {rows} = await db.query(query, [id]);
@@ -79,6 +79,28 @@ async function getUserByGithubId(githubId: string): Promise<User | null> {
 	return rows[0];
 }
 
+async function getUserByApiKey(apiKey: string): Promise<User | null> {
+	const query = "SELECT id, username, email FROM users WHERE apikey = $1";
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${[apiKey]}`);
+	const {rows} = await db.query(query, [apiKey]);
+
+	if (!rows.length) return null;
+
+	return rows[0];
+}
+
+async function getApiKeyById(id: number): Promise<string | null> {
+	const query = "SELECT apikey FROM users WHERE id = $1";
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${[id]}`);
+	const {rows} = await db.query(query, [id]);
+
+	if (!rows.length) return null;
+
+	return rows[0].apikey;
+}
+
 async function createOAuthUser(username: string, email: string, githubId: string): Promise<number> {
 	const query = "INSERT INTO users (username, email, github_id) VALUES ($1, $2, $3) RETURNING id";
 	const values = [username, email, githubId];
@@ -99,9 +121,9 @@ async function linkGithubId(userId: number, githubId: string): Promise<boolean> 
 	return result.rowCount! > 0;
 }
 
-async function createUser(user: Omit<User, "id">, hash: string | undefined): Promise<number> {
+async function createUser(username: string, email: string, hash: string): Promise<number> {
 	const query = "INSERT INTO users (username, email, hashed_password) VALUES ($1, $2, $3) RETURNING id";
-	const values = [user.username, user.email, hash || null];
+	const values = [username, email, hash];
 	timestampedLog(`DB QUERY >>> ${query}`);
 	timestampedLog(`DB VALUES >>> ${values}`);
 	const {rows} = await db.query(query, values);
@@ -139,6 +161,16 @@ async function updatePassword(hash: string, id: number): Promise<boolean> {
 	return result.rowCount! > 0;
 }
 
+async function updateApiKey(hash: string, id: number): Promise<string | null> {
+	const values = [hash, id];
+	const query = "UPDATE users SET apikey = $1 WHERE id = $2";
+	timestampedLog(`DB QUERY >>> ${query}`);
+	timestampedLog(`DB VALUES >>> ${values}`);
+	const result = await db.query(query, values);
+
+	return result.rowCount! > 0 ? hash : null;
+}
+
 async function unlinkGithubId(userId: number): Promise<boolean> {
 	const query = "UPDATE users SET github_id = NULL WHERE id = $1";
 	timestampedLog(`DB QUERY >>> ${query}`);
@@ -173,15 +205,18 @@ export default {
 	getUserByUsername,
 	getUserByEmail,
 	getUserByGithubId,
+	getUserByApiKey,
 	getUserWithPasswordByIdentifier,
+	getApiKeyById,
 	createUser,
 	createOAuthUser,
 	linkGithubId,
-	unlinkGithubId,
-	updateUsername,
-	deleteUserById,
-	updateEmail,
 	getHashedPasswordById,
+	updateUsername,
+	updateEmail,
 	updatePassword,
+	updateApiKey,
+	unlinkGithubId,
+	deleteUserById,
 	updateVimBindings,
 };
