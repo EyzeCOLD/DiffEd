@@ -13,10 +13,12 @@ type fileListProps = {
 	descending: boolean;
 };
 
+const MAX_VIEWABLE_FILENAME_LEN = 24;
+
 function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descending}: fileListProps): JSX.Element {
 	const showToast = useShowToast();
 
-	if (fileList.length === 0) return <p>No files to show.</p>;
+	if (fileList.length === 0) return <div className="flex justify-center items-center">No files to show.</div>;
 
 	async function handleDownload(file: FileListItem) {
 		const response: ApiResponse<Pick<UserFile, "content">> = await apiFetch(`/api/files/${file.id}`);
@@ -65,44 +67,42 @@ function FileList({onFileSelect, fileList, refreshFileList, onSortToggle, descen
 		}
 	}
 
+	function truncateFileName(filename: string) {
+		return filename.slice(0, MAX_VIEWABLE_FILENAME_LEN - 9) + "..." + filename.slice(filename.length - 6);
+	}
+
 	const listItems: JSX.Element[] = fileList.map<JSX.Element>((file: FileListItem) => {
 		return (
-			<tr key={file.id}>
-				<td>
+			<li key={file.id} className="bg-surface-dark border-2 rounded-sm border-canvas">
+				<span className="flex items-center">
 					<button
 						type="button"
-						className="bg-transparent border-0 p-0 text-inherit cursor-pointer hover:underline"
+						className="cursor-pointer hover:underline mx-4 flex-1 text-left"
 						onClick={() => selectFile(file.id)}
 					>
-						{file.name}
+						{file.name.length <= MAX_VIEWABLE_FILENAME_LEN ? file.name : truncateFileName(file.name)}
 					</button>
-				</td>
-				<td className="text-center w-24">
-					<Button onClick={() => handleDownload(file)}>{" 🡻 "}</Button>
-				</td>
-				<td className="text-center w-24">
-					<Button onClick={() => handleDelete(file.id)} className="font-bold">
-						{" X "}
-					</Button>
-				</td>
-			</tr>
+					<span className="ml-auto flex items-center">
+						<Button onClick={() => handleDownload(file)}>{" 🡻 "}</Button>
+						<Button onClick={() => handleDelete(file.id)} className="font-bold" danger={true}>
+							{" X "}
+						</Button>
+					</span>
+				</span>
+			</li>
 		);
 	});
 
 	return (
-		<table id="file-list" className="max-w-4/5">
-			<thead>
-				<th>
-					filename
-					<Button className="bg-transparent" onClick={() => onSortToggle()}>
-						{descending ? "▾" : "▴"}
-					</Button>
-				</th>
-				<th className="text-center">download</th>
-				<th className="text-center">delete</th>
-			</thead>
-			<tbody>{listItems}</tbody>
-		</table>
+		<div id="file-list" className="mx-auto w-full max-w-2xl">
+			<span className="m-2">
+				filename
+				<Button className="bg-transparent" onClick={() => onSortToggle()}>
+					{descending ? "▾" : "▴"}
+				</Button>
+			</span>
+			<ol>{listItems}</ol>
+		</div>
 	);
 }
 

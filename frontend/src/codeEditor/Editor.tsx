@@ -275,21 +275,24 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 				>
 					<label>
 						Filename
-						<Input type="text" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} />
+						<Input
+							type="text"
+							value={newFileName}
+							onChange={(e) => setNewFileName(e.target.value)}
+							onBlur={() => setNewFileName(fileName)}
+						/>
 					</label>
-					<Button disabled={newFileName === fileName ? true : undefined} type="submit">
+					<Button
+						// This allows the button to submit the new filename without triggering the onBlur of the Input above
+						onMouseDown={(e) => e.preventDefault()}
+						disabled={newFileName === fileName ? true : undefined}
+						type="submit"
+						className="border border-transparent"
+					>
 						Rename
 					</Button>
 				</form>
 				<div className="flex items-center">
-					<Button
-						type="button"
-						className={vimBindings ? "border" : "border border-transparent"}
-						onClick={handleVimToggle}
-						title="Toggle Vim mode (Ctrl+Alt+v)"
-					>
-						Vim
-					</Button>
 					<label className="text-sm">
 						Syntax Highlighting
 						<select
@@ -307,7 +310,15 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 							))}
 						</select>
 					</label>
-					<Button type="button" onClick={onRepickFile}>
+					<Button
+						type="button"
+						className={vimBindings ? "border" : "border border-transparent"}
+						onClick={handleVimToggle}
+						title="Toggle Vim mode (Ctrl+Alt+v)"
+					>
+						Vim Mode
+					</Button>
+					<Button type="button" onClick={onRepickFile} className="border border-transparent">
 						Change File
 					</Button>
 				</div>
@@ -322,7 +333,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			) : isLoading ? (
 				<div className="p-2">Initializing collaborative editor...</div>
 			) : null}
-			<div ref={editorDomRef} className="h-full w-full" />
+			<div ref={editorDomRef} className="h-full w-full bg-editor-bg text-white" />
 			<p className="m-0 text-sm text-(--text-secondary)">{TAB_USAGE_HINT}</p>
 
 			<span role="status" className="sr-only">
@@ -330,7 +341,7 @@ export default function Editor({connection, myOwnerId, initialMembers, onRepickF
 			</span>
 			{vimBindings && vimMode && (
 				<>
-					<div className="fixed bottom-0 left-0 right-0 z-10 flex items-center px-2 py-0.5 bg-surface text-sm">
+					<div className="fixed bottom-0 left-0 right-0 z-10 flex items-center px-2 py-0.5 text-foreground-light bg-surface text-sm">
 						<span aria-hidden className="font-mono font-bold uppercase">
 							{vimMode.mode}
 							{vimMode.subMode ? ` ${vimMode.subMode}` : ""}

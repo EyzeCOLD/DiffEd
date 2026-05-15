@@ -45,23 +45,25 @@ function NewFile({onFileCreate, refreshFileList}: NewFileProps): JSX.Element {
 	}
 
 	return (
-		<form
-			onSubmit={(e) => {
-				e.preventDefault();
-				openNewFile();
-			}}
-		>
-			<label>
-				New File:
-				<Input
-					id="fileNameInput"
-					value={newFilename}
-					placeholder="filename"
-					onChange={(event) => setNewFilename(event.target.value)}
-				/>
-			</label>
-			<Button type="submit">Create</Button>
-		</form>
+		<div className="flex flex-col justify-center items-center">
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					openNewFile();
+				}}
+			>
+				<label>
+					New File
+					<Input
+						id="fileNameInput"
+						value={newFilename}
+						placeholder="filename"
+						onChange={(event) => setNewFilename(event.target.value)}
+					/>
+				</label>
+				<Button type="submit">Create</Button>
+			</form>
+		</div>
 	);
 }
 

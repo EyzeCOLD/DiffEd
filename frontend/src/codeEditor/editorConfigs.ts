@@ -130,7 +130,6 @@ const codeHighlight = HighlightStyle.define([
 			tags.moduleKeyword,
 			tags.operatorKeyword,
 			tags.operator,
-			tags.attributeName,
 		],
 		color: "var(--color-syntax-keyword)",
 	},
@@ -139,16 +138,26 @@ const codeHighlight = HighlightStyle.define([
 	// // line and /* block */ comments
 	{tag: tags.comment, color: "var(--color-syntax-comment)", fontStyle: "italic"},
 	// 42 / true / null
-	{tag: [tags.number, tags.bool, tags.null], color: "var(--color-syntax-number)"},
+	{tag: [tags.number, tags.bool, tags.null, tags.literal], color: "var(--color-syntax-number)"},
 	// function name at call site and at definition
 	{
-		tag: [tags.function(tags.variableName), tags.function(tags.definition(tags.variableName))],
+		tag: [
+			tags.function(tags.variableName),
+			tags.function(tags.definition(tags.variableName)),
+			tags.function(tags.propertyName),
+			tags.function(tags.definition(tags.propertyName)),
+		],
 		color: "var(--color-syntax-function)",
 	},
+	// variables
+	{
+		tag: [tags.definition(tags.variableName), tags.definition(tags.attributeName), tags.definition(tags.propertyName)],
+		color: "var(--color-syntax-variable)",
+	},
+	// Preprocessor stuff
+	{tag: tags.processingInstruction, color: "var(--color-syntax-keyword)"},
 	// MyClass / string (TS type) / namespace / <div> (HTML/JSX tag)
 	{tag: [tags.typeName, tags.className, tags.namespace, tags.tagName], color: "var(--color-syntax-type)"},
-	// obj.property
-	{tag: tags.propertyName, color: "var(--color-accent)"},
 	// markdown
 	{tag: tags.heading, color: "var(--color-syntax-function)", fontWeight: "bold"},
 	{tag: tags.emphasis, fontStyle: "italic"},
@@ -197,92 +206,123 @@ export function getEditorExtensions({
 		keybinds,
 		langCompartment.of(langExtension),
 		...peerExtension(version, connection, myOwnerId),
-		EditorView.theme({
-			// Hide mergeControl buttons on chunks that only have additions by self
-			"& .cm-deletedChunk:not(:has(.cm-deletedLine)) .cm-chunkButtons": {display: "none"},
+		EditorView.theme(
+			{
+				// Hide mergeControl buttons on chunks that only have additions by self
+				"& .cm-deletedChunk:not(:has(.cm-deletedLine)) .cm-chunkButtons": {display: "none"},
 
-			// Add borders and rounded corners for chunks that have deletions,
-			// making it distinguish what Accept actions would affect
-			"& .cm-deletedChunk:has(.cm-deletedLine):has(+ .cm-line.cm-changedLine)": {
-				borderTop: "1px solid var(--color-surface)",
-				borderLeft: "1px solid var(--color-surface)",
-				borderRight: "1px solid var(--color-surface)",
-				borderRadius: "0.15rem 0.15rem 0 0",
-			},
-			"& .cm-deletedChunk:has(.cm-deletedLine) ~ .cm-line.cm-changedLine": {
-				borderLeft: "1px solid var(--color-surface)",
-				borderRight: "1px solid var(--color-surface)",
-			},
-			"& .cm-deletedChunk:has(.cm-deletedLine) ~ .cm-line.cm-changedLine:not(:has(+ .cm-line.cm-changedLine))": {
-				borderBottom: "1px solid var(--color-surface)",
-				borderRadius: "0 0 0.15rem 0.15rem",
-			},
+				// Add borders and rounded corners for chunks that have deletions,
+				// making it distinguish what Accept actions would affect
+				"& .cm-deletedChunk:has(.cm-deletedLine):has(+ .cm-line.cm-changedLine)": {
+					borderTop: "1px solid var(--color-surface)",
+					borderLeft: "1px solid var(--color-surface)",
+					borderRight: "1px solid var(--color-surface)",
+					borderRadius: "0.15rem 0.15rem 0 0",
+				},
+				"& .cm-deletedChunk:has(.cm-deletedLine) ~ .cm-line.cm-changedLine": {
+					borderLeft: "1px solid var(--color-surface)",
+					borderRight: "1px solid var(--color-surface)",
+				},
+				"& .cm-deletedChunk:has(.cm-deletedLine) ~ .cm-line.cm-changedLine:not(:has(+ .cm-line.cm-changedLine))": {
+					borderBottom: "1px solid var(--color-surface)",
+					borderRadius: "0 0 0.15rem 0.15rem",
+				},
 
-			// Styles the `deleted` (addable from peer) lines and `changed` (added by self compared to peer) lines
-			"& .cm-deletedChunk": {backgroundColor: "color-mix(in srgb, var(--color-success-accent) 5%, transparent)"},
-			"& .cm-deletedChunk .cm-deletedLine": {
-				backgroundColor: "color-mix(in srgb, var(--color-success-accent) 12%, transparent)",
-				textDecoration: "none",
-			},
-			"& .cm-deletedChunk .cm-deletedLine del": {textDecoration: "none"},
-			"& .cm-deletedChunk .cm-deletedText": {
-				backgroundColor: "color-mix(in srgb, var(--color-success-accent) 28%, transparent)",
-			},
-			"& .cm-changedLine": {backgroundColor: "color-mix(in srgb, grey 12%, transparent)"},
-			"& .cm-changedText": {backgroundColor: "color-mix(in srgb, grey 28%, transparent)"},
+				// Styles the `deleted` (addable from peer) lines and `changed` (added by self compared to peer) lines
 
-			// Styles the line gutter and diff indicators
-			"& .cm-gutters": {backgroundColor: "transparent", color: "var(--color-foreground)"},
-			"& .cm-changeGutter": {paddingLeft: "unset"},
-			"& .cm-changedLineGutter, &.cm-merge-b .cm-changedLineGutter": {
-				backgroundColor: "color-mix(in srgb, grey 12%, transparent)",
-			},
-			"& .cm-deletedLineGutter, &.cm-merge-a .cm-deletedLineGutter": {
-				backgroundColor: "var(--color-success-accent)",
-			},
+				// THE GREENS
+				"& .cm-deletedChunk": {
+					backgroundColor: "var(--color-diff-add)",
+				},
+				"& .cm-deletedLine": {
+					backgroundColor: "var(--color-diff-add)",
+				},
+				"& .cm-deletedLine del:has(:not(.cm-deletedText)) .cm-deletedText": {
+					textDecoration: "none",
+					color: "var(--color-white)",
+					backgroundColor: "var(--color-diff-add-word)",
+				},
+				"& .cm-deletedLine .cm-deletedText": {
+					textDecoration: "none",
+					backgroundColor: "var(--color-diff-add)",
+				},
 
-			// Styles the cursor's current line
-			"& .cm-activeLine, &.cm-merge-b .cm-activeLine": {backgroundColor: "color-mix(in srgb, #cceeff44, transparent)"},
-			"& .cm-activeLineGutter, &.cm-merge-b .cm-activeLineGutter": {
-				backgroundColor: "color-mix(in srgb, #cceeff44, transparent)",
-			},
+				// THE REDS
+				"& .cm-changedLine": {
+					backgroundColor: "var(--color-diff-del) !important",
+				},
+				// strips the CM default fake-underline
+				"& .cm-changedText": {
+					background: "none !important",
+				},
+				"& .cm-insertedLine .cm-changedText:not(:only-child) *": {
+					color: "var(--color-white) !important",
+					backgroundColor: "var(--color-diff-del-word)",
+				},
 
-			// Styles the button to expand section folds
-			"& .cm-foldPlaceholder": {
-				backgroundColor: "color-mix(in srgb, var(--color-accent) 15%, transparent)",
-				border: "1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)",
-				color: "var(--color-foreground)",
-				borderRadius: "0.2rem",
-			},
+				// Styles the line gutter and diff indicators
+				"& .cm-gutters": {backgroundColor: "transparent", color: "var(--color-foreground)"},
+				"& .cm-changeGutter": {paddingLeft: "unset"},
+				"& .cm-changedLineGutter, &.cm-merge-b .cm-changedLineGutter": {
+					backgroundColor: "var(--color-error-accent)",
+				},
+				"& .cm-deletedLineGutter, &.cm-merge-a .cm-deletedLineGutter": {
+					backgroundColor: "var(--color-success-accent)",
+				},
 
-			// Styles the input cursor (normal mode) and vim block cursor
-			"& .cm-cursor, & .cm-cursorAnchor": {borderLeftColor: "var(--color-accent)"},
-			"& .cm-fat-cursor": {
-				backgroundColor: "color-mix(in srgb, var(--color-accent) 50%, transparent) !important",
-				outline: "none !important",
-			},
+				// Styles the cursor's current line
+				"& .cm-activeLine, &.cm-merge-b .cm-activeLine": {
+					backgroundColor: "var(--color-active-line)",
+				},
+				"& .cm-activeLineGutter, &.cm-merge-b .cm-activeLineGutter": {
+					backgroundColor: "var(--color-active-line)",
+				},
 
-			"& .cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-				backgroundColor: "color-mix(in srgb, var(--color-accent) 12.5%, transparent) !important",
-			},
+				// Styles the button to expand section folds
+				"& .cm-foldPlaceholder": {
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 15%, transparent)",
+					border: "1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)",
+					color: "var(--color-foreground)",
+					borderRadius: "0.2rem",
+				},
 
-			// Styles the vim command-line panel
-			"& .cm-panels": {backgroundColor: "var(--color-surface)", color: "var(--color-foreground)"},
-			"& .cm-panels .cm-vim-panel": {
-				borderTop: "1px solid color-mix(in srgb, var(--color-foreground) 12.5%, transparent)",
-				padding: "2px 4px",
+				// Styles the input cursor (normal mode) and vim block cursor
+				"& .cm-cursor, & .cm-cursorAnchor": {borderLeftColor: "var(--color-accent)"},
+				"& .cm-fat-cursor": {
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 33%, transparent) !important",
+					outline: "none !important",
+				},
+
+				"& .cm-searchMatch": {
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 25%, transparent) !important",
+				},
+
+				"& .cm-selectionMatch": {
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 25%, transparent) !important",
+				},
+
+				"& .cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+					backgroundColor: "color-mix(in srgb, var(--color-accent) 25%, transparent) !important",
+				},
+
+				// Styles the vim command-line panel
+				"& .cm-panels": {backgroundColor: "var(--color-surface)", color: "var(--color-foreground)"},
+				"& .cm-panels .cm-vim-panel": {
+					padding: "2px 4px",
+				},
+				"& .cm-panels .cm-vim-panel input": {
+					backgroundColor: "var(--color-surface)",
+					color: "var(--color-foreground-light)",
+					outline: "none",
+				},
+				"& .cm-panels .cm-vim-message": {
+					color: "var(--color-foreground) !important",
+					borderLeft: "3px solid var(--color-accent)",
+					paddingLeft: "6px",
+				},
 			},
-			"& .cm-panels .cm-vim-panel input": {
-				backgroundColor: "transparent",
-				color: "var(--color-foreground)",
-				outline: "none",
-			},
-			"& .cm-panels .cm-vim-message": {
-				color: "var(--color-foreground) !important",
-				borderLeft: "3px solid var(--color-accent)",
-				paddingLeft: "6px",
-			},
-		}),
+			{dark: true},
+		),
 	];
 
 	if (memberInitialDoc) {

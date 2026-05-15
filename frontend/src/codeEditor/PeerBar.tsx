@@ -10,7 +10,7 @@ type PeerBarProps = {
 
 export default function PeerBar({peers, readyPeerIds, selectedPeerId, onSelect}: PeerBarProps): JSX.Element {
 	return (
-		<div className="flex flex-row items-center gap-2 p-2 bg-surface">
+		<div className="flex flex-row items-center gap-2 p-2 bg-surface-dark">
 			{peers.length === 0 ? (
 				<span>Solo mode — share this URL to collaborate.</span>
 			) : (
